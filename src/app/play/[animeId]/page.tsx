@@ -15,7 +15,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Vidstack imports
-import * as Vidstack from '@vidstack/react';
+import { MediaPlayer, MediaProvider, MediaPoster } from '@vidstack/react';
+import type { MediaPlayerInstance, MediaSrc } from '@vidstack/react';
 import { DefaultVideoLayout, defaultLayoutIcons } from '@vidstack/react/player/layouts/default';
 
 
@@ -48,7 +49,7 @@ export default function PlayerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const playerRef = useRef<Vidstack.MediaPlayerInstance | null>(null);
+  const playerRef = useRef<MediaPlayerInstance | null>(null);
 
 
   useEffect(() => {
@@ -116,7 +117,7 @@ export default function PlayerPage() {
     }
   }, [anime, currentEpisode, handleEpisodeSelect]);
 
-  const videoSource: Vidstack.MediaSrc | null = useMemo(() => {
+  const videoSource: MediaSrc | null = useMemo(() => {
     if (!currentEpisode?.url) return null;
     const mimeType = getMimeType(currentEpisode.url);
     return {
@@ -125,20 +126,22 @@ export default function PlayerPage() {
     };
   }, [currentEpisode]);
 
-  const onPlayerError = useCallback((event: Vidstack.MediaErrorEvent) => {
+  const onPlayerError = useCallback((event: any) => { // Using `any` temporarily if specific event type is causing issues
     const detail = event.detail;
-    console.error('Vidstack Player Error:', detail, event.nativeEvent);
+    console.error('Vidstack Player Error:', detail, event.nativeEvent || event);
     let errorMessage = 'Unknown player error';
 
     if (detail && detail.message) {
       errorMessage = detail.message;
     } else if (event.nativeEvent && (event.nativeEvent instanceof ErrorEvent) && (event.nativeEvent as ErrorEvent).message) {
         errorMessage = (event.nativeEvent as ErrorEvent).message;
-    } else if (detail && typeof detail === 'string') { // Fallback if detail is just a string message
+    } else if (detail && typeof detail === 'string') { 
         errorMessage = detail;
+    } else if (detail && typeof detail === 'object' && detail.data && detail.data.message) { // HLS.js errors might be nested
+        errorMessage = detail.data.message;
     }
     
-    setError(`Video Error: ${errorMessage}. Code: ${detail && typeof detail === 'object' ? detail.code : 'N/A'}`);
+    setError(`Video Error: ${errorMessage}. Code: ${detail && typeof detail === 'object' ? (detail.code || (detail.data && detail.data.type)) : 'N/A'}`);
   }, []);
 
 
@@ -151,7 +154,7 @@ export default function PlayerPage() {
     );
   }
 
-  if (error && !anime && !currentEpisode) { // Initial load error before anime/episode selected
+  if (error && !anime && !currentEpisode) { 
     return (
       <Container className="flex flex-col items-center justify-center min-h-[calc(100vh-var(--header-height,4rem)-1px)] py-12 text-center">
         <AlertTriangle className="w-12 h-12 text-destructive mb-4" />
@@ -184,7 +187,7 @@ export default function PlayerPage() {
           <div className="lg:flex-grow mb-6 lg:mb-0 h-full flex flex-col">
             <div className="aspect-video bg-black rounded-lg overflow-hidden shadow-2xl mb-4 w-full relative">
                 {currentEpisode && videoSource ? (
-                   <Vidstack.MediaPlayer
+                   <MediaPlayer
                     key={currentEpisode.id} 
                     ref={playerRef}
                     title={currentEpisode.title}
@@ -196,15 +199,15 @@ export default function PlayerPage() {
                     className="w-full h-full rounded-lg overflow-hidden"
                     playsInline 
                   >
-                    <Vidstack.MediaOutlet className="w-full h-full">
-                        <Vidstack.MediaPoster
+                    <MediaProvider className="w-full h-full">
+                        <MediaPoster
                             alt={currentEpisode.title || 'Episode poster'}
                             className="object-cover w-full h-full"
                             data-ai-hint="anime episode thumbnail"
                         />
-                    </Vidstack.MediaOutlet>
+                    </MediaProvider>
                     <DefaultVideoLayout icons={defaultLayoutIcons} />
-                  </Vidstack.MediaPlayer>
+                  </MediaPlayer>
                 ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground bg-card">
                     <PlayCircleIcon className="w-24 h-24 opacity-30" />
@@ -222,7 +225,10 @@ export default function PlayerPage() {
                     <Button variant="outline" size="sm" className="mt-3" onClick={() => {
                         setError(null); 
                         if(currentEpisode) { 
-                            handleEpisodeSelect(currentEpisode); 
+                            // Attempt to reload the source or re-initialize player if Vidstack API allows
+                            if (playerRef.current && videoSource) {
+                                playerRef.current.src = videoSource; // Re-assign source
+                            }
                         }
                     }}>Retry</Button>
                   </div>
@@ -339,3 +345,4 @@ export default function PlayerPage() {
     </div>
   );
 }
+
