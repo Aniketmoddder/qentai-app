@@ -6,13 +6,16 @@ import Logo from '@/components/common/logo';
 import Container from '@/components/layout/container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 import { useState, useEffect, FormEvent } from 'react';
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileSearchQuery, setMobileSearchQuery] = useState('');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const router = useRouter(); // Initialize useRouter
 
   useEffect(() => {
     const handleScroll = () => {
@@ -38,9 +41,10 @@ export default function Header() {
   const handleSearchSubmit = (e: FormEvent<HTMLFormElement>, query: string) => {
     e.preventDefault();
     if (query.trim()) {
-      console.log('Searching for:', query);
-      // Implement search navigation or display results here
-      // Example: router.push(`/search?q=${encodeURIComponent(query)}`);
+      router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+      setSearchQuery(''); // Clear desktop search input
+      setMobileSearchQuery(''); // Clear mobile search input
+      setIsMobileMenuOpen(false); // Close mobile menu after search
     }
   };
 
@@ -86,19 +90,20 @@ export default function Header() {
             <span className="sr-only">User Profile</span>
           </Button>
           <div className="md:hidden">
-            <Sheet>
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
                   <Menu className="h-6 w-6" />
                   <span className="sr-only">Open menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="bg-card p-0 flex flex-col"> {/* Remove padding for full control */}
+              <SheetContent side="right" className="bg-card p-0 flex flex-col w-[80vw] max-w-xs sm:max-w-sm"> {/* Adjust width */}
                 <SheetHeader className="p-6 pb-4 border-b border-border"> 
-                  <SheetTitle className="sr-only">Mobile Menu</SheetTitle> {/* For accessibility */}
-                  <Logo />
+                  <SheetTitle>
+                    <Logo />
+                  </SheetTitle>
                 </SheetHeader>
-                <nav className="flex flex-col space-y-2 p-6 flex-grow overflow-y-auto">
+                <nav className="flex flex-col space-y-1 p-4 flex-grow overflow-y-auto"> {/* Reduced space-y */}
                  <form 
                     onSubmit={(e) => handleSearchSubmit(e, mobileSearchQuery)}
                     className="relative mb-4"
@@ -117,22 +122,27 @@ export default function Header() {
                     </button>
                   </form>
                   {navItems.map((item) => (
-                    <Link
-                      key={item.label}
-                      href={item.href}
-                      className="text-lg font-medium text-foreground hover:text-primary transition-colors py-2"
-                    >
-                      {item.label}
-                    </Link>
+                    <SheetClose asChild key={item.label}>
+                      <Link
+                        href={item.href}
+                        className="text-base font-medium text-foreground hover:text-primary transition-colors py-2.5 px-2 rounded-md hover:bg-primary/10" // Adjusted padding and added hover bg
+                      >
+                        {item.label}
+                      </Link>
+                    </SheetClose>
                   ))}
                 </nav>
-                <div className="p-6 border-t border-border space-y-2">
-                   <Button variant="outline" className="w-full text-foreground border-primary hover:bg-primary hover:text-primary-foreground">
-                    Login
-                  </Button>
-                  <Button variant="default" className="w-full btn-primary-gradient">
-                    Sign Up
-                  </Button>
+                <div className="p-4 border-t border-border space-y-2"> {/* Adjusted padding */}
+                   <SheetClose asChild>
+                    <Button variant="outline" className="w-full text-foreground border-primary hover:bg-primary hover:text-primary-foreground">
+                      Login
+                    </Button>
+                   </SheetClose>
+                   <SheetClose asChild>
+                    <Button variant="default" className="w-full btn-primary-gradient">
+                      Sign Up
+                    </Button>
+                   </SheetClose>
                 </div>
               </SheetContent>
             </Sheet>
