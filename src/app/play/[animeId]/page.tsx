@@ -6,14 +6,13 @@ import type { Anime, Episode } from '@/types/anime';
 import { mockAnimeData } from '@/lib/mock-data';
 import Container from '@/components/layout/container';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, MessageSquareWarning, Loader2, List, Star, PlayCircle, ChevronRight, Tv, Film, ListVideo } from 'lucide-react';
+import { AlertTriangle, MessageSquareWarning, Loader2, List, Star, PlayCircle, ChevronRight } from 'lucide-react';
 import { useSearchParams, useRouter, useParams } from 'next/navigation';
-import Image from 'next/image';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'; // TooltipProvider is already in RootLayout
 import type PlyrType from 'plyr';
 import dynamic from 'next/dynamic';
 
@@ -28,8 +27,21 @@ import 'plyr-react/plyr.css';
 // Simulate fetching anime data by ID (client-side for this example)
 async function getAnimeDetails(id: string): Promise<Anime | undefined> {
   // In a real app, this would be an API call
+  await new Promise(resolve => setTimeout(resolve, 200)); // Simulate latency
   return mockAnimeData.find((anime) => anime.id === id);
 }
+
+const getMimeType = (url: string): string | undefined => {
+  if (url.endsWith('.m3u8')) {
+    return 'application/x-mpegURL';
+  }
+  if (url.endsWith('.mp4')) {
+    return 'video/mp4';
+  }
+  // Add other types if needed, e.g. 'video/webm'
+  return undefined; // Let the browser infer if not specified or recognized
+};
+
 
 export default function PlayerPage() {
   const router = useRouter();
@@ -65,9 +77,7 @@ export default function PlayerPage() {
             const foundEpisode = details.episodes?.find(ep => ep.id === episodeIdFromQuery);
             if (foundEpisode) initialEpisode = foundEpisode;
           } else if (details.episodes && details.episodes.length > 0) {
-             // If no episode in query, default to the first episode and update URL
             initialEpisode = details.episodes[0];
-            // Use replace to avoid adding to history if it's the initial load default
             router.replace(`/play/${animeId}?episode=${initialEpisode.id}`, { scroll: false });
           }
           
@@ -85,6 +95,29 @@ export default function PlayerPage() {
     };
     fetchDetails();
   }, [animeId, searchParams, router]);
+
+  // Effect to update Plyr source when currentEpisode changes
+  useEffect(() => {
+    const playerInstance = plyrRef.current?.plyr;
+    if (playerInstance && currentEpisode?.url) {
+        const sourceUrl = currentEpisode.url;
+        const mimeType = getMimeType(sourceUrl);
+        
+        playerInstance.source = {
+            type: 'video',
+            title: currentEpisode.title,
+            sources: [
+                {
+                    src: sourceUrl,
+                    provider: 'html5',
+                    ...(mimeType && { type: mimeType }),
+                },
+            ],
+            poster: currentEpisode.thumbnail || anime?.coverImage || `https://picsum.photos/seed/${animeId}-${currentEpisode.id}-poster/1280/720`,
+        };
+    }
+  }, [currentEpisode, anime, animeId, plyrRef.current?.plyr]);
+
 
   const handleEpisodeSelect = useCallback((episode: Episode) => {
     setCurrentEpisode(episode);
@@ -111,20 +144,23 @@ export default function PlayerPage() {
 
   const videoSource = useMemo(() => {
     if (!currentEpisode?.url) return null;
+    const sourceUrl = currentEpisode.url;
+    const mimeType = getMimeType(sourceUrl);
     return {
       type: 'video' as const,
       title: currentEpisode.title,
       sources: [
         {
-          src: currentEpisode.url,
-          provider: 'html5' as const, // Ensure provider is correctly set if using specific types
+          src: sourceUrl,
+          provider: 'html5' as const,
+          ...(mimeType && { type: mimeType }),
         },
       ],
-      poster: currentEpisode.thumbnail || anime?.coverImage || `https://picsum.photos/seed/${animeId}-poster/1280/720`,
+      poster: currentEpisode.thumbnail || anime?.coverImage || `https://picsum.photos/seed/${animeId}-${currentEpisode.id}-poster/1280/720`,
     };
   }, [currentEpisode, anime?.coverImage, animeId]);
   
-  const playerOptions: PlyrType.Options = {
+  const playerOptions = useMemo<PlyrType.Options>(() => ({ // Added useMemo for options
     controls: [
         'play-large', 'rewind', 'play', 'fast-forward', 'progress', 
         'current-time', 'duration', 'mute', 'volume', 'captions', 
@@ -133,43 +169,42 @@ export default function PlayerPage() {
     settings: ['captions', 'quality', 'speed', 'loop'],
     quality: {
       default: 720, 
-      options: [1080, 720, 480], 
+      options: [1080, 720, 480], // Example qualities
     },
     tooltips: { controls: true, seek: true },
     autoplay: false,
     loop: { active: false },
     keyboard: { focused: true, global: false },
-    // Ensure poster is set if not using the 'source' prop poster
-    // poster: currentEpisode?.thumbnail || anime?.coverImage || `https://picsum.photos/seed/${animeId}-player/1280/720`,
-  };
+    // Consider adding hls.js config here if needed for broader M3U8 support
+    // config: {
+    //   hls: {
+    //     // hls.js specific options
+    //   }
+    // }
+  }), []);
+
 
   useEffect(() => {
-    // The plyrRef.current might be null initially or might not have the 'plyr' property
-    // until the Plyr component fully mounts and assigns its instance.
     const playerInstance = plyrRef.current?.plyr;
 
     if (playerInstance) {
       const onEnded = () => {
-        // console.log('Video ended, attempting to play next episode.');
         handleNextEpisode();
       };
       
-      // Ensure playerInstance.on exists and is a function
-      if (typeof playerInstance.on === 'function') {
-        playerInstance.on('ended', onEnded);
-      } else {
-        // console.warn("Plyr instance's 'on' method is not available yet or not a function.");
-      }
+      playerInstance.on('ended', onEnded);
+      // Example: playerInstance.on('error', (event) => console.error("Plyr Error: ", event.detail.plyr.source));
       
       return () => {
-        if (playerInstance && typeof playerInstance.off === 'function') {
-          playerInstance.off('ended', onEnded);
+        if (playerInstance.ready) { // Check if player is ready before calling off
+          try {
+            playerInstance.off('ended', onEnded);
+          } catch(e) {
+            // console.warn("Error removing Plyr event listener:", e);
+          }
         }
       };
     }
-  // Rerun when handleNextEpisode changes or when playerInstance becomes available.
-  // Adding plyrRef.current directly can cause too many re-renders if it changes structure often.
-  // Better to depend on a stable part of it, or a boolean flag indicating its readiness.
   }, [handleNextEpisode, plyrRef.current?.plyr]); 
 
 
@@ -214,10 +249,11 @@ export default function PlayerPage() {
         <div className="lg:flex lg:gap-6 xl:gap-8 h-full">
           <div className="lg:flex-grow mb-6 lg:mb-0 h-full flex flex-col">
             <div className="aspect-video bg-black rounded-lg overflow-hidden shadow-2xl mb-4 w-full relative">
-                {videoSource && Plyr ? ( // Check if Plyr is loaded
+                {videoSource && Plyr ? (
                     <Plyr
+                        key={currentEpisode?.id || 'plyr-player'} // Add key to force re-render on episode change
                         ref={plyrRef}
-                        source={videoSource}
+                        source={videoSource} // Initial source
                         options={playerOptions}
                         className="[&>.plyr]:rounded-lg"
                     />
@@ -275,10 +311,10 @@ export default function PlayerPage() {
                 </h3>
               </div>
               
-              <ScrollArea className="flex-grow h-[calc(100vh-280px)] lg:h-[calc(100vh-var(--header-height,4rem)-180px)] pr-2 -mr-2">
+              <ScrollArea className="flex-grow h-[calc(100vh-280px)] lg:h-[calc(100vh-var(--header-height,4rem)-180px)] pr-2 -mr-2 scrollbar-thin">
                 <div className="space-y-1.5">
                     {anime.episodes?.map((ep) => (
-                    <TooltipProvider key={ep.id}>
+                    <TooltipTrigger key={ep.id} asChild>
                         <Tooltip delayDuration={200}>
                         <TooltipTrigger asChild>
                             <Button
@@ -305,7 +341,7 @@ export default function PlayerPage() {
                             {ep.duration && <p className="text-xs text-muted-foreground">{ep.duration}</p>}
                         </TooltipContent>
                         </Tooltip>
-                    </TooltipProvider>
+                    </TooltipTrigger>
                     ))}
                     {(!anime.episodes || anime.episodes.length === 0) && (
                         <p className="text-sm text-muted-foreground py-4 text-center">No episodes available for this series.</p>
@@ -334,3 +370,5 @@ export default function PlayerPage() {
     </div>
   );
 }
+
+    
