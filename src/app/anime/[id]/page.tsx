@@ -1,11 +1,11 @@
 
-import { mockAnimeData } from '@/lib/mock-data';
+import { getAnimeById } from '@/services/animeService';
 import type { Anime, Episode } from '@/types/anime';
 import Container from '@/components/layout/container';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Star, PlayCircle, CalendarDays, Tv, Film, ListVideo, List, ChevronRight } from 'lucide-react';
+import { Star, PlayCircle, CalendarDays, Tv, Film, ListVideo, List, ChevronRight, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import AnimeInteractionControls from '@/components/anime/anime-interaction-controls';
 
@@ -15,19 +15,35 @@ interface AnimeDetailsPageProps {
   };
 }
 
-async function getAnimeDetails(id: string): Promise<Anime | undefined> {
-  await new Promise(resolve => setTimeout(resolve, 200)); // Simulate network latency
-  return mockAnimeData.find((anime) => anime.id === id);
-}
-
 export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps) {
-  const anime = await getAnimeDetails(params.id);
+  let anime: Anime | undefined;
+  let fetchError: string | null = null;
 
+  try {
+    anime = await getAnimeById(params.id);
+  } catch (error) {
+    console.error(`Failed to fetch anime details for ID ${params.id}:`, error);
+    fetchError = "Could not load anime details. Please try again later.";
+  }
+
+  if (fetchError) {
+    return (
+      <Container className="py-12 text-center">
+        <AlertTriangle className="mx-auto h-12 w-12 text-destructive mb-4" />
+        <h1 className="text-2xl font-bold text-destructive">Error Loading Anime</h1>
+        <p className="text-muted-foreground">{fetchError}</p>
+        <Button asChild variant="link" className="mt-4">
+          <Link href="/">Go back to Home</Link>
+        </Button>
+      </Container>
+    );
+  }
+  
   if (!anime) {
     return (
       <Container className="py-12 text-center">
         <h1 className="text-2xl font-bold text-destructive">Anime Not Found</h1>
-        <p className="text-muted-foreground">Sorry, we couldn&apos;t find details for this anime.</p>
+        <p className="text-muted-foreground">Sorry, we couldn&apos;t find details for this anime (ID: {params.id}).</p>
         <Button asChild variant="link" className="mt-4">
           <Link href="/">Go back to Home</Link>
         </Button>
@@ -40,6 +56,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     Movie: <Film className="w-4 h-4 mr-1.5" />,
     OVA: <ListVideo className="w-4 h-4 mr-1.5" />,
     Special: <ListVideo className="w-4 h-4 mr-1.5" />,
+    Unknown: <ListVideo className="w-4 h-4 mr-1.5" />, // Added for default
   };
 
   return (
@@ -152,6 +169,12 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                   </Link>
                 </Button>
               </div>
+            )}
+            {(!anime.episodes || anime.episodes.length === 0) && (
+                 <div className="mt-8 p-4 sm:p-6 bg-card rounded-lg">
+                    <h2 className="text-2xl font-semibold mb-2 text-primary">Episodes</h2>
+                    <p className="text-muted-foreground">No episodes listed for this title yet. URLs for episodes might need to be added by an admin.</p>
+                 </div>
             )}
           </div>
         </div>

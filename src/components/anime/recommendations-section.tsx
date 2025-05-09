@@ -1,51 +1,79 @@
 
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { generateAnimeRecommendations } from '@/ai/flows/generate-anime-recommendations';
-import type { Anime, AnimeRecommendation } from '@/types/anime'; // Using Anime for display card
+import type { Anime } from '@/types/anime';
 import AnimeCard from './anime-card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Wand2 } from 'lucide-react';
+import { Loader2, Wand2, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { mockAnimeData } from '@/lib/mock-data'; // For placeholder display
+import { getAllAnimes } from '@/services/animeService'; // To find existing anime
 
-// Simulate user watch history - updated to reflect reduced mock data
-const mockWatchHistory = ['Attack on Titan', 'Solo Leveling'];
+// Simulate user watch history - replace with actual user data in a real app
+const mockWatchHistoryTitles = ['Attack on Titan', 'Solo Leveling', 'One Punch Man']; // Titles the user has watched
 
 export default function RecommendationsSection() {
   const [recommendations, setRecommendations] = useState<Anime[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [allAnimesCache, setAllAnimesCache] = useState<Anime[]>([]);
+
+  const fetchAllAnimesForMatching = useCallback(async () => {
+    try {
+      const animesFromDB = await getAllAnimes(100); // Fetch a decent number for matching
+      setAllAnimesCache(animesFromDB);
+    } catch (e) {
+      console.error("Failed to fetch all animes for recommendation matching:", e);
+      // Non-critical error, AI can still generate titles
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAllAnimesForMatching();
+  }, [fetchAllAnimesForMatching]);
 
   const fetchRecommendations = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await generateAnimeRecommendations({ watchHistory: mockWatchHistory });
+      // Ensure allAnimesCache is populated before generating recommendations that rely on it for matching
+      if (allAnimesCache.length === 0) {
+         await fetchAllAnimesForMatching(); // Ensure cache is populated if empty
+      }
+
+      const result = await generateAnimeRecommendations({ watchHistory: mockWatchHistoryTitles });
       
       const detailedRecommendations = result.recommendations
         .map(title => {
-          const found = mockAnimeData.find(anime => anime.title.toLowerCase().includes(title.toLowerCase()));
-          if (found) return found;
-          // Create a fallback if not found in the small mock dataset
+          // Try to find the anime in our existing DB (allAnimesCache)
+          const foundInDB = allAnimesCache.find(anime => 
+            anime.title.toLowerCase() === title.toLowerCase() || 
+            anime.title.toLowerCase().includes(title.toLowerCase()) ||
+            title.toLowerCase().includes(anime.title.toLowerCase())
+          );
+
+          if (foundInDB) return foundInDB;
+          
+          // Create a fallback if not found in the DB
           return {
-            id: title.replace(/\s+/g, '-').toLowerCase() + `-${Math.random().toString(36).substr(2, 5)}`, // more unique id
+            id: title.replace(/\s+/g, '-').toLowerCase() + `-${Math.random().toString(36).substr(2, 5)}`,
             title: title,
-            coverImage: `https://picsum.photos/seed/${title.replace(/\s+/g, '')}/300/450`,
-            bannerImage: `https://picsum.photos/seed/${title.replace(/\s+/g, '')}-banner/1200/400`,
+            coverImage: `https://picsum.photos/seed/${encodeURIComponent(title)}/300/450`,
+            bannerImage: `https://picsum.photos/seed/${encodeURIComponent(title)}-banner/1200/400`,
             year: new Date().getFullYear(),
             genre: ['Recommended'],
-            status: 'Ongoing',
-            synopsis: `An exciting anime recommended just for you: ${title}. Details may be limited.`,
-            type: 'TV',
-            episodes: [], // No episodes for purely AI generated titles not in mock
-            averageRating: Math.floor(Math.random() * (50 - 35) + 35) / 10, // Random rating 3.5-4.9
+            status: 'Unknown',
+            synopsis: `An exciting anime recommended just for you: ${title}. Details are AI-generated.`,
+            type: 'Unknown',
+            episodes: [],
+            averageRating: parseFloat((Math.random() * (4.9 - 3.5) + 3.5).toFixed(1)),
+            sourceAdmin: 'tmdb', // Assuming AI might pull from TMDB-like knowledge
           } as Anime;
         })
-        .filter(anime => anime !== undefined) as Anime[];
+        .filter((anime): anime is Anime => anime !== undefined);
 
-      setRecommendations(detailedRecommendations.slice(0, 5));
+      setRecommendations(detailedRecommendations.slice(0, 5)); // Show top 5
     } catch (e) {
       console.error("Failed to fetch recommendations:", e);
       setError("Could not load recommendations. Please try again.");
@@ -56,7 +84,8 @@ export default function RecommendationsSection() {
 
   useEffect(() => {
     fetchRecommendations();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allAnimesCache]); // Re-fetch if cache changes (though it's fetched once)
 
   return (
     <section className="py-6 md:py-8">
@@ -73,6 +102,7 @@ export default function RecommendationsSection() {
 
       {error && (
         <Alert variant="destructive" className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -81,7 +111,7 @@ export default function RecommendationsSection() {
       {isLoading && recommendations.length === 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
           {[...Array(5)].map((_, index) => (
-            <div key={index} className="bg-card p-2 sm:p-3 rounded-lg shadow-md animate-pulse w-[45vw] max-w-[180px] h-[270px]">
+            <div key={index} className="bg-card p-2 sm:p-3 rounded-lg shadow-md animate-pulse w-full">
               <div className="aspect-[2/3] bg-muted rounded mb-2"></div>
               <div className="h-4 bg-muted rounded w-3/4 mb-1"></div>
               <div className="h-3 bg-muted rounded w-1/2"></div>
@@ -93,6 +123,7 @@ export default function RecommendationsSection() {
       {!isLoading && recommendations.length === 0 && !error && (
          <div className="text-center py-8 text-muted-foreground">
           <p>No recommendations available right now. Watch some anime to get personalized suggestions!</p>
+          <p className="text-xs mt-1">(Or ensure the recommendation AI is working correctly.)</p>
         </div>
       )}
 
@@ -106,4 +137,3 @@ export default function RecommendationsSection() {
     </section>
   );
 }
-

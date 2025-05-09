@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -6,8 +7,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AnimeCard from '@/components/anime/anime-card';
 import type { Anime } from '@/types/anime';
-import { mockAnimeData } from '@/lib/mock-data';
 import { getUserFavoriteIds, getUserWishlistIds } from '@/services/userDataService';
+import { getAnimeById } from '@/services/animeService'; // Import service to fetch anime details
 import { Loader2, User, Heart, Bookmark, AlertCircle, RotateCcw } from 'lucide-react';
 import Container from '@/components/layout/container';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -47,6 +48,14 @@ export default function ProfilePage() {
     return "An unknown error occurred while fetching your lists. Please try again later.";
   };
 
+  const fetchFullAnimeDetails = async (ids: string[]): Promise<Anime[]> => {
+    const animeDetailsPromises = ids.map(id => getAnimeById(id));
+    const results = await Promise.allSettled(animeDetailsPromises);
+    return results
+      .filter(result => result.status === 'fulfilled' && result.value)
+      .map(result => (result as PromiseFulfilledResult<Anime>).value);
+  };
+
   const fetchLists = useCallback(async () => {
     if (user) {
       setIsLoadingLists(true);
@@ -57,14 +66,12 @@ export default function ProfilePage() {
           getUserWishlistIds(user.uid)
         ]);
 
-        const resolvedFavorites = favoriteIds
-          .map(id => mockAnimeData.find(anime => anime.id === id))
-          .filter((anime): anime is Anime => anime !== undefined);
+        const [resolvedFavorites, resolvedWishlist] = await Promise.all([
+          fetchFullAnimeDetails(favoriteIds),
+          fetchFullAnimeDetails(wishlistIds),
+        ]);
+        
         setFavoritesList(resolvedFavorites);
-
-        const resolvedWishlist = wishlistIds
-          .map(id => mockAnimeData.find(anime => anime.id === id))
-          .filter((anime): anime is Anime => anime !== undefined);
         setWishlistList(resolvedWishlist);
 
       } catch (error: unknown) {

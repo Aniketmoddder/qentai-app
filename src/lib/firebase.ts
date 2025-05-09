@@ -1,8 +1,8 @@
 
-import { initializeApp, getApp, getApps } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth'; // Import GoogleAuthProvider
+import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from "firebase/firestore";
-// Import other Firebase services as needed, e.g., getStorage, getAnalytics
+// import * as admin from 'firebase-admin';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -15,8 +15,8 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Initialize Firebase
-let app;
+// Client-side Firebase app
+let app: FirebaseApp;
 if (!getApps().length) {
   app = initializeApp(firebaseConfig);
 } else {
@@ -24,12 +24,34 @@ if (!getApps().length) {
 }
 
 const auth = getAuth(app);
-const db = getFirestore(app); // For Firestore
-const googleProvider = new GoogleAuthProvider(); // Create GoogleAuthProvider instance
+const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
+
+/*
+// Server-side Firebase Admin SDK
+// Ensure environment variables are set in your deployment environment
+// For local development, you might use a service account key JSON file
+
+if (!admin.apps.length) {
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        // Replace \n with actual newlines if using environment variables for private key
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      }),
+      databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
+    });
+    console.log("Firebase Admin SDK initialized");
+  } catch (e) {
+    console.error("Firebase Admin SDK initialization error:", e);
+  }
+}
+
+
+export const adminAuth = admin.auth();
+export const adminDb = admin.firestore();
+*/
 
 export { app, auth, db, googleProvider };
-
-// Important: Ensure you have installed firebase SDK (npm install firebase or yarn add firebase)
-// Also, ensure your .env.local or .env file has all the NEXT_PUBLIC_FIREBASE_ variables set.
-// Restart your development server after updating .env files.
-// For Google Sign-In, ensure you've enabled it as a sign-in provider in your Firebase project console.

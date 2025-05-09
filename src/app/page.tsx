@@ -1,14 +1,17 @@
+
 import Container from '@/components/layout/container';
 import AnimeCarousel from '@/components/anime/anime-carousel';
 import RecommendationsSection from '@/components/anime/recommendations-section';
-import { mockAnimeData } from '@/lib/mock-data';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, AlertTriangle } from 'lucide-react';
+import { getAllAnimes } from '@/services/animeService';
+import type { Anime } from '@/types/anime';
 
 // Helper function to shuffle array for variety in carousels
 const shuffleArray = <T,>(array: T[]): T[] => {
+  if (!array || array.length === 0) return [];
   const newArray = [...array];
   for (let i = newArray.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -17,23 +20,31 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return newArray;
 };
 
-export default function Home() {
-  // Ensure mockAnimeData is not empty, otherwise carousels will be empty.
-  // If mockAnimeData has few items, slice(0,10) will just take all available items.
-  const trendingAnime = shuffleArray([...mockAnimeData]).slice(0, 10); 
-  const popularAnime = shuffleArray([...mockAnimeData]).slice(0, 10);
-  const recentlyAddedAnime = [...mockAnimeData].sort((a,b) => b.year - a.year).slice(0,10);
+export default async function Home() {
+  let allAnime: Anime[] = [];
+  let fetchError: string | null = null;
+
+  try {
+    allAnime = await getAllAnimes(30); // Fetch more for shuffling variety
+  } catch (error) {
+    console.error("Failed to fetch animes for homepage:", error);
+    fetchError = "Could not load anime data. Please try again later.";
+  }
   
-  let featuredAnime = mockAnimeData.find(anime => anime.id === '7'); 
-  if (!featuredAnime && mockAnimeData.length > 0) {
-    featuredAnime = mockAnimeData[0]; 
+  const trendingAnime = shuffleArray([...allAnime]).slice(0, 10); 
+  const popularAnime = shuffleArray([...allAnime]).slice(0, 10);
+  const recentlyAddedAnime = [...allAnime].sort((a,b) => (b.year || 0) - (a.year || 0)).slice(0,10); // Assuming year indicates recency
+  
+  let featuredAnime = allAnime.find(anime => anime.averageRating && anime.averageRating >= 4.5 && anime.bannerImage); 
+  if (!featuredAnime && allAnime.length > 0) {
+    featuredAnime = allAnime.sort((a,b) => (b.averageRating || 0) - (a.averageRating || 0))[0]; 
   }
 
 
   return (
     <>
       {/* Hero Section */}
-      {featuredAnime && (
+      {featuredAnime && !fetchError && (
         <section className="relative h-[60vh] md:h-[75vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)]"> {/* Adjust for header height */}
           <div className="absolute inset-0">
             <Image
@@ -70,13 +81,28 @@ export default function Home() {
         </section>
       )}
       
-      <Container className="overflow-x-clip"> {/* Changed overflow-hidden to overflow-x-clip to prevent horizontal scroll issues */}
-        <AnimeCarousel title="Trending Now" animeList={trendingAnime} />
-        <AnimeCarousel title="Popular Choices" animeList={popularAnime} />
-        <AnimeCarousel title="Recently Added" animeList={recentlyAddedAnime} />
+      <Container className="overflow-x-clip">
+        {fetchError && (
+          <div className="my-8 p-6 bg-destructive/10 border border-destructive/30 rounded-lg flex items-center text-destructive">
+            <AlertTriangle className="h-6 w-6 mr-3 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold">Error Loading Content</h3>
+              <p className="text-sm">{fetchError}</p>
+            </div>
+          </div>
+        )}
+        {!fetchError && allAnime.length === 0 && (
+           <div className="my-8 p-6 bg-card border border-border rounded-lg text-center">
+            <h3 className="font-semibold text-xl">No Anime Found</h3>
+            <p className="text-muted-foreground">It looks like there's no anime in the database yet. An admin can add some via the admin panel.</p>
+          </div>
+        )}
+
+        {trendingAnime.length > 0 && <AnimeCarousel title="Trending Now" animeList={trendingAnime} />}
+        {popularAnime.length > 0 && <AnimeCarousel title="Popular Choices" animeList={popularAnime} />}
+        {recentlyAddedAnime.length > 0 && <AnimeCarousel title="Recently Added" animeList={recentlyAddedAnime} />}
         <RecommendationsSection />
       </Container>
     </>
   );
 }
-

@@ -1,47 +1,70 @@
+
 'use client';
 
 import { useSearchParams } from 'next/navigation';
 import Container from '@/components/layout/container';
-import { mockAnimeData } from '@/lib/mock-data';
 import AnimeCard from '@/components/anime/anime-card';
 import type { Anime } from '@/types/anime';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
+import { searchAnimes } from '@/services/animeService'; // Import the new search function
 
-export default function SearchPage() {
+function SearchContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q');
   const [searchResults, setSearchResults] = useState<Anime[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (query) {
-      setLoading(true);
-      // Simulate API call or filtering
-      const results = mockAnimeData.filter(anime =>
-        anime.title.toLowerCase().includes(query.toLowerCase()) ||
-        anime.genre.some(g => g.toLowerCase().includes(query.toLowerCase()))
-      );
-      setSearchResults(results);
-      setLoading(false);
-    } else {
-      setSearchResults([]);
-      setLoading(false);
-    }
+    const performSearch = async () => {
+      if (query) {
+        setLoading(true);
+        setError(null);
+        try {
+          const results = await searchAnimes(query);
+          setSearchResults(results);
+        } catch (err) {
+          console.error("Search failed:", err);
+          setError("Failed to perform search. Please try again.");
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setSearchResults([]);
+        setLoading(false);
+        setError(null);
+      }
+    };
+    performSearch();
   }, [query]);
 
   if (loading) {
     return (
       <Container className="py-12 text-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
         <p className="text-muted-foreground">Searching...</p>
+      </Container>
+    );
+  }
+  
+  if (error) {
+    return (
+      <Container className="py-12 text-center">
+        <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4" />
+        <p className="text-xl font-semibold text-destructive mb-2">Search Error</p>
+        <p className="text-muted-foreground">{error}</p>
+         <Button asChild variant="link" className="mt-4">
+            <Link href="/">Go Back to Home</Link>
+          </Button>
       </Container>
     );
   }
 
   return (
-    <Container className="py-8 min-h-[calc(100vh-var(--header-height,4rem)-var(--footer-height,0px)-1px)]"> {/* Adjust min-height based on header/footer */}
+    <Container className="py-8 min-h-[calc(100vh-var(--header-height,4rem)-var(--footer-height,0px)-1px)]">
       <h1 className="text-3xl font-bold mb-6 text-foreground">
         {query ? `Search Results for "${query}"` : 'Search'}
       </h1>
@@ -75,5 +98,18 @@ export default function SearchPage() {
         </div>
       )}
     </Container>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <Container className="py-12 text-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
+        <p className="text-muted-foreground">Loading search results...</p>
+      </Container>
+    }>
+      <SearchContent />
+    </Suspense>
   );
 }

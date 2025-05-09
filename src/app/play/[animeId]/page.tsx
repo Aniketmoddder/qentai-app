@@ -1,8 +1,9 @@
+
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import type { Anime, Episode } from "@/types/anime";
-import { mockAnimeData } from "@/lib/mock-data";
+import { getAnimeById } from '@/services/animeService'; 
 import Container from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, MessageSquareWarning, Loader2, List, Star, PlayCircleIcon } from "lucide-react";
@@ -13,12 +14,14 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const getMimeType = (url: string): string | undefined => {
-  const ext = url.split(".").pop()?.toLowerCase();
-  if (ext === "m3u8") return "application/x-mpegURL";
-  if (ext === "mp4") return "video/mp4";
-  return undefined;
-};
+// Vidstack imports
+import { MediaPlayer, MediaProvider } from '@vidstack/react';
+import type { MediaPlayerInstance, MediaSrc, MediaViewType, QualitySymbol } from '@vidstack/react';
+import { DefaultVideoLayout, defaultLayoutIcons } from '@vidstack/react/player/layouts/default';
+// Ensure Vidstack CSS is imported in globals.css or layout
+
+// Helper to determine if a URL is M3U8
+const isM3U8 = (url: string) => url.toLowerCase().endsWith('.m3u8');
 
 export default function PlayerPage() {
   const router = useRouter();
@@ -31,8 +34,9 @@ export default function PlayerPage() {
   const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const playerInstanceRef = useRef<any>(null); // To store Plyr instance
+  const [playerKey, setPlayerKey] = useState(0); // To force re-render of player
+
+  const playerRef = useRef<MediaPlayerInstance>(null);
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -45,27 +49,26 @@ export default function PlayerPage() {
       setIsLoading(true);
       setError(null);
       try {
-        // Simulate fetching data
-        await new Promise(resolve => setTimeout(resolve, 200));
-        const details = mockAnimeData.find((a) => a.id === animeId);
+        const details = await getAnimeById(animeId);
         if (details) {
           setAnime(details);
           const epId = searchParams.get("episode");
-          let ep = details.episodes?.[0];
+          let ep = details.episodes?.[0]; // Default to first episode if available
           if (epId) {
             const found = details.episodes?.find((e) => e.id === epId);
             if (found) ep = found;
           }
-          if (!epId && ep && details.episodes && details.episodes.length > 0) { // ensure ep is not undefined
+          if (!epId && ep && details.episodes && details.episodes.length > 0) {
             router.replace(`/play/${animeId}?episode=${ep.id}`, { scroll: false });
           }
           setCurrentEpisode(ep || null);
+           setPlayerKey(prevKey => prevKey + 1); // Force player re-initialization
         } else {
           setError("Anime not found.");
         }
       } catch(e) {
         console.error("Failed to load anime details:", e);
-        setError("Failed to load anime details.");
+        setError("Failed to load anime details. Please check the console for more information.");
       } finally {
         setIsLoading(false);
       }
@@ -73,13 +76,16 @@ export default function PlayerPage() {
     fetchDetails();
   }, [animeId, searchParams, router]);
 
+
   const handleEpisodeSelect = useCallback(
     (ep: Episode) => {
+      if (ep.id === currentEpisode?.id) return; // Avoid reloading same episode
       setError(null);
       setCurrentEpisode(ep);
       router.push(`/play/${animeId}?episode=${ep.id}`, { scroll: false });
+      setPlayerKey(prevKey => prevKey + 1); // Force player re-initialization
     },
-    [router, animeId]
+    [router, animeId, currentEpisode]
   );
 
   const handleNextEpisode = useCallback(() => {
@@ -99,74 +105,28 @@ export default function PlayerPage() {
     }
   }, [anime, currentEpisode, handleEpisodeSelect]);
 
-  useEffect(() => {
-    // Ensure Plyr CSS is loaded
-    const plyrStylesheet = document.getElementById('plyr-stylesheet');
-    if (!plyrStylesheet) {
-      const link = document.createElement('link');
-      link.id = 'plyr-stylesheet';
-      link.rel = 'stylesheet';
-      link.href = 'https://cdn.plyr.io/3.7.8/plyr.css';
-      document.head.appendChild(link);
+  // Vidstack Player Event Handlers
+  const onPlayerCanPlay = () => {
+    console.log('Player can play');
+    setError(null); // Clear previous errors
+  };
+
+  const onPlayerError = (event: any) => {
+    console.error("Vidstack Player Error:", event.detail);
+    const errorDetail = event.detail;
+    let message = "Video Error: Failed to load video.";
+    if (errorDetail?.message) {
+      message = `Video Error: ${errorDetail.message}`;
+    } else if (errorDetail?.data?.type) {
+      message = `Video Error: Type ${errorDetail.data.type}, Code ${errorDetail.data.code}`;
     }
-    
-    const initializePlyr = () => {
-      if (videoRef.current && currentEpisode?.url && (window as any).Plyr) {
-        if (playerInstanceRef.current) {
-          playerInstanceRef.current.destroy();
-        }
-        const player = new (window as any).Plyr(videoRef.current, {
-          autoplay: true,
-          controls: [
-            'play-large', 'play', 'progress', 'current-time', 
-            'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'
-          ],
-          settings: ['captions', 'quality', 'speed', 'loop'],
-           // quality: { default: 720, options: [1080, 720, 480] } // Example quality options
-        });
-        playerInstanceRef.current = player;
-
-        player.on('ended', handleNextEpisode);
-        player.on('error', (event: any) => {
-          console.error("Plyr Player Error:", event);
-          setError(`Video Error: ${event.detail?.plyr?.source || 'Failed to load video.'}`);
-        });
-
-        // Set source
-        const mimeType = getMimeType(currentEpisode.url);
-        player.source = {
-          type: 'video',
-          title: currentEpisode.title,
-          sources: [{ src: currentEpisode.url, type: mimeType }],
-          poster: currentEpisode.thumbnail || anime?.coverImage || `https://picsum.photos/seed/${animeId}-${currentEpisode.id}-poster/1280/720`,
-        };
-
-      }
-    };
-
-    if (typeof (window as any).Plyr === 'undefined') {
-        const script = document.createElement("script");
-        script.src = "https://cdn.plyr.io/3.7.8/plyr.polyfilled.js";
-        script.async = true;
-        document.body.appendChild(script);
-        script.onload = initializePlyr;
-         return () => {
-            document.body.removeChild(script);
-            if (playerInstanceRef.current) {
-                playerInstanceRef.current.destroy();
-            }
-        };
-    } else {
-        initializePlyr();
-    }
-
-    return () => {
-      if (playerInstanceRef.current) {
-        playerInstanceRef.current.destroy();
-      }
-    };
-  }, [currentEpisode, anime, animeId, handleNextEpisode]);
-
+    setError(message);
+  };
+  
+  const onPlayerEnded = () => {
+    console.log('Player ended');
+    handleNextEpisode();
+  };
 
   if (isLoading) {
     return (
@@ -177,7 +137,7 @@ export default function PlayerPage() {
     );
   }
 
-  if (error && !anime && !currentEpisode) { // Full page error if anime details fail
+  if (error && !anime && !currentEpisode) {
     return (
       <Container className="flex flex-col items-center justify-center min-h-[calc(100vh-var(--header-height,4rem)-1px)] py-12 text-center">
         <AlertTriangle className="w-12 h-12 text-destructive mb-4" />
@@ -194,6 +154,7 @@ export default function PlayerPage() {
     return ( 
       <Container className="flex flex-col items-center justify-center min-h-[calc(100vh-var(--header-height,4rem)-1px)] py-12 text-center">
          <h1 className="text-2xl font-bold">Anime Not Found</h1>
+         <p className="text-muted-foreground">Could not find details for anime ID: {animeId}</p>
          <Button asChild variant="link" className="mt-4">
           <Link href="/">Go back to Home</Link>
         </Button>
@@ -202,6 +163,10 @@ export default function PlayerPage() {
   }
   
   const currentEpisodeIndex = anime.episodes?.findIndex(ep => ep.id === currentEpisode?.id) ?? -1;
+  const videoSrc: MediaSrc[] | undefined = currentEpisode?.url ? [{ 
+    src: currentEpisode.url, 
+    type: isM3U8(currentEpisode.url) ? 'application/x-mpegurl' : 'video/mp4' 
+  }] : undefined;
 
   return (
     <div className="min-h-screen flex flex-col bg-background -mt-[calc(var(--header-height,4rem)+1px)] pt-[calc(var(--header-height,4rem)+1px)]">
@@ -209,41 +174,42 @@ export default function PlayerPage() {
         <div className="lg:flex lg:gap-6 xl:gap-8 h-full">
           <div className="lg:flex-grow mb-6 lg:mb-0 h-full flex flex-col">
             <div className="aspect-video bg-black rounded-lg overflow-hidden shadow-2xl mb-4 w-full relative">
-              {currentEpisode?.url ? (
-                <video
-                  ref={videoRef}
-                  id="player" // Plyr targets this ID
+              {currentEpisode?.url && videoSrc ? (
+                <MediaPlayer
+                  key={playerKey} // Force re-mount on episode change
+                  ref={playerRef}
+                  title={currentEpisode.title}
+                  src={videoSrc}
+                  poster={currentEpisode.thumbnail || anime?.coverImage || `https://picsum.photos/seed/${animeId}-${currentEpisode.id}-poster/1280/720`}
+                  crossorigin=""
+                  playsinline
+                  autoplay
+                  volume={0.8}
+                  onCanPlay={onPlayerCanPlay}
+                  onError={onPlayerError}
+                  onEnded={onPlayerEnded}
                   className="w-full h-full"
-                  playsInline
-                  // controls // Plyr will add its own controls
-                  // poster={currentEpisode.thumbnail || anime?.coverImage || `https://picsum.photos/seed/${animeId}-${currentEpisode.id}-poster/1280/720`}
-                />
+                >
+                  <MediaProvider />
+                  <DefaultVideoLayout icons={defaultLayoutIcons} />
+                </MediaPlayer>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground bg-card">
                     <PlayCircleIcon className="w-24 h-24 opacity-30" />
                     <p className="mt-4 text-lg">
-                        {(anime.episodes && anime.episodes.length > 0 && !currentEpisode) ? 'Select an episode to start watching' : 
-                         (!anime.episodes || anime.episodes.length === 0) ? 'No episodes available for this anime.' : 
-                         'Preparing player...'}
+                        {(!anime.episodes || anime.episodes.length === 0) ? 'No episodes available for this anime.' :
+                         !currentEpisode ? 'Select an episode to start watching.' :
+                         'Video source is missing for this episode.'}
                     </p>
                 </div>
               )}
-               {error && currentEpisode && ( // Video-specific error overlay
+               {error && currentEpisode && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 p-4 text-center z-10">
                     <AlertTriangle className="w-10 h-10 text-destructive mb-2" />
                     <p className="text-destructive-foreground text-sm">{error}</p>
                     <Button variant="outline" size="sm" className="mt-3" onClick={() => {
                         setError(null); 
-                        // Attempt to re-initialize Plyr or reload source if applicable
-                        if (playerInstanceRef.current && currentEpisode) {
-                             const mimeType = getMimeType(currentEpisode.url);
-                             playerInstanceRef.current.source = {
-                                type: 'video',
-                                title: currentEpisode.title,
-                                sources: [{ src: currentEpisode.url, type: mimeType }],
-                                poster: currentEpisode.thumbnail || anime?.coverImage || `https://picsum.photos/seed/${animeId}-${currentEpisode.id}-poster/1280/720`,
-                            };
-                        }
+                        setPlayerKey(prevKey => prevKey + 1); // Attempt to re-initialize player
                     }}>Retry</Button>
                   </div>
                 )}
@@ -305,7 +271,8 @@ export default function PlayerPage() {
               <ScrollArea className="flex-grow h-[calc(100vh-280px)] lg:h-[calc(100vh-var(--header-height,4rem)-180px)] pr-2 -mr-2 scrollbar-thin">
                 <div className="space-y-1.5">
                     {anime.episodes?.map((ep) => (
-                    <Tooltip key={ep.id} delayDuration={200}>
+                    <TooltipProvider key={ep.id} delayDuration={200}>
+                      <Tooltip>
                         <TooltipTrigger asChild>
                             <Button
                                 variant={currentEpisode?.id === ep.id ? 'secondary' : 'ghost'}
@@ -329,8 +296,10 @@ export default function PlayerPage() {
                         <TooltipContent side="left" align="center" className="bg-popover text-popover-foreground p-2 rounded-md shadow-lg max-w-xs">
                             <p className="font-semibold">Ep {ep.episodeNumber}: {ep.title}</p>
                             {ep.duration && <p className="text-xs text-muted-foreground">{ep.duration}</p>}
+                            {ep.overview && <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{ep.overview}</p>}
                         </TooltipContent>
-                    </Tooltip>
+                       </Tooltip>
+                    </TooltipProvider>
                     ))}
                     {(!anime.episodes || anime.episodes.length === 0) && (
                         <p className="text-sm text-muted-foreground py-4 text-center">No episodes available for this series.</p>
