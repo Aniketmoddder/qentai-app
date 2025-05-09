@@ -3,14 +3,18 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { z } from 'zod';
 import { AuthForm } from '@/components/auth/auth-form';
 import Container from '@/components/layout/container';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import Logo from '@/components/common/logo';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { Chrome } from 'lucide-react'; // Using Chrome icon for Google, can be changed
+
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -23,6 +27,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,16 +41,28 @@ export default function LoginPage() {
     setError(null);
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
-      router.push('/'); // Redirect to home or dashboard
+      router.push('/'); 
     } catch (e: any) {
-      setError(e.message || 'Failed to sign in. Please check your credentials.');
+      setError(e.message?.replace('Firebase: ', '').split(' (')[0] || 'Failed to sign in. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    setError(null);
+    try {
+      await signInWithPopup(auth, googleProvider);
+      router.push('/');
+    } catch (e: any) {
+      setError(e.message?.replace('Firebase: ', '').split(' (')[0] || 'Failed to sign in with Google.');
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
   
   if (authLoading || (!authLoading && user)) {
-    // Show a loading spinner or null while auth state is resolving or redirecting
     return (
         <div className="flex items-center justify-center min-h-screen bg-background">
              <p className="text-muted-foreground">Loading...</p>
@@ -69,8 +86,23 @@ export default function LoginPage() {
             onSubmit={handleLogin}
             isLoading={isLoading}
             error={error}
+            setError={setError}
           />
         </CardContent>
+        <CardFooter className="flex flex-col gap-4">
+            <div className="relative w-full">
+                <Separator className="absolute top-1/2 -translate-y-1/2" />
+                <p className="relative bg-card px-2 text-xs text-muted-foreground text-center mx-auto w-fit">OR CONTINUE WITH</p>
+            </div>
+            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isGoogleLoading || isLoading}>
+                {isGoogleLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                    <Chrome className="mr-2 h-4 w-4" />
+                )}
+                Google
+            </Button>
+        </CardFooter>
       </Card>
     </Container>
   );

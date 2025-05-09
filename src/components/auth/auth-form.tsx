@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import React from 'react';
 
 interface AuthFormProps<T extends z.ZodType<any, any>> {
   formSchema: T;
@@ -26,6 +27,7 @@ interface AuthFormProps<T extends z.ZodType<any, any>> {
   isRegister?: boolean;
   isLoading: boolean;
   error: string | null;
+  setError: React.Dispatch<React.SetStateAction<string | null>>; // Added setError prop
 }
 
 export function AuthForm<T extends z.ZodType<any, any>>({
@@ -34,15 +36,22 @@ export function AuthForm<T extends z.ZodType<any, any>>({
   isRegister = false,
   isLoading,
   error,
+  setError, // Destructure setError
 }: AuthFormProps<T>) {
   const form = useForm<z.infer<T>>({
     resolver: zodResolver(formSchema),
     defaultValues: isRegister ? { email: '', password: '', confirmPassword: '' } : { email: '', password: '' },
   });
 
+  const handleFormChange = () => {
+    if (error) {
+      setError(null); // Clear error when user starts typing
+    }
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" onChange={handleFormChange}>
         {error && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />

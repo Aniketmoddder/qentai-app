@@ -1,6 +1,6 @@
 
 import { initializeApp, getApp, getApps } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth'; // Import GoogleAuthProvider
 import { getFirestore } from "firebase/firestore";
 // Import other Firebase services as needed, e.g., getStorage, getAnalytics
 
@@ -25,11 +25,11 @@ if (!getApps().length) {
 
 const auth = getAuth(app);
 const db = getFirestore(app); // For Firestore
-// const database = getDatabase(app); // For Realtime Database
-// const storage = getStorage(app); // For Firebase Storage
+const googleProvider = new GoogleAuthProvider(); // Create GoogleAuthProvider instance
 
-export { app, auth, db /*, database, storage */ };
+export { app, auth, db, googleProvider };
 
 // Important: Ensure you have installed firebase SDK (npm install firebase or yarn add firebase)
 // Also, ensure your .env.local or .env file has all the NEXT_PUBLIC_FIREBASE_ variables set.
 // Restart your development server after updating .env files.
+// For Google Sign-In, ensure you've enabled it as a sign-in provider in your Firebase project console.
