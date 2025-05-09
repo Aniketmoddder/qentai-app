@@ -26,38 +26,50 @@ export default function AnimeInteractionControls({ anime }: AnimeInteractionCont
 
   const [isFavorited, setIsFavorited] = useState(false);
   const [isInWishlisted, setIsInWishlisted] = useState(false);
-  const [loadingFavorite, setLoadingFavorite] = useState(false);
-  const [loadingWishlist, setLoadingWishlist] = useState(false);
-  const [initialCheckDone, setInitialCheckDone] = useState(false);
-
+  
+  const [loadingFavoriteToggle, setLoadingFavoriteToggle] = useState(false); // For favorite toggle action
+  const [loadingWishlistToggle, setLoadingWishlistToggle] = useState(false); // For wishlist toggle action
+  
+  const [isCheckingInitialStatus, setIsCheckingInitialStatus] = useState(true); // For initial status check
 
   const checkStatus = useCallback(async () => {
-    if (user && anime.id) {
-      setLoadingFavorite(true);
-      setLoadingWishlist(true);
-      try {
-        const favStatus = await isFavorite(user.uid, anime.id);
-        setIsFavorited(favStatus);
-        const wishStatus = await isInWishlist(user.uid, anime.id);
-        setIsInWishlisted(wishStatus);
-      } catch (error) {
-        console.error("Error checking status:", error);
-        toast({ variant: "destructive", title: "Error", description: "Could not check favorite/wishlist status." });
-      } finally {
-        setLoadingFavorite(false);
-        setLoadingWishlist(false);
-        setInitialCheckDone(true);
-      }
-    } else {
+    if (!user || !anime.id) {
       setIsFavorited(false);
       setIsInWishlisted(false);
-      if (user) setInitialCheckDone(true); // If user is present but no anime.id (should not happen here)
+      setIsCheckingInitialStatus(false);
+      return;
+    }
+
+    setIsCheckingInitialStatus(true);
+    try {
+      const favStatus = await isFavorite(user.uid, anime.id);
+      setIsFavorited(favStatus);
+      const wishStatus = await isInWishlist(user.uid, anime.id);
+      setIsInWishlisted(wishStatus);
+    } catch (error: any) {
+      console.error("Error checking initial status:", error);
+      let description = "Could not check favorite/wishlist status. Please try again.";
+      if (error.message && error.message.toLowerCase().includes('offline')) {
+        description = "You appear to be offline. Please check your connection and try to refresh.";
+      }
+      toast({ variant: "destructive", title: "Status Check Failed", description });
+      setIsFavorited(false); // Default to false on error
+      setIsInWishlisted(false); // Default to false on error
+    } finally {
+      setIsCheckingInitialStatus(false);
     }
   }, [user, anime.id, toast]);
 
   useEffect(() => {
-    checkStatus();
-  }, [checkStatus]);
+    if (user && anime.id) {
+      checkStatus();
+    } else {
+      // If no user or no anime.id, no need to check, ensure loading is false.
+      setIsCheckingInitialStatus(false);
+      setIsFavorited(false);
+      setIsInWishlisted(false);
+    }
+  }, [user, anime.id, checkStatus]);
 
 
   const handleFavoriteToggle = async () => {
@@ -65,7 +77,7 @@ export default function AnimeInteractionControls({ anime }: AnimeInteractionCont
       toast({ variant: "destructive", title: "Not Logged In", description: "Please log in to add to favorites." });
       return;
     }
-    setLoadingFavorite(true);
+    setLoadingFavoriteToggle(true);
     try {
       if (isFavorited) {
         await removeFromFavorites(user.uid, anime.id);
@@ -76,11 +88,15 @@ export default function AnimeInteractionControls({ anime }: AnimeInteractionCont
         setIsFavorited(true);
         toast({ title: "Added to Favorites", description: `${anime.title} has been added to your favorites.` });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error toggling favorite:", error);
-      toast({ variant: "destructive", title: "Error", description: "Could not update favorites. Please try again." });
+      let description = "Could not update favorites. Please try again.";
+       if (error.message && error.message.toLowerCase().includes('offline')) {
+        description = "Action failed: You appear to be offline. Please check your connection.";
+      }
+      toast({ variant: "destructive", title: "Error", description });
     } finally {
-      setLoadingFavorite(false);
+      setLoadingFavoriteToggle(false);
     }
   };
 
@@ -89,7 +105,7 @@ export default function AnimeInteractionControls({ anime }: AnimeInteractionCont
       toast({ variant: "destructive", title: "Not Logged In", description: "Please log in to add to wishlist." });
       return;
     }
-    setLoadingWishlist(true);
+    setLoadingWishlistToggle(true);
     try {
       if (isInWishlisted) {
         await removeFromWishlist(user.uid, anime.id);
@@ -100,23 +116,27 @@ export default function AnimeInteractionControls({ anime }: AnimeInteractionCont
         setIsInWishlisted(true);
         toast({ title: "Added to Wishlist", description: `${anime.title} has been added to your wishlist.` });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error toggling wishlist:", error);
-      toast({ variant: "destructive", title: "Error", description: "Could not update wishlist. Please try again." });
+      let description = "Could not update wishlist. Please try again.";
+      if (error.message && error.message.toLowerCase().includes('offline')) {
+        description = "Action failed: You appear to be offline. Please check your connection.";
+      }
+      toast({ variant: "destructive", title: "Error", description });
     } finally {
-      setLoadingWishlist(false);
+      setLoadingWishlistToggle(false);
     }
   };
   
   const renderButtons = () => {
-    if (!initialCheckDone && user) {
+    if (isCheckingInitialStatus) {
         return (
             <>
                 <Button variant="outline" size="lg" className="w-full" disabled>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading Status...
                 </Button>
                 <Button variant="outline" size="lg" className="w-full" disabled>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading Status...
                 </Button>
             </>
         );
@@ -141,9 +161,9 @@ export default function AnimeInteractionControls({ anime }: AnimeInteractionCont
           size="lg"
           className="w-full"
           onClick={handleFavoriteToggle}
-          disabled={loadingFavorite}
+          disabled={loadingFavoriteToggle}
         >
-          {loadingFavorite ? (
+          {loadingFavoriteToggle ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             <Heart className={`mr-2 ${isFavorited ? 'fill-destructive text-destructive' : ''}`} />
@@ -155,9 +175,9 @@ export default function AnimeInteractionControls({ anime }: AnimeInteractionCont
           size="lg"
           className="w-full"
           onClick={handleWishlistToggle}
-          disabled={loadingWishlist}
+          disabled={loadingWishlistToggle}
         >
-          {loadingWishlist ? (
+          {loadingWishlistToggle ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             <Bookmark className={`mr-2 ${isInWishlisted ? 'fill-primary text-primary' : ''}`} />
@@ -167,7 +187,6 @@ export default function AnimeInteractionControls({ anime }: AnimeInteractionCont
       </>
     );
   };
-
 
   return <div className="mt-4 space-y-2">{renderButtons()}</div>;
 }
