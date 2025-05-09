@@ -18,6 +18,7 @@ body {
     --popover-foreground: 0 0% 96%;
 
     --primary: 111 100% 54%; /* Neon Green */
+    --primary-darker: 111 100% 44%; /* Darker Neon Green for gradient */
     --primary-foreground: 0 0% 5%; /* Dark text for on-green buttons */
 
     --secondary: 0 0% 18%; /* Gray shade #2d2d2d */
@@ -56,15 +57,11 @@ body {
     --sidebar-ring: 111 100% 54%;
   }
 
-  /* Remove .dark class styling as dark is default */
-}
-
-@layer base {
-  * {
-    @apply border-border;
+  html {
+    @apply overflow-x-hidden;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overflow-x-hidden; /* Added overflow-x-hidden here too for good measure */
   }
   /* Custom scrollbar for a more modern look */
   ::-webkit-scrollbar {
@@ -81,5 +78,21 @@ body {
   }
   ::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--primary));
+  }
+}
+
+@layer utilities {
+  .btn-primary-gradient {
+    @apply bg-gradient-to-r from-primary to-[hsl(var(--primary-darker))] text-primary-foreground transition-all duration-300 ease-in-out;
+    background-size: 150% auto; /* Larger size for smooth transition */
+  }
+  .btn-primary-gradient:hover {
+    background-position: right center; /* Change gradient direction on hover */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
   }
 }

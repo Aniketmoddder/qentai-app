@@ -6,7 +6,7 @@ import Logo from '@/components/common/logo';
 import Container from '@/components/layout/container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'; // Added SheetHeader, SheetTitle
 import { useState, useEffect } from 'react';
 
 export default function Header() {
@@ -68,7 +68,10 @@ export default function Header() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="bg-card p-6">
-                <Logo className="mb-8" />
+                <SheetHeader className="mb-8"> {/* Optional: Wrap Logo in SheetHeader for structure */}
+                  <SheetTitle className="sr-only">Mobile Menu</SheetTitle> {/* Visually hidden title */}
+                  <Logo />
+                </SheetHeader>
                 <nav className="flex flex-col space-y-4">
                  <div className="relative mb-4">
                     <Input

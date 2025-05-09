@@ -31,8 +31,8 @@ export default function Home() {
           <Image
             src={featuredAnime.bannerImage || 'https://picsum.photos/seed/hero-banner/1600/900'}
             alt={`${featuredAnime.title} banner`}
-            layout="fill"
-            objectFit="cover"
+            fill
+            style={{ objectFit: 'cover' }}
             className="opacity-60"
             priority
             data-ai-hint="anime landscape"
@@ -48,7 +48,7 @@ export default function Home() {
               {featuredAnime.synopsis}
             </p>
             <div className="flex space-x-4">
-              <Button asChild size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <Button asChild size="lg" className="btn-primary-gradient">
                 <Link href={`/anime/${featuredAnime.id}`}>
                   Watch Now <ChevronRight className="ml-2 h-5 w-5" />
                 </Link>

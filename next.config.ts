@@ -18,6 +18,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // For Next.js 13+ with App Router, `fill` prop is preferred for Image component.
+  // If using older Next.js or Pages Router, ensure `layout="fill"` with `objectFit` works.
+  // No specific config change needed here for `fill` prop itself, but it's a coding practice update.
 };
 
 export default nextConfig;
