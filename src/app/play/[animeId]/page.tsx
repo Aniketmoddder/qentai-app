@@ -14,13 +14,14 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
-// Dynamically import Plyr to avoid SSR issues if it's client-only
 import type PlyrType from 'plyr';
-// It's important to use dynamic import for Plyr if it causes SSR issues,
-// however, plyr-react itself should handle this. If direct import works, it's simpler.
-// For now, assume direct import is fine as per previous setup.
-import Plyr from 'plyr-react';
+import dynamic from 'next/dynamic';
+
+// Dynamically import Plyr to avoid SSR issues
+const Plyr = dynamic(() => import('plyr-react').then((mod) => mod.default), {
+  ssr: false,
+  loading: () => <div className="w-full aspect-video bg-black flex items-center justify-center text-muted-foreground rounded-lg"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>,
+});
 import 'plyr-react/plyr.css';
 
 
@@ -42,7 +43,7 @@ export default function PlayerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const plyrRef = useRef<PlyrType | null>(null);
+  const plyrRef = useRef<{ plyr: PlyrType } | null>(null);
 
 
   useEffect(() => {
@@ -87,7 +88,6 @@ export default function PlayerPage() {
 
   const handleEpisodeSelect = useCallback((episode: Episode) => {
     setCurrentEpisode(episode);
-    // Use push to allow browser back to previous episode selection
     router.push(`/play/${animeId}?episode=${episode.id}`, { scroll: false });
   }, [router, animeId]);
 
@@ -109,9 +109,6 @@ export default function PlayerPage() {
     }
   }, [anime, currentEpisode, handleEpisodeSelect]);
 
-  // videoSource is memoized and passed as a prop to Plyr.
-  // Plyr component will react to changes in this prop.
-  // No need for a separate useEffect to imperatively update playerInstance.source.
   const videoSource = useMemo(() => {
     if (!currentEpisode?.url) return null;
     return {
@@ -120,15 +117,14 @@ export default function PlayerPage() {
       sources: [
         {
           src: currentEpisode.url,
-          provider: 'html5' as const, 
+          provider: 'html5' as const, // Ensure provider is correctly set if using specific types
         },
       ],
-      poster: currentEpisode.thumbnail || anime?.coverImage,
+      poster: currentEpisode.thumbnail || anime?.coverImage || `https://picsum.photos/seed/${animeId}-poster/1280/720`,
     };
-  }, [currentEpisode, anime?.coverImage]);
+  }, [currentEpisode, anime?.coverImage, animeId]);
   
   const playerOptions: PlyrType.Options = {
-    // https://github.com/sampotts/plyr#options
     controls: [
         'play-large', 'rewind', 'play', 'fast-forward', 'progress', 
         'current-time', 'duration', 'mute', 'volume', 'captions', 
@@ -137,44 +133,44 @@ export default function PlayerPage() {
     settings: ['captions', 'quality', 'speed', 'loop'],
     quality: {
       default: 720, 
-      options: [1080, 720, 480], // Ensure these qualities are available in your video
+      options: [1080, 720, 480], 
     },
     tooltips: { controls: true, seek: true },
-    autoplay: false, // Autoplay can be annoying, keep it false unless specified
+    autoplay: false,
     loop: { active: false },
-    // Consider adding keyboard shortcuts if desired
     keyboard: { focused: true, global: false },
+    // Ensure poster is set if not using the 'source' prop poster
+    // poster: currentEpisode?.thumbnail || anime?.coverImage || `https://picsum.photos/seed/${animeId}-player/1280/720`,
   };
 
-  // Handle Plyr event listeners
   useEffect(() => {
-    const player = plyrRef.current;
+    // The plyrRef.current might be null initially or might not have the 'plyr' property
+    // until the Plyr component fully mounts and assigns its instance.
+    const playerInstance = plyrRef.current?.plyr;
 
-    if (player) {
-      // Ensure 'on' method exists, important for robust error handling
-      if (typeof player.on !== 'function') {
-        // console.error("Plyr instance on plyrRef.current does not have an 'on' method.", player);
-        return; 
-      }
-
-      const onEndedCallback = () => {
+    if (playerInstance) {
+      const onEnded = () => {
         // console.log('Video ended, attempting to play next episode.');
         handleNextEpisode();
       };
       
-      player.on('ended', onEndedCallback);
-      // Example: Log errors from player
-      // player.on('error', (event) => console.error("Plyr Error: ", event.detail.plyr.source));
+      // Ensure playerInstance.on exists and is a function
+      if (typeof playerInstance.on === 'function') {
+        playerInstance.on('ended', onEnded);
+      } else {
+        // console.warn("Plyr instance's 'on' method is not available yet or not a function.");
+      }
       
       return () => {
-        // Cleanup listeners
-        if (player && typeof player.off === 'function') { 
-          player.off('ended', onEndedCallback);
-          // player.off('error'); // Remove error listener if added
+        if (playerInstance && typeof playerInstance.off === 'function') {
+          playerInstance.off('ended', onEnded);
         }
       };
     }
-  }, [plyrRef, handleNextEpisode]); // Depend on plyrRef itself, and handleNextEpisode
+  // Rerun when handleNextEpisode changes or when playerInstance becomes available.
+  // Adding plyrRef.current directly can cause too many re-renders if it changes structure often.
+  // Better to depend on a stable part of it, or a boolean flag indicating its readiness.
+  }, [handleNextEpisode, plyrRef.current?.plyr]); 
 
 
   if (isLoading) {
@@ -214,22 +210,16 @@ export default function PlayerPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background -mt-[calc(var(--header-height,4rem)+1px)] pt-[calc(var(--header-height,4rem)+1px)]">
-      <Container className="py-4 md:py-6 flex-grow w-full max-w-full px-0 sm:px-4 md:px-6 lg:px-8"> {/* Full width for player on small screens */}
+      <Container className="py-4 md:py-6 flex-grow w-full max-w-full px-0 sm:px-4 md:px-6 lg:px-8">
         <div className="lg:flex lg:gap-6 xl:gap-8 h-full">
-          {/* Main Player Area */}
-          <div className="lg:flex-grow mb-6 lg:mb-0 h-full flex flex-col"> {/* Takes up remaining space */}
+          <div className="lg:flex-grow mb-6 lg:mb-0 h-full flex flex-col">
             <div className="aspect-video bg-black rounded-lg overflow-hidden shadow-2xl mb-4 w-full relative">
-                {/* Plyr Player Component */}
-                {videoSource ? (
+                {videoSource && Plyr ? ( // Check if Plyr is loaded
                     <Plyr
-                        // Assign the Plyr.js instance to the ref
-                        ref={(plyrComponentInstance) => {
-                          // plyr-react wraps the Plyr.js instance in `plyr` property
-                          plyrRef.current = plyrComponentInstance?.plyr || null;
-                        }}
-                        source={videoSource} // Declarative source update
+                        ref={plyrRef}
+                        source={videoSource}
                         options={playerOptions}
-                        className="[&>.plyr]:rounded-lg" // Style plyr itself
+                        className="[&>.plyr]:rounded-lg"
                     />
                 ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground bg-card">
@@ -239,7 +229,6 @@ export default function PlayerPage() {
                 )}
             </div>
 
-            {/* Anime & Episode Info Below Player */}
             <div className="px-2 sm:px-0">
                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
                     <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1 sm:mb-0">
@@ -278,17 +267,15 @@ export default function PlayerPage() {
             </div>
           </div>
 
-          {/* Episode List Sidebar */}
           <div className="lg:w-[320px] xl:w-[380px] flex-shrink-0">
             <div className="bg-card p-3 sm:p-4 rounded-lg shadow-lg h-full flex flex-col">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-lg sm:text-xl font-semibold text-primary flex items-center">
                     <List className="mr-2 w-5 h-5" /> Episodes ({anime.episodes?.length || 0})
                 </h3>
-                {/* Future: Server/Source switcher can go here */}
               </div>
               
-              <ScrollArea className="flex-grow h-[calc(100vh-280px)] lg:h-[calc(100vh-var(--header-height,4rem)-180px)] pr-2 -mr-2"> {/* Dynamic height */}
+              <ScrollArea className="flex-grow h-[calc(100vh-280px)] lg:h-[calc(100vh-var(--header-height,4rem)-180px)] pr-2 -mr-2">
                 <div className="space-y-1.5">
                     {anime.episodes?.map((ep) => (
                     <TooltipProvider key={ep.id}>
@@ -326,7 +313,6 @@ export default function PlayerPage() {
                 </div>
               </ScrollArea>
 
-                {/* Placeholder Sections */}
                 <div className="mt-4 pt-3 border-t border-border space-y-3">
                      <div>
                         <h4 className="text-sm font-semibold text-primary mb-1.5 flex items-center">
