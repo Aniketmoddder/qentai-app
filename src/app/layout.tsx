@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -6,6 +7,7 @@ import QueryProvider from '@/components/providers/query-provider';
 import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from '@/context/auth-context';
 
 
 const geistSans = Geist({
@@ -31,14 +33,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}> {/* Removed flex flex-col min-h-screen from body, handled in globals.css */}
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         <QueryProvider>
-          <TooltipProvider delayDuration={0}> {/* Added TooltipProvider here for global access */}
-            <Header />
-            <main>{children}</main> {/* main will take flex-grow from globals.css */}
-            <Footer />
-            <Toaster />
-          </TooltipProvider>
+          <AuthProvider>
+            <TooltipProvider delayDuration={0}>
+              <Header />
+              <main>{children}</main>
+              <Footer />
+              <Toaster />
+            </TooltipProvider>
+          </AuthProvider>
         </QueryProvider>
       </body>
     </html>
