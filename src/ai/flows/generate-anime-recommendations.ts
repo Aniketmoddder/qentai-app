@@ -55,8 +55,21 @@ const generateAnimeRecommendationsFlow = ai.defineFlow(
     inputSchema: GenerateAnimeRecommendationsInputSchema,
     outputSchema: GenerateAnimeRecommendationsOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  async (input): Promise<GenerateAnimeRecommendationsOutput> => {
+    try {
+      const result = await prompt(input);
+      if (!result || !result.output) {
+        console.error("AI prompt for recommendations did not return a valid output. Result:", result);
+        // Return empty recommendations to satisfy the schema, UI will handle "no recommendations".
+        return { recommendations: [] };
+      }
+      return result.output;
+    } catch (error) {
+      console.error("Error calling AI prompt for recommendations:", error);
+      // Rethrow the error so it can be caught by the calling component's error handler
+      // This will trigger the `setError("Could not load recommendations. Please try again.");`
+      // in the RecommendationsSection component.
+      throw error;
+    }
   }
 );
