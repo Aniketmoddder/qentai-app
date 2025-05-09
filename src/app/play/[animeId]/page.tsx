@@ -15,7 +15,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Vidstack imports
-import { MediaPlayer, MediaProvider, MediaPoster } from '@vidstack/react';
+import { MediaPlayer } from '@vidstack/react';
+import { MediaProvider, MediaPoster } from '@vidstack/react/player';
 import type { MediaPlayerInstance, MediaSrc } from '@vidstack/react';
 import { DefaultVideoLayout, defaultLayoutIcons } from '@vidstack/react/player/layouts/default';
 
@@ -27,13 +28,15 @@ async function getAnimeDetails(id: string): Promise<Anime | undefined> {
 }
 
 const getMimeType = (url: string): string | undefined => {
-  if (url.endsWith('.m3u8')) {
+  const extension = url.split('.').pop()?.toLowerCase();
+  if (extension === 'm3u8') {
     return 'application/x-mpegURL';
   }
-  if (url.endsWith('.mp4')) {
+  if (extension === 'mp4') {
     return 'video/mp4';
   }
-  return undefined;
+  // Add more mime types if needed, e.g., webm, ogg
+  return undefined; // Let Vidstack infer if not common
 };
 
 
@@ -73,7 +76,6 @@ export default function PlayerPage() {
             if (foundEpisode) initialEpisode = foundEpisode;
           } else if (details.episodes && details.episodes.length > 0) {
             initialEpisode = details.episodes[0];
-            // Ensure URL reflects the first episode if no specific episode is in query
              if (searchParams.get('episode') !== initialEpisode.id) {
                  router.replace(`/play/${animeId}?episode=${initialEpisode.id}`, { scroll: false });
             }
@@ -120,13 +122,16 @@ export default function PlayerPage() {
   const videoSource: MediaSrc | null = useMemo(() => {
     if (!currentEpisode?.url) return null;
     const mimeType = getMimeType(currentEpisode.url);
-    return {
+    const source: MediaSrc = {
       src: currentEpisode.url,
-      type: mimeType || 'video/mp4', // Default to video/mp4 if type unknown
     };
+    if (mimeType) {
+      source.type = mimeType;
+    }
+    return source;
   }, [currentEpisode]);
 
-  const onPlayerError = useCallback((event: any) => { // Using `any` temporarily if specific event type is causing issues
+  const onPlayerError = useCallback((event: any) => { 
     const detail = event.detail;
     console.error('Vidstack Player Error:', detail, event.nativeEvent || event);
     let errorMessage = 'Unknown player error';
@@ -137,7 +142,7 @@ export default function PlayerPage() {
         errorMessage = (event.nativeEvent as ErrorEvent).message;
     } else if (detail && typeof detail === 'string') { 
         errorMessage = detail;
-    } else if (detail && typeof detail === 'object' && detail.data && detail.data.message) { // HLS.js errors might be nested
+    } else if (detail && typeof detail === 'object' && detail.data && detail.data.message) { 
         errorMessage = detail.data.message;
     }
     
@@ -200,11 +205,21 @@ export default function PlayerPage() {
                     playsInline 
                   >
                     <MediaProvider className="w-full h-full">
-                        <MediaPoster
-                            alt={currentEpisode.title || 'Episode poster'}
-                            className="object-cover w-full h-full"
-                            data-ai-hint="anime episode thumbnail"
-                        />
+                        {currentEpisode.thumbnail || anime?.coverImage ? (
+                             <MediaPoster
+                                src={currentEpisode.thumbnail || anime.coverImage}
+                                alt={currentEpisode.title || 'Episode poster'}
+                                className="object-cover w-full h-full"
+                                data-ai-hint="anime episode thumbnail"
+                             />
+                        ) : (
+                            <MediaPoster // Fallback placeholder if no specific image
+                                src={`https://picsum.photos/seed/${animeId}-${currentEpisode.id}-poster/1280/720`}
+                                alt={currentEpisode.title || 'Episode poster'}
+                                className="object-cover w-full h-full"
+                                data-ai-hint="anime episode thumbnail"
+                            />
+                        )}
                     </MediaProvider>
                     <DefaultVideoLayout icons={defaultLayoutIcons} />
                   </MediaPlayer>
@@ -224,11 +239,8 @@ export default function PlayerPage() {
                     <p className="text-destructive-foreground text-sm">{error}</p>
                     <Button variant="outline" size="sm" className="mt-3" onClick={() => {
                         setError(null); 
-                        if(currentEpisode) { 
-                            // Attempt to reload the source or re-initialize player if Vidstack API allows
-                            if (playerRef.current && videoSource) {
-                                playerRef.current.src = videoSource; // Re-assign source
-                            }
+                        if(playerRef.current && videoSource) {
+                            playerRef.current.src = videoSource; // Re-assign source to attempt reload
                         }
                     }}>Retry</Button>
                   </div>
@@ -345,4 +357,3 @@ export default function PlayerPage() {
     </div>
   );
 }
-
