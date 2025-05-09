@@ -18,14 +18,15 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 };
 
 export default function Home() {
-  const trendingAnime = shuffleArray([...mockAnimeData]).slice(0, 10); // Use spread to avoid mutating original
+  // Ensure mockAnimeData is not empty, otherwise carousels will be empty.
+  // If mockAnimeData has few items, slice(0,10) will just take all available items.
+  const trendingAnime = shuffleArray([...mockAnimeData]).slice(0, 10); 
   const popularAnime = shuffleArray([...mockAnimeData]).slice(0, 10);
   const recentlyAddedAnime = [...mockAnimeData].sort((a,b) => b.year - a.year).slice(0,10);
   
-  // Make featuredAnime selection robust: try specific ID, fallback to first, then null
-  let featuredAnime = mockAnimeData.find(anime => anime.id === '7'); // Try Solo Leveling (ID '7')
+  let featuredAnime = mockAnimeData.find(anime => anime.id === '7'); 
   if (!featuredAnime && mockAnimeData.length > 0) {
-    featuredAnime = mockAnimeData[0]; // Fallback to the first anime in the (reduced) list
+    featuredAnime = mockAnimeData[0]; 
   }
 
 
@@ -56,7 +57,7 @@ export default function Home() {
               </p>
               <div className="flex flex-wrap gap-2 sm:gap-4">
                 <Button asChild size="lg" className="btn-primary-gradient">
-                  <Link href={`/play/${featuredAnime.id}`}>
+                  <Link href={`/play/${featuredAnime.id}${featuredAnime.episodes && featuredAnime.episodes.length > 0 ? `?episode=${featuredAnime.episodes[0].id}` : ''}`}>
                     Watch Now <ChevronRight className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
@@ -78,3 +79,4 @@ export default function Home() {
     </>
   );
 }
+
