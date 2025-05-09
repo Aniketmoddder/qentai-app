@@ -1,18 +1,18 @@
 
 'use client';
 
-import type { ReactNode } from 'react';
+import type { ReactNode, Dispatch, SetStateAction } from 'react';
 import React, { createContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
 import Container from '@/components/layout/container';
+import Logo from '@/components/common/logo';
 
 export interface AuthContextType {
   user: FirebaseUser | null;
   loading: boolean;
-  // We can add login, logout, register functions here if we want to manage them globally,
-  // but for now, pages will handle their own auth actions using Firebase directly.
+  setLoading: Dispatch<SetStateAction<boolean>>; // Allow components to trigger global loading
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,8 +35,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground">
         <Container className="text-center">
+          <div className="mb-8">
+            <Logo className="text-4xl justify-center" />
+          </div>
           <Loader2 className="w-16 h-16 mx-auto animate-spin text-primary mb-6" />
-          <p className="text-xl font-semibold">Loading Qentai...</p>
+          <p className="text-xl font-semibold text-foreground/90">Loading Qentai</p>
           <p className="text-muted-foreground">Please wait while we prepare your experience.</p>
         </Container>
       </div>
@@ -44,7 +47,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, loading, setLoading }}>
       {children}
     </AuthContext.Provider>
   );
