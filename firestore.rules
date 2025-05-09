@@ -1,27 +1,17 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Matches any document in the 'users' collection and its subcollections.
-    // Example: /users/{userId}, /users/{userId}/favorites/{animeId}, /users/{userId}/wishlist/{animeId}
-    match /users/{userId}/{document=**} {
-      // Authenticated users can read and write their own data.
+    // Rule for user-specific data in the 'users' collection and its sub-collections
+    match /users/{userId}/{subpath=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Generic rule for other collections (e.g., anime details if they are public)
-    // This is a very open rule for reading, be sure this is intended.
-    // For anime data, you might want a specific path like /anime/{animeId}
+    // Rule for all other documents (e.g., public anime data).
+    // This rule will apply to documents not covered by more specific rules above.
     match /{document=**} {
-      // Anyone can read any document not covered by more specific rules.
-      // For production, you should restrict this further, e.g., only allow reads on specific public collections.
-      allow read: if true;
-
-      // Only authenticated users can create, update, or delete documents
-      // not covered by more specific rules.
-      // This prevents anonymous users from writing to arbitrary collections.
-      allow create, update, delete: if request.auth != null;
+      allow read: if true; // Anyone can read (e.g., anime details, lists)
+      allow write: if request.auth != null; // Only authenticated users can write (e.g., admins adding anime)
+                                          // Consider making this more restrictive for specific collections.
     }
   }
 }
