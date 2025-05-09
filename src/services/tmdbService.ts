@@ -1,4 +1,3 @@
-
 'use server';
 import type { Anime, Episode, Season } from '@/types/anime';
 import type { TMDBMovie, TMDBTVShow, TMDBTVSeasonResponse, TMDBEpisode } from '@/types/tmdb';
@@ -12,18 +11,23 @@ if (!TMDB_API_KEY) {
 }
 
 const fetchFromTMDB = async <T>(endpoint: string, params: Record<string, string | number> = {}): Promise<T | null> => {
-  if (!TMDB_API_KEY) return null;
+  if (!TMDB_API_KEY) {
+    console.warn("TMDB API Key is not configured. TMDB related features will not work.");
+    return null;
+  }
   const urlParams = new URLSearchParams({
     api_key: TMDB_API_KEY,
     ...Object.fromEntries(Object.entries(params).map(([key, value]) => [key, String(value)])),
   });
   const url = `${TMDB_BASE_URL}/${endpoint}?${urlParams.toString()}`;
   
+  console.log(`Fetching from TMDB URL: ${url}`); // Added for debugging
+
   try {
     const response = await fetch(url);
     if (!response.ok) {
       console.error(`TMDB API Error for ${url}: ${response.status} ${response.statusText}`);
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = await response.json().catch(() => ({ message: `TMDB API request failed with status ${response.status}` }));
       console.error("TMDB Error Details:", errorData);
       return null;
     }
@@ -125,3 +129,4 @@ export const searchTMDB = async (query: string, type: 'movie' | 'tv' | 'multi' =
   const endpoint = type === 'multi' ? `search/multi` : `search/${type}`;
   return fetchFromTMDB(endpoint, { query });
 };
+
