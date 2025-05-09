@@ -1,7 +1,7 @@
 // src/app/play/[animeId]/page.tsx
 "use client";
 
-import React, { useEffect, useState, useMemo, useRef } from 'react'; // Added React import here
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import type { Anime, Episode } from '@/types/anime';
 import { mockAnimeData } from '@/lib/mock-data';
 import Container from '@/components/layout/container';
@@ -14,7 +14,6 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
 
 // Dynamically import Plyr to avoid SSR issues if it's client-only
 import type PlyrType from 'plyr';
@@ -40,7 +39,7 @@ export default function PlayerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const plyrRef = useRef<PlyrType | null>(null);
+  const plyrRef = React.useRef<PlyrType | null>(null);
 
 
   useEffect(() => {
@@ -82,53 +81,50 @@ export default function PlayerPage() {
     fetchDetails();
   }, [animeId, searchParams, router]);
 
-  const handleEpisodeSelect = (episode: Episode) => {
+  const handleEpisodeSelect = useCallback((episode: Episode) => {
     setCurrentEpisode(episode);
     router.push(`/play/${animeId}?episode=${episode.id}`, { scroll: false });
-  };
+  }, [router, animeId]);
 
-  const handleNextEpisode = () => {
+  const handleNextEpisode = useCallback(() => {
     if (!anime || !currentEpisode || !anime.episodes) return;
     const currentIndex = anime.episodes.findIndex(ep => ep.id === currentEpisode.id);
     if (currentIndex !== -1 && currentIndex < anime.episodes.length - 1) {
       const nextEpisode = anime.episodes[currentIndex + 1];
       handleEpisodeSelect(nextEpisode);
     }
-  };
+  }, [anime, currentEpisode, handleEpisodeSelect]);
   
-  const handlePreviousEpisode = () => {
+  const handlePreviousEpisode = useCallback(() => {
     if (!anime || !currentEpisode || !anime.episodes) return;
     const currentIndex = anime.episodes.findIndex(ep => ep.id === currentEpisode.id);
     if (currentIndex > 0) {
       const prevEpisode = anime.episodes[currentIndex - 1];
       handleEpisodeSelect(prevEpisode);
     }
-  };
+  }, [anime, currentEpisode, handleEpisodeSelect]);
 
 
   useEffect(() => {
     // Update Plyr source when currentEpisode changes
-    if (plyrRef.current && plyrRef.current.source && currentEpisode?.url) {
-        plyrRef.current.source = {
-            type: 'video',
-            title: currentEpisode.title,
-            sources: [{ 
-              src: currentEpisode.url, 
-              provider: 'html5', // This could be dynamic based on URL type (e.g., youtube, vimeo)
-              // Example for quality (Plyr needs specific setup for this)
-              // size: 720 // if you want to default to a specific size (needs Plyr PRO or custom setup)
-            }],
-            // poster: currentEpisode.thumbnail || anime?.coverImage, // Optional poster
-            // tracks: currentEpisode.subtitles?.map(sub => ({ // Example for subtitles
-            //   kind: 'captions',
-            //   label: sub.label,
-            //   srcLang: sub.srclang,
-            //   src: sub.src,
-            //   default: sub.default
-            // }))
-        };
+    const playerInstance = plyrRef.current;
+    if (playerInstance && currentEpisode?.url) {
+        // Ensure .source is a settable property, common for Plyr API
+        if (typeof playerInstance.source === 'object' || typeof playerInstance.source === 'string' || playerInstance.source === null) {
+             playerInstance.source = {
+                type: 'video',
+                title: currentEpisode.title,
+                sources: [{ 
+                  src: currentEpisode.url, 
+                  provider: 'html5', 
+                }],
+                poster: currentEpisode.thumbnail || anime?.coverImage,
+            };
+        } else {
+            // console.warn("plyrRef.current.source is not directly settable or has an unexpected type. Player might update via props or other mechanisms.");
+        }
     }
-  }, [currentEpisode, anime?.coverImage]);
+  }, [currentEpisode, anime?.coverImage, plyrRef.current]);
 
 
   const videoSource = useMemo(() => {
@@ -139,7 +135,7 @@ export default function PlayerPage() {
       sources: [
         {
           src: currentEpisode.url,
-          provider: 'html5' as const, // Or determine provider based on URL
+          provider: 'html5' as const, 
         },
       ],
       poster: currentEpisode.thumbnail || anime?.coverImage,
@@ -147,55 +143,44 @@ export default function PlayerPage() {
   }, [currentEpisode, anime?.coverImage]);
   
   const playerOptions: PlyrType.Options = {
-    // More advanced controls
     controls: [
         'play-large', 'rewind', 'play', 'fast-forward', 'progress', 
         'current-time', 'duration', 'mute', 'volume', 'captions', 
         'settings', 'pip', 'airplay', 'fullscreen'
     ],
     settings: ['captions', 'quality', 'speed', 'loop'],
-    // Example qualities - This requires video sources to be structured accordingly or use a plugin.
-    // Plyr HTML5 player itself doesn't handle quality switching natively for a single MP4 source.
-    // You would typically provide multiple <source> tags or use HLS/DASH.
     quality: {
-      default: 720, // Default quality
-      options: [1080, 720, 480], // Available qualities
-      // Forced: true, // If true, the kwaliteit selector will be shown
-      // onChange: (quality: number) => console.log('Quality changed to', quality),
+      default: 720, 
+      options: [1080, 720, 480], 
     },
     tooltips: { controls: true, seek: true },
     autoplay: false,
     loop: { active: false },
-    // storage: { enabled: true, key: `plyr-player-${animeId}` }, // Persist settings
-    // i18n: {
-    //   // Custom text
-    //   restart: 'Restart',
-    //   rewind: 'Rewind {seektime}s',
-    //   play: 'Play',
-    //   // ... other custom texts
-    // },
-    // You can also define event listeners directly in options
-    // events: ["ended", "progress", "error"],
-    // listeners: {
-    //   ended: () => handleNextEpisode(), // Autoplay next episode
-    // }
   };
 
-  // Handle Plyr instance creation and destruction
+  // Handle Plyr event listeners
   useEffect(() => {
-    if (plyrRef.current) {
-      const player = plyrRef.current;
-      player.on('ended', handleNextEpisode);
-      // player.on('error', (event) => console.error("Plyr Error: ", event.detail.plyr.source));
+    const player = plyrRef.current;
+
+    if (player) {
+      if (typeof player.on !== 'function') {
+        // console.error("Plyr instance on plyrRef.current does not have an 'on' method.", player);
+        return; 
+      }
+
+      const onEndedCallback = () => {
+        handleNextEpisode();
+      };
+      
+      player.on('ended', onEndedCallback);
       
       return () => {
-        if (player) {
-          player.off('ended', handleNextEpisode);
-          // player.destroy(); // Plyr-react handles destroy on unmount
+        if (player && typeof player.off === 'function') { 
+          player.off('ended', onEndedCallback);
         }
       };
     }
-  }, [plyrRef, handleNextEpisode]);
+  }, [plyrRef.current, handleNextEpisode]); // Depend on the actual player instance
 
 
   if (isLoading) {
@@ -243,8 +228,8 @@ export default function PlayerPage() {
                 {/* Plyr Player Component */}
                 {videoSource ? (
                     <Plyr
-                        // @ts-ignore
-                        ref={(plyr) => plyrRef.current = plyr?.plyr}
+                        // @ts-ignore type conflict with plyr-react ref typing vs actual instance needed by plyr.js
+                        ref={(plyrComponentInstance) => plyrRef.current = plyrComponentInstance?.plyr || null}
                         source={videoSource}
                         options={playerOptions}
                         className="[&>.plyr]:rounded-lg" // Style plyr itself
