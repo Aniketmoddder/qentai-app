@@ -22,52 +22,73 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
       if (scrollContainerRef.current && scrollContainerRef.current.firstElementChild) {
           const firstCard = scrollContainerRef.current.firstElementChild as HTMLElement;
           const style = window.getComputedStyle(firstCard);
-          const marginRight = parseFloat(style.marginRight) || 0; // For gap
-          const marginLeft = parseFloat(style.marginLeft) || 0; // For gap
+          const marginRight = parseFloat(style.marginRight) || 0; 
+          const marginLeft = parseFloat(style.marginLeft) || 0; 
           setCardWidth(firstCard.offsetWidth + marginRight + marginLeft);
       }
     }
-    calculateCardWidth();
-    checkScrollPosition();
+    
+    const currentRef = scrollContainerRef.current; // Capture ref value
+
+    calculateCardWidth(); // Initial calculation
+    checkScrollPosition(); // Initial check
+
     window.addEventListener('resize', calculateCardWidth);
     window.addEventListener('resize', checkScrollPosition);
+    
+    // MutationObserver to recalculate on dynamic changes (e.g. if cards are added/removed)
+    const observer = new MutationObserver(() => {
+        calculateCardWidth();
+        checkScrollPosition();
+    });
+    if (currentRef) {
+        observer.observe(currentRef, { childList: true, subtree: true });
+    }
+
     return () => {
       window.removeEventListener('resize', calculateCardWidth);
       window.removeEventListener('resize', checkScrollPosition);
+      if (currentRef) {
+        observer.disconnect();
+      }
     }
-  }, [animeList]);
+  }, [animeList]); // Re-run if animeList changes, which might affect card presence
 
 
   const checkScrollPosition = () => {
     if (scrollContainerRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      setIsAtStart(scrollLeft < 5); // Tolerance for fractional pixels
-      setIsAtEnd(scrollLeft + clientWidth >= scrollWidth - 5); // Tolerance of 5px
+      // Add a small tolerance (e.g., 1px or 5px) for floating point inaccuracies
+      setIsAtStart(scrollLeft <= 5); 
+      setIsAtEnd(scrollLeft + clientWidth >= scrollWidth - 5);
     }
   };
   
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current && cardWidth > 0) {
-      // Scroll by a number of full cards that fit the viewport
       const visibleCards = Math.max(1, Math.floor(scrollContainerRef.current.clientWidth / cardWidth));
       const scrollAmount = cardWidth * visibleCards;
       scrollContainerRef.current.scrollBy({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth',
       });
-      setTimeout(checkScrollPosition, 400); // Re-check after scroll animation
+      // Using a timeout to wait for the scroll animation to complete before re-checking
+      setTimeout(checkScrollPosition, 400); 
     }
   };
 
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (container) {
+      // Passive true for better scroll performance
       container.addEventListener('scroll', checkScrollPosition, { passive: true });
+      // Initial check in case content loads such that it's already at an edge
+      checkScrollPosition();
       return () => {
         container.removeEventListener('scroll', checkScrollPosition);
       };
     }
-  }, []);
+  }, [animeList]); // Re-check if animeList changes, as it affects scrollWidth
 
 
   if (!animeList || animeList.length === 0) {
@@ -103,21 +124,21 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
       </div>
       <div 
         ref={scrollContainerRef} 
-        className="flex overflow-x-auto pb-4 gap-3 sm:gap-4 md:gap-5 scrollbar-hide" // Adjusted gap
+        className="flex overflow-x-auto pb-4 gap-2.5 sm:gap-3 md:gap-3.5 scrollbar-hide" // Adjusted gap
         style={{ scrollSnapType: 'x mandatory' }}
       >
         {animeList.map((anime) => (
           <div 
             key={anime.id} 
-            // Adjusted card widths for a more "Netflix" feel - fewer, larger cards visible
-            className="flex-shrink-0 w-[160px] sm:w-[180px] md:w-[200px] lg:w-[220px] xl:w-[240px]"
+            // Reduced card widths for a more compact, Netflix-like appearance
+            className="flex-shrink-0 w-[130px] sm:w-[140px] md:w-[150px] lg:w-[160px] xl:w-[170px]"
             style={{ scrollSnapAlign: 'start' }}
           >
             <AnimeCard anime={anime} />
           </div>
         ))}
       </div>
-       {/* Mobile scroll buttons */}
+       {/* Mobile scroll buttons always visible for better UX */}
       <div className="md:hidden flex justify-center mt-4 space-x-4">
           <Button
             variant="outline"

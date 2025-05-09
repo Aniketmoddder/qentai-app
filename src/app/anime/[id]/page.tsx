@@ -14,6 +14,9 @@ interface AnimeDetailsPageProps {
 }
 
 async function getAnimeDetails(id: string): Promise<Anime | undefined> {
+  // Simulate fetching a single anime by ID
+  // Add a delay to simulate network latency
+  await new Promise(resolve => setTimeout(resolve, 200));
   return mockAnimeData.find((anime) => anime.id === id);
 }
 
@@ -32,7 +35,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     );
   }
 
-  const iconMap = {
+  const iconMap: Record<NonNullable<Anime['type']>, JSX.Element> = {
     TV: <Tv className="w-4 h-4 mr-1.5" />,
     Movie: <Film className="w-4 h-4 mr-1.5" />,
     OVA: <ListVideo className="w-4 h-4 mr-1.5" />,
@@ -73,10 +76,10 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                   <PlayCircle className="mr-2" /> Watch Now
                 </Link>
               </Button>
-              <Button variant="outline" size="lg" className="w-full">
+              <Button variant="outline" size="lg" className="w-full"> {/* Placeholder */}
                 <PlusCircle className="mr-2" /> Add to Watchlist
               </Button>
-              <Button variant="outline" size="lg" className="w-full">
+              <Button variant="outline" size="lg" className="w-full"> {/* Placeholder */}
                 <Heart className="mr-2" /> Add to Favorites
               </Button>
             </div>
@@ -124,9 +127,9 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
             {anime.episodes && anime.episodes.length > 0 && (
               <div className="mt-8 p-4 sm:p-6 bg-card rounded-lg">
                 <h2 className="text-2xl font-semibold mb-4 text-primary flex items-center">
-                  <List className="mr-2"/> Episodes
+                  <List className="mr-2"/> Episodes ({anime.episodes.length})
                 </h2>
-                <div className="max-h-96 overflow-y-auto space-y-2 pr-2">
+                <div className="max-h-96 overflow-y-auto space-y-2 pr-2 scrollbar-thin">
                   {anime.episodes.map((episode: Episode) => (
                     <Button
                       key={episode.id}
