@@ -12,11 +12,10 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'; // TooltipProvider is already in RootLayout
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Vidstack imports
-import { MediaPlayer, MediaPoster, MediaOutlet } from '@vidstack/react';
-import type { MediaPlayerInstance, MediaSrc } from '@vidstack/react';
+import * as Vidstack from '@vidstack/react';
 import { DefaultVideoLayout, defaultLayoutIcons } from '@vidstack/react/player/layouts/default';
 
 
@@ -49,7 +48,7 @@ export default function PlayerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const playerRef = useRef<MediaPlayerInstance | null>(null);
+  const playerRef = useRef<Vidstack.MediaPlayerInstance | null>(null);
 
 
   useEffect(() => {
@@ -117,7 +116,7 @@ export default function PlayerPage() {
     }
   }, [anime, currentEpisode, handleEpisodeSelect]);
 
-  const videoSource: MediaSrc | null = useMemo(() => {
+  const videoSource: Vidstack.MediaSrc | null = useMemo(() => {
     if (!currentEpisode?.url) return null;
     const mimeType = getMimeType(currentEpisode.url);
     return {
@@ -126,15 +125,20 @@ export default function PlayerPage() {
     };
   }, [currentEpisode]);
 
-  const onPlayerError = useCallback((detail: any, nativeEvent: any) => {
-    console.error('Vidstack Player Error:', detail, nativeEvent);
+  const onPlayerError = useCallback((event: Vidstack.MediaErrorEvent) => {
+    const detail = event.detail;
+    console.error('Vidstack Player Error:', detail, event.nativeEvent);
     let errorMessage = 'Unknown player error';
+
     if (detail && detail.message) {
       errorMessage = detail.message;
-    } else if (nativeEvent && nativeEvent.message) {
-      errorMessage = nativeEvent.message;
+    } else if (event.nativeEvent && (event.nativeEvent instanceof ErrorEvent) && (event.nativeEvent as ErrorEvent).message) {
+        errorMessage = (event.nativeEvent as ErrorEvent).message;
+    } else if (detail && typeof detail === 'string') { // Fallback if detail is just a string message
+        errorMessage = detail;
     }
-    setError(`Video Error: ${errorMessage}. Code: ${detail?.code || 'N/A'}`);
+    
+    setError(`Video Error: ${errorMessage}. Code: ${detail && typeof detail === 'object' ? detail.code : 'N/A'}`);
   }, []);
 
 
@@ -180,27 +184,27 @@ export default function PlayerPage() {
           <div className="lg:flex-grow mb-6 lg:mb-0 h-full flex flex-col">
             <div className="aspect-video bg-black rounded-lg overflow-hidden shadow-2xl mb-4 w-full relative">
                 {currentEpisode && videoSource ? (
-                   <MediaPlayer
-                    key={currentEpisode.id} // Force re-mount on episode change if needed for clean state
+                   <Vidstack.MediaPlayer
+                    key={currentEpisode.id} 
                     ref={playerRef}
                     title={currentEpisode.title}
                     src={videoSource}
                     poster={currentEpisode.thumbnail || anime?.coverImage || `https://picsum.photos/seed/${animeId}-${currentEpisode.id}-poster/1280/720`}
                     onEnded={handleNextEpisode}
                     onError={onPlayerError}
-                    autoplay
+                    autoPlay
                     className="w-full h-full rounded-lg overflow-hidden"
-                    playsInline // playsinline to playsInline for React prop
+                    playsInline 
                   >
-                    <MediaOutlet className="w-full h-full">
-                        <MediaPoster
+                    <Vidstack.MediaOutlet className="w-full h-full">
+                        <Vidstack.MediaPoster
                             alt={currentEpisode.title || 'Episode poster'}
                             className="object-cover w-full h-full"
                             data-ai-hint="anime episode thumbnail"
                         />
-                    </MediaOutlet>
+                    </Vidstack.MediaOutlet>
                     <DefaultVideoLayout icons={defaultLayoutIcons} />
-                  </MediaPlayer>
+                  </Vidstack.MediaPlayer>
                 ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground bg-card">
                     <PlayCircleIcon className="w-24 h-24 opacity-30" />
@@ -211,7 +215,7 @@ export default function PlayerPage() {
                     </p>
                 </div>
                 )}
-                {error && currentEpisode && ( // Show error overlay if an episode is selected but error occurs
+                {error && currentEpisode && ( 
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 p-4 text-center z-10">
                     <AlertTriangle className="w-10 h-10 text-destructive mb-2" />
                     <p className="text-destructive-foreground text-sm">{error}</p>
