@@ -34,6 +34,9 @@ export default function Footer() {
             </div>
           </div>
         </div>
+        <div className="mt-8 text-center text-2xl">
+          🤬
+        </div>
         <div className="mt-8 pt-8 border-t border-border text-center text-sm text-muted-foreground">
           &copy; {currentYear} Qentai. All rights reserved.
         </div>
