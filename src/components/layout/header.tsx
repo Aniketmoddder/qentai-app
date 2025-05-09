@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Search, UserCircle, Menu, LogOut, LogIn, UserPlus } from 'lucide-react';
+import { Search, UserCircle, Menu, LogOut, LogIn, UserPlus, User as UserIcon } from 'lucide-react';
 import Logo from '@/components/common/logo';
 import Container from '@/components/layout/container';
 import { Button } from '@/components/ui/button';
@@ -42,7 +42,6 @@ export default function Header() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
   
-  // Close mobile menu on path change
   useEffect(() => {
     if (isMobileMenuOpen) {
       setIsMobileMenuOpen(false);
@@ -52,9 +51,7 @@ export default function Header() {
 
   const navItems = [
     { href: '/', label: 'Home' },
-    { href: '/browse', label: 'Browse' }, // Placeholder
-    // { href: '/popular', label: 'Popular' }, // Placeholder
-    // { href: '/new', label: 'New' }, // Placeholder
+    { href: '/browse', label: 'Browse' }, 
   ];
 
   const handleSearchSubmit = (e: FormEvent<HTMLFormElement>, query: string) => {
@@ -86,7 +83,7 @@ export default function Header() {
   return (
     <header 
       className={`sticky top-0 z-50 transition-all duration-300 ${
-        isScrolled ? 'bg-background/90 backdrop-blur-sm shadow-lg' : 'bg-background/80 md:bg-transparent' // Keep bg on mobile for hero overlap
+        isScrolled ? 'bg-background/90 backdrop-blur-sm shadow-lg' : 'bg-background/80 md:bg-transparent'
       }`}
     >
       <Container className="flex items-center justify-between py-3 sm:py-4">
@@ -141,13 +138,18 @@ export default function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {/* <DropdownMenuItem asChild>
-                  <Link href="/profile">Profile</Link>
+                <DropdownMenuItem asChild>
+                  <Link href="/profile" className="flex items-center cursor-pointer">
+                    <UserIcon className="mr-2 h-4 w-4" />
+                    Profile
+                  </Link>
                 </DropdownMenuItem>
+                {/* 
                 <DropdownMenuItem asChild>
                   <Link href="/settings">Settings</Link>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator /> */}
+                <DropdownMenuSeparator /> 
+                */}
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
                   Log out
@@ -163,7 +165,9 @@ export default function Header() {
                     <Link href="/register">Sign Up</Link>
                 </Button>
             </div>
-          ) : null}
+          ) : authLoading ? (
+             <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          ): null }
 
           <div className="md:hidden">
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
@@ -208,6 +212,16 @@ export default function Header() {
                         </Link>
                       </SheetClose>
                     ))}
+                     {!authLoading && user && (
+                        <SheetClose asChild>
+                           <Link
+                            href="/profile"
+                            className={`text-base font-medium hover:text-primary transition-colors py-2.5 px-3 rounded-md hover:bg-primary/10 flex items-center ${pathname === "/profile" ? 'text-primary bg-primary/10' : 'text-foreground'}`}
+                          >
+                             <UserIcon className="mr-2 h-4 w-4" /> Profile
+                          </Link>
+                        </SheetClose>
+                     )}
                   </nav>
                 </div>
                 <div className="p-4 border-t border-border space-y-3">
@@ -230,7 +244,11 @@ export default function Header() {
                         </Button>
                       </SheetClose>
                      </>
-                   ) : null}
+                   ) : authLoading ? (
+                      <div className="flex justify-center"> 
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                      </div>
+                   ): null}
                 </div>
               </SheetContent>
             </Sheet>

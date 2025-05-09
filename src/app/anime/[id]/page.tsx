@@ -1,11 +1,13 @@
+
 import { mockAnimeData } from '@/lib/mock-data';
 import type { Anime, Episode } from '@/types/anime';
 import Container from '@/components/layout/container';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Star, PlayCircle, PlusCircle, Heart, CalendarDays, Tv, Film, ListVideo, List, ChevronRight } from 'lucide-react';
+import { Star, PlayCircle, CalendarDays, Tv, Film, ListVideo, List, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import AnimeInteractionControls from '@/components/anime/anime-interaction-controls';
 
 interface AnimeDetailsPageProps {
   params: {
@@ -14,9 +16,7 @@ interface AnimeDetailsPageProps {
 }
 
 async function getAnimeDetails(id: string): Promise<Anime | undefined> {
-  // Simulate fetching a single anime by ID
-  // Add a delay to simulate network latency
-  await new Promise(resolve => setTimeout(resolve, 200));
+  await new Promise(resolve => setTimeout(resolve, 200)); // Simulate network latency
   return mockAnimeData.find((anime) => anime.id === id);
 }
 
@@ -72,16 +72,11 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
             </div>
             <div className="mt-4 space-y-2">
               <Button asChild size="lg" className="w-full btn-primary-gradient">
-                <Link href={`/play/${anime.id}`}>
+                <Link href={`/play/${anime.id}${anime.episodes && anime.episodes.length > 0 ? `?episode=${anime.episodes[0].id}` : ''}`}>
                   <PlayCircle className="mr-2" /> Watch Now
                 </Link>
               </Button>
-              <Button variant="outline" size="lg" className="w-full"> {/* Placeholder */}
-                <PlusCircle className="mr-2" /> Add to Watchlist
-              </Button>
-              <Button variant="outline" size="lg" className="w-full"> {/* Placeholder */}
-                <Heart className="mr-2" /> Add to Favorites
-              </Button>
+              <AnimeInteractionControls anime={anime} />
             </div>
           </div>
 
@@ -152,7 +147,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                   ))}
                 </div>
                  <Button asChild variant="link" className="mt-4 px-0">
-                  <Link href={`/play/${anime.id}`}>
+                  <Link href={`/play/${anime.id}${anime.episodes && anime.episodes.length > 0 ? `?episode=${anime.episodes[0].id}` : ''}`}>
                     Go to Player Page <ChevronRight className="w-4 h-4 ml-1" />
                   </Link>
                 </Button>
