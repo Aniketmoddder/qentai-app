@@ -12,11 +12,13 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'; // TooltipProvider is already in RootLayout
 
 // Vidstack imports
-import { MediaPlayer, MediaOutlet, MediaPoster, type MediaPlayerInstance, type MediaSrc } from '@vidstack/react';
-import { DefaultAudioLayout, DefaultVideoLayout, defaultLayoutIcons } from '@vidstack/react/player/layouts/default';
+import { MediaPlayer, MediaPoster, MediaOutlet } from '@vidstack/react';
+import type { MediaPlayerInstance, MediaSrc } from '@vidstack/react';
+import { DefaultVideoLayout, defaultLayoutIcons } from '@vidstack/react/player/layouts/default';
+
 
 async function getAnimeDetails(id: string): Promise<Anime | undefined> {
   // Simulate fetching a single anime by ID
@@ -126,7 +128,13 @@ export default function PlayerPage() {
 
   const onPlayerError = useCallback((detail: any, nativeEvent: any) => {
     console.error('Vidstack Player Error:', detail, nativeEvent);
-    setError(`Video Error: ${detail.message || 'Unknown player error'}. Code: ${detail.code}`);
+    let errorMessage = 'Unknown player error';
+    if (detail && detail.message) {
+      errorMessage = detail.message;
+    } else if (nativeEvent && nativeEvent.message) {
+      errorMessage = nativeEvent.message;
+    }
+    setError(`Video Error: ${errorMessage}. Code: ${detail?.code || 'N/A'}`);
   }, []);
 
 
@@ -182,12 +190,13 @@ export default function PlayerPage() {
                     onError={onPlayerError}
                     autoplay
                     className="w-full h-full rounded-lg overflow-hidden"
-                    playsinline
+                    playsInline // playsinline to playsInline for React prop
                   >
                     <MediaOutlet className="w-full h-full">
                         <MediaPoster
                             alt={currentEpisode.title || 'Episode poster'}
                             className="object-cover w-full h-full"
+                            data-ai-hint="anime episode thumbnail"
                         />
                     </MediaOutlet>
                     <DefaultVideoLayout icons={defaultLayoutIcons} />
@@ -209,8 +218,6 @@ export default function PlayerPage() {
                     <Button variant="outline" size="sm" className="mt-3" onClick={() => {
                         setError(null); 
                         if(currentEpisode) { 
-                            // Re-trigger player setup, Vidstack might handle this automatically by changing source
-                            // Or explicitly re-call handleEpisodeSelect or similar logic to reload player state
                             handleEpisodeSelect(currentEpisode); 
                         }
                     }}>Retry</Button>
