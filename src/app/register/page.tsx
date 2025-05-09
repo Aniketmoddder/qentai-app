@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,7 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import Logo from '@/components/common/logo';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Chrome, Loader2 } from 'lucide-react'; // Using Chrome icon for Google
+import { Chrome, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 const registerSchema = z
@@ -69,7 +68,7 @@ export default function RegisterPage() {
   const handleGoogleSignUp = async () => {
     setIsGoogleLoading(true);
     setError(null);
-    setAuthContextLoading(true); // Indicate auth state might change
+    setAuthContextLoading(true);
     try {
       await signInWithPopup(auth, googleProvider);
       toast({
@@ -78,17 +77,33 @@ export default function RegisterPage() {
       });
       router.push('/');
     } catch (e: any) {
-      const errorMessage = e.message?.replace('Firebase: ', '').split(' (')[0] || 'Failed to sign up with Google.';
+      let errorMessage = "Failed to sign up with Google. Please try again.";
+      const errorCode = e.code; 
+      console.error("Google Sign-Up Error:", e); // Full error object
+
+      if (errorCode === 'auth/popup-closed-by-user') {
+        errorMessage = "Google Sign-Up was cancelled. Please try again.";
+      } else if (errorCode === 'auth/cancelled-popup-request') {
+        errorMessage = "Google Sign-Up request was cancelled. Please ensure only one sign-up window is open.";
+      } else if (errorCode === 'auth/popup-blocked') {
+        errorMessage = "Google Sign-Up popup was blocked by your browser. Please disable your popup blocker and try again.";
+      } else if (errorCode === 'auth/operation-not-allowed') {
+        errorMessage = "Google Sign-Up is not enabled for this app. Please check Firebase console settings.";
+      } else if (errorCode === 'auth/unauthorized-domain') {
+         errorMessage = "This domain is not authorized for Google Sign-Up. Please check Firebase console settings (Authorized JavaScript origins).";
+      } else if (e.message) {
+        errorMessage = e.message.replace('Firebase: ', '').split(' (')[0] || errorMessage;
+      }
+
       setError(errorMessage);
       toast({
         variant: "destructive",
         title: "Google Sign-Up Failed",
-        description: errorMessage,
+        description: `${errorMessage}${errorCode ? ` (Error: ${errorCode})` : ''}`,
       });
       setAuthContextLoading(false);
     } finally {
       setIsGoogleLoading(false);
-      // Auth context loading will be set to false by onAuthStateChanged
     }
   };
 
