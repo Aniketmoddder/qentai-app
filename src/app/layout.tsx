@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'AniStream - Your Gateway to Anime',
+  title: 'Qentai - Your Gateway to Anime',
   description: 'Discover, watch, and enjoy your favorite anime series and movies.',
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no', // For responsiveness
 };

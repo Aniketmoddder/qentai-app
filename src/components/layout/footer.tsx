@@ -35,7 +35,7 @@ export default function Footer() {
           </div>
         </div>
         <div className="mt-8 pt-8 border-t border-border text-center text-sm text-muted-foreground">
-          &copy; {currentYear} AniStream. All rights reserved.
+          &copy; {currentYear} Qentai. All rights reserved.
         </div>
       </Container>
     </footer>
