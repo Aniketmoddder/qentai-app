@@ -1,6 +1,7 @@
+
 export interface Anime {
   id: string; // Firestore document ID
-  tmdbId?: string; // TMDB ID (movie or TV)
+  tmdbId?: string; // TMDB ID (movie or TV), optional
   title: string;
   coverImage: string; // URL to poster image
   bannerImage?: string; // URL to backdrop image
@@ -16,10 +17,10 @@ export interface Anime {
 
 export interface Episode {
   id: string; // Can be tmdb_season_X_episode_Y or custom
-  tmdbEpisodeId?: number;
+  tmdbEpisodeId?: number; // TMDB's own episode ID
   title: string;
   episodeNumber: number;
-  seasonNumber?: number; // Add season number to episode
+  seasonNumber: number; // Explicitly part of Episode
   thumbnail?: string; // URL
   duration?: string; // e.g., "24min" or number of minutes
   url?: string; // Video source URL, to be added by admin
@@ -27,15 +28,18 @@ export interface Episode {
   overview?: string; // From TMDB
 }
 
+// Season interface might be useful for more structured TV show data,
+// but current approach embeds seasonNumber in Episode.
+// If you decide to structure seasons explicitly:
 export interface Season {
-  id: string; // Can be tmdb_season_X
+  id: string; // e.g., animeId-season-1
   tmdbSeasonId?: number;
   seasonNumber: number;
   title?: string; // Optional, e.g., "Season 1" or arc name
-  episodes: Episode[];
-  airDate?: string; // From TMDB
-  posterPath?: string; // From TMDB
-  overview?: string; // From TMDB
+  episodes: Episode[]; // Episodes would then not need seasonNumber if they are part of a Season object
+  airDate?: string;
+  posterPath?: string;
+  overview?: string;
 }
 
 // For AI Recommendations
