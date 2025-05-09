@@ -12,7 +12,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 // Vidstack imports
 import { MediaPlayer, MediaProvider } from '@vidstack/react';
@@ -328,3 +328,4 @@ export default function PlayerPage() {
     </div>
   );
 }
+
