@@ -9,9 +9,10 @@ import AnimeCard from '@/components/anime/anime-card';
 import type { Anime } from '@/types/anime';
 import { mockAnimeData } from '@/lib/mock-data';
 import { getUserFavoriteIds, getUserWishlistIds } from '@/services/userDataService';
-import { Loader2, User, Heart, Bookmark } from 'lucide-react';
+import { Loader2, User, Heart, Bookmark, AlertCircle } from 'lucide-react';
 import Container from '@/components/layout/container';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function ProfilePage() {
   const { user, loading: authLoading } = useAuth();
@@ -21,6 +22,7 @@ export default function ProfilePage() {
   const [favoritesList, setFavoritesList] = useState<Anime[]>([]);
   const [wishlistList, setWishlistList] = useState<Anime[]>([]);
   const [isLoadingLists, setIsLoadingLists] = useState(true);
+  const [listError, setListError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -32,6 +34,7 @@ export default function ProfilePage() {
     const fetchLists = async () => {
       if (user) {
         setIsLoadingLists(true);
+        setListError(null);
         try {
           const favoriteIds = await getUserFavoriteIds(user.uid);
           const wishlistIds = await getUserWishlistIds(user.uid);
@@ -46,9 +49,13 @@ export default function ProfilePage() {
             .filter((anime): anime is Anime => anime !== undefined);
           setWishlistList(resolvedWishlist);
 
-        } catch (error) {
+        } catch (error: any) {
           console.error("Failed to fetch user lists:", error);
-          // Potentially set an error state here to show in UI
+          if (error.message && error.message.includes('offline')) {
+            setListError("Could not fetch your lists. It seems you're offline or there's a connection issue with the server. Please check your internet connection and try again.");
+          } else {
+            setListError("Failed to load your lists. Please try again later.");
+          }
         } finally {
           setIsLoadingLists(false);
         }
@@ -75,13 +82,22 @@ export default function ProfilePage() {
       return (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
           {[...Array(5)].map((_, index) => (
-            <div key={index} className="w-[45vw] max-w-[180px] h-[270px] bg-card rounded-lg p-2">
-              <Skeleton className="w-full h-[200px] rounded-md bg-muted" />
-              <Skeleton className="w-3/4 h-4 mt-2 rounded-md bg-muted" />
-              <Skeleton className="w-1/2 h-3 mt-1 rounded-md bg-muted" />
+             <div key={index} className="w-full h-auto aspect-[2/3] "> {/* Maintain aspect ratio */}
+                <Skeleton className="w-full h-full rounded-lg bg-muted" />
+                <Skeleton className="w-3/4 h-4 mt-2 rounded-md bg-muted" />
+                <Skeleton className="w-1/2 h-3 mt-1 rounded-md bg-muted" />
             </div>
           ))}
         </div>
+      );
+    }
+    if (listError) {
+      return (
+        <Alert variant="destructive" className="mt-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error Loading Lists</AlertTitle>
+          <AlertDescription>{listError}</AlertDescription>
+        </Alert>
       );
     }
     if (list.length === 0) {
@@ -97,7 +113,7 @@ export default function ProfilePage() {
       );
     }
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-3 gap-y-4 sm:gap-x-4 place-items-center sm:place-items-stretch">
         {list.map(anime => (
           <AnimeCard key={anime.id} anime={anime} />
         ))}
@@ -114,6 +130,14 @@ export default function ProfilePage() {
           {user.email && <p className="text-muted-foreground text-sm sm:text-base">{user.email}</p>}
         </div>
       </div>
+      
+      {listError && activeTab !== '' && ( // Show general error if not already handled by list rendering
+         <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{listError}</AlertDescription>
+          </Alert>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:max-w-md mb-6">
@@ -134,3 +158,4 @@ export default function ProfilePage() {
     </Container>
   );
 }
+

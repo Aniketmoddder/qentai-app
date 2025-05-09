@@ -32,13 +32,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
+    <html lang="en" className="dark h-full overflow-x-hidden">
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased flex flex-col min-h-full bg-background text-foreground overflow-x-hidden`}>
         <QueryProvider>
           <AuthProvider>
             <TooltipProvider delayDuration={0}>
               <Header />
-              <main>{children}</main>
+              <main className="flex-grow">{children}</main>
               <Footer />
               <Toaster />
             </TooltipProvider>
@@ -48,3 +48,4 @@ export default function RootLayout({
     </html>
   );
 }
+
