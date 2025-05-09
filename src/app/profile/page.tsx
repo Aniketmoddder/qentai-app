@@ -34,7 +34,7 @@ export default function ProfilePage() {
   const getErrorMessage = (error: unknown): string => {
     if (error instanceof FirestoreError) {
       if (error.code === 'unavailable' || error.message.toLowerCase().includes('offline')) {
-        return "Network error. Could not fetch your lists. Please check your internet connection and try again.";
+        return "Network error. Could not fetch your lists. Please check your internet connection and try again. Also, ensure Firestore is enabled in your Firebase project console.";
       }
       if (error.code === 'permission-denied') {
         return "Permission denied. Unable to load your lists.";
@@ -91,7 +91,7 @@ export default function ProfilePage() {
     );
   }
   
-  if (!user) return null; // Should be redirected
+  if (!user) return null; 
 
   const renderAnimeList = (list: Anime[], type: 'favorite' | 'wishlist') => {
     if (isLoadingLists) {
@@ -107,7 +107,7 @@ export default function ProfilePage() {
         </div>
       );
     }
-    if (listError && type === activeTab) { // Show error only for the active tab if it's the one failing, or a general one if needed
+    if (listError && type === activeTab) { 
       return (
         <Alert variant="destructive" className="mt-4">
           <AlertCircle className="h-4 w-4" />

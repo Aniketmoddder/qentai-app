@@ -36,7 +36,7 @@ export default function AnimeInteractionControls({ anime }: AnimeInteractionCont
   const getErrorMessage = (error: unknown): string => {
     if (error instanceof FirestoreError) {
       if (error.code === 'unavailable' || error.message.toLowerCase().includes('offline')) {
-        return "Network error. Please check your connection and try again.";
+        return "Network error. Please check your connection and try again. Also, ensure Firestore is enabled in your Firebase project console.";
       }
       if (error.code === 'permission-denied') {
         return "Permission denied. You may not have access to perform this action.";
@@ -95,7 +95,7 @@ export default function AnimeInteractionControls({ anime }: AnimeInteractionCont
       toast({ variant: "destructive", title: "Not Logged In", description: "Please log in to manage favorites." });
       return;
     }
-    if (initialStatusError && !isFavorited) { // If initial check failed, don't allow adding
+    if (initialStatusError && !isFavorited) { 
         toast({ variant: "destructive", title: "Cannot Update Favorites", description: "Please resolve the status loading issue first." });
         return;
     }
@@ -110,7 +110,7 @@ export default function AnimeInteractionControls({ anime }: AnimeInteractionCont
         setIsFavorited(true);
         toast({ title: "Added to Favorites", description: `${anime.title} has been added to your favorites.` });
       }
-      setInitialStatusError(null); // Clear error on successful toggle
+      setInitialStatusError(null); 
     } catch (error: unknown) {
       const message = getErrorMessage(error);
       toast({ variant: "destructive", title: "Error Updating Favorites", description: message });
@@ -124,7 +124,7 @@ export default function AnimeInteractionControls({ anime }: AnimeInteractionCont
       toast({ variant: "destructive", title: "Not Logged In", description: "Please log in to manage wishlist." });
       return;
     }
-    if (initialStatusError && !isInWishlisted) { // If initial check failed, don't allow adding
+    if (initialStatusError && !isInWishlisted) { 
         toast({ variant: "destructive", title: "Cannot Update Wishlist", description: "Please resolve the status loading issue first." });
         return;
     }
@@ -139,7 +139,7 @@ export default function AnimeInteractionControls({ anime }: AnimeInteractionCont
         setIsInWishlisted(true);
         toast({ title: "Added to Wishlist", description: `${anime.title} has been added to your wishlist.` });
       }
-       setInitialStatusError(null); // Clear error on successful toggle
+       setInitialStatusError(null); 
     } catch (error: unknown) {
       const message = getErrorMessage(error);
       toast({ variant: "destructive", title: "Error Updating Wishlist", description: message });
