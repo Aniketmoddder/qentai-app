@@ -1,10 +1,10 @@
 import { mockAnimeData } from '@/lib/mock-data';
-import type { Anime } from '@/types/anime';
+import type { Anime, Episode } from '@/types/anime';
 import Container from '@/components/layout/container';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Star, PlayCircle, PlusCircle, Heart, CalendarDays, Tv, Film, ListVideo } from 'lucide-react';
+import { Star, PlayCircle, PlusCircle, Heart, CalendarDays, Tv, Film, ListVideo, List, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 interface AnimeDetailsPageProps {
@@ -13,7 +13,6 @@ interface AnimeDetailsPageProps {
   };
 }
 
-// Simulate fetching anime data by ID
 async function getAnimeDetails(id: string): Promise<Anime | undefined> {
   return mockAnimeData.find((anime) => anime.id === id);
 }
@@ -42,8 +41,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
 
   return (
     <div className="min-h-screen">
-      {/* Banner Section */}
-      <section className="relative h-[40vh] md:h-[50vh] w-full -mt-[calc(4rem+1px)] md:-mt-[calc(4rem+1px+1rem)]">
+      <section className="relative h-[40vh] md:h-[50vh] w-full -mt-[calc(var(--header-height,4rem)+1px)]">
         <Image
           src={anime.bannerImage || `https://picsum.photos/seed/${anime.id}-banner/1200/600`}
           alt={`${anime.title} banner`}
@@ -58,20 +56,22 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
 
       <Container className="relative z-10 -mt-24 md:-mt-32 pb-12">
         <div className="md:flex md:space-x-8">
-          {/* Cover Image and Actions */}
           <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0">
-            <div className="aspect-[3/4] relative rounded-lg overflow-hidden shadow-2xl">
+            <div className="aspect-[2/3] relative rounded-lg overflow-hidden shadow-2xl">
               <Image
                 src={anime.coverImage}
                 alt={anime.title}
                 fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, 25vw"
                 style={{ objectFit: 'cover' }}
                 data-ai-hint={`${anime.genre[0] || 'anime'} portrait`}
               />
             </div>
             <div className="mt-4 space-y-2">
-              <Button size="lg" className="w-full btn-primary-gradient">
-                <PlayCircle className="mr-2" /> Watch Now
+              <Button asChild size="lg" className="w-full btn-primary-gradient">
+                <Link href={`/play/${anime.id}`}>
+                  <PlayCircle className="mr-2" /> Watch Now
+                </Link>
               </Button>
               <Button variant="outline" size="lg" className="w-full">
                 <PlusCircle className="mr-2" /> Add to Watchlist
@@ -82,7 +82,6 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
             </div>
           </div>
 
-          {/* Anime Details */}
           <div className="mt-8 md:mt-0 md:w-2/3 lg:w-3/4 text-foreground">
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2">{anime.title}</h1>
             
@@ -122,15 +121,40 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
               </p>
             </div>
             
-            {/* Placeholder for Seasons/Episodes and Video Player */}
-            <div className="mt-8 p-6 bg-card rounded-lg">
-              <h2 className="text-2xl font-semibold mb-4 text-primary">Episodes & Player</h2>
-              <p className="text-muted-foreground">Video player and episode list will be implemented here.</p>
-              {/* Example of where Plyr.io or custom player would go */}
-               <div className="aspect-video bg-black mt-4 rounded flex items-center justify-center">
-                  <PlayCircle className="w-24 h-24 text-muted-foreground/50" />
-               </div>
-            </div>
+            {anime.episodes && anime.episodes.length > 0 && (
+              <div className="mt-8 p-4 sm:p-6 bg-card rounded-lg">
+                <h2 className="text-2xl font-semibold mb-4 text-primary flex items-center">
+                  <List className="mr-2"/> Episodes
+                </h2>
+                <div className="max-h-96 overflow-y-auto space-y-2 pr-2">
+                  {anime.episodes.map((episode: Episode) => (
+                    <Button
+                      key={episode.id}
+                      asChild
+                      variant="ghost"
+                      className="w-full justify-start text-left h-auto py-2 px-3 hover:bg-primary/10"
+                    >
+                      <Link href={`/play/${anime.id}?episode=${episode.id}`}>
+                        <div className="flex items-center justify-between w-full">
+                            <div className="flex-grow">
+                                <span className="text-sm font-medium text-foreground block">
+                                Episode {episode.episodeNumber}: {episode.title}
+                                </span>
+                                {episode.duration && <span className="text-xs text-muted-foreground">{episode.duration}</span>}
+                            </div>
+                            <PlayCircle className="w-5 h-5 text-primary ml-2 flex-shrink-0" />
+                        </div>
+                      </Link>
+                    </Button>
+                  ))}
+                </div>
+                 <Button asChild variant="link" className="mt-4 px-0">
+                  <Link href={`/play/${anime.id}`}>
+                    Go to Player Page <ChevronRight className="w-4 h-4 ml-1" />
+                  </Link>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </Container>

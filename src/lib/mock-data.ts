@@ -1,4 +1,10 @@
-import type { Anime, AnimeRecommendation } from '@/types/anime';
+import type { Anime, AnimeRecommendation, Episode } from '@/types/anime';
+
+const placeholderEpisodes: Episode[] = [
+  { id: 'ep1', title: 'Episode 1: The Beginning', episodeNumber: 1, url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-576p.mp4', duration: '24min' },
+  { id: 'ep2', title: 'Episode 2: The Challenge', episodeNumber: 2, url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4', duration: '23min' },
+  { id: 'ep3', title: 'Episode 3: The Climax', episodeNumber: 3, url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-1080p.mp4', duration: '25min' },
+];
 
 export const mockAnimeData: Anime[] = [
   {
@@ -12,6 +18,7 @@ export const mockAnimeData: Anime[] = [
     synopsis: 'After his hometown is destroyed and his mother is killed, young Eren Jaeger vows to cleanse the earth of the giant humanoid Titans that have brought humanity to the brink of extinction.',
     averageRating: 4.8,
     type: 'TV',
+    episodes: placeholderEpisodes.map((ep, i) => ({...ep, id: `aot-e${i+1}`, title: `AoT ${ep.title}`})),
   },
   {
     id: '2',
@@ -24,6 +31,12 @@ export const mockAnimeData: Anime[] = [
     synopsis: 'A boy swallows a cursed talisman - the finger of a demon - and becomes cursed himself. He enters a shaman\'s school to be able to locate the demon\'s other body parts and thus exorcise himself.',
     averageRating: 4.7,
     type: 'TV',
+    episodes: [
+      { id: 'jjk-e1', title: 'Ryomen Sukuna', episodeNumber: 1, url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-576p.mp4', duration: '24min' },
+      { id: 'jjk-e2', title: 'For Myself', episodeNumber: 2, url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4', duration: '23min' },
+      { id: 'jjk-e3', title: 'Girl of Steel', episodeNumber: 3, url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-1080p.mp4', duration: '25min' },
+      { id: 'jjk-e4', title: 'Curse Womb Must Die', episodeNumber: 4, url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-576p.mp4', duration: '24min' },
+    ],
   },
   {
     id: '3',
@@ -36,6 +49,7 @@ export const mockAnimeData: Anime[] = [
     synopsis: 'A family is attacked by demons and only two members survive - Tanjiro and his sister Nezuko, who is turning into a demon slowly. Tanjiro sets out to become a demon slayer to avenge his family and cure his sister.',
     averageRating: 4.9,
     type: 'TV',
+    episodes: placeholderEpisodes.map((ep, i) => ({...ep, id: `ds-e${i+1}`, title: `DS ${ep.title}`})),
   },
   {
     id: '4',
@@ -48,6 +62,7 @@ export const mockAnimeData: Anime[] = [
     synopsis: 'A spy on an undercover mission gets married and adopts a child, not realizing that his fake wife is an assassin and his fake daughter is a telepath.',
     averageRating: 4.6,
     type: 'TV',
+    episodes: placeholderEpisodes.map((ep, i) => ({...ep, id: `sxf-e${i+1}`, title: `SxF ${ep.title}`})),
   },
   {
     id: '5',
@@ -60,6 +75,7 @@ export const mockAnimeData: Anime[] = [
     synopsis: 'Following a betrayal, a young man left for dead is reborn as a Devil-Human hybrid after merging with his pet devil and is soon enlisted into an organisation dedicated to hunting devils.',
     averageRating: 4.5,
     type: 'TV',
+    episodes: placeholderEpisodes.map((ep, i) => ({...ep, id: `csm-e${i+1}`, title: `CSM ${ep.title}`})),
   },
   {
     id: '6',
@@ -72,6 +88,7 @@ export const mockAnimeData: Anime[] = [
     synopsis: 'Two strangers find themselves linked in a bizarre way. When a connection forms, will distance be the only thing to keep them apart?',
     averageRating: 4.9,
     type: 'Movie',
+    episodes: [{ id: 'yn-e1', title: 'Movie', episodeNumber: 1, url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-1080p.mp4', duration: '1h 46min' }],
   },
    {
     id: '7',
@@ -84,6 +101,7 @@ export const mockAnimeData: Anime[] = [
     synopsis: 'In a world where hunters with magical abilities battle deadly monsters to protect humanity, a notoriously weak hunter Jinwoo Sung finds himself in a relentless struggle for survival.',
     averageRating: 4.8,
     type: 'TV',
+    episodes: placeholderEpisodes.map((ep, i) => ({...ep, id: `sl-e${i+1}`, title: `SL ${ep.title}`})),
   },
   {
     id: '8',
@@ -96,6 +114,7 @@ export const mockAnimeData: Anime[] = [
     synopsis: 'After the party of heroes defeats the Demon King, they disband. Frieren, the elf mage, outlives her companions and embarks on a new journey to understand life and humanity.',
     averageRating: 4.9,
     type: 'TV',
+    episodes: placeholderEpisodes.map((ep, i) => ({...ep, id: `frieren-e${i+1}`, title: `Frieren ${ep.title}`})),
   },
 ];
 

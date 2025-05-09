@@ -8,7 +8,7 @@ export interface Anime {
   status: 'Ongoing' | 'Completed' | 'Upcoming';
   synopsis: string;
   averageRating?: number; // Optional, 0-10 or 0-5 scale
-  episodes?: Episode[]; // Optional for brief display
+  episodes: Episode[]; // Made non-optional for player page
   type?: 'TV' | 'Movie' | 'OVA' | 'Special'; // Optional
 }
 
@@ -18,6 +18,7 @@ export interface Episode {
   episodeNumber: number;
   thumbnail?: string; // Optional
   duration?: string; // Optional, e.g., "24min"
+  url: string; // Added for player source, e.g., video file URL
 }
 
 export interface Season {

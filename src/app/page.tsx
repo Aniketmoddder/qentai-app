@@ -20,16 +20,16 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 export default function Home() {
   const trendingAnime = shuffleArray(mockAnimeData).slice(0, 10);
   const popularAnime = shuffleArray(mockAnimeData).slice(0, 10);
-  const recentlyAddedAnime = [...mockAnimeData].sort((a,b) => b.year - a.year).slice(0,10); // Sort by year for "recent"
-  const featuredAnime = mockAnimeData.find(anime => anime.id === '8') || mockAnimeData[0]; // Frieren or first
+  const recentlyAddedAnime = [...mockAnimeData].sort((a,b) => b.year - a.year).slice(0,10);
+  const featuredAnime = mockAnimeData.find(anime => anime.id === '8') || mockAnimeData[0];
 
   return (
     <>
       {/* Hero Section */}
-      <section className="relative h-[60vh] md:h-[75vh] w-full flex items-end text-white -mt-[calc(4rem+1px)] md:-mt-[calc(4rem+1px+1rem)]"> {/* Adjust for header height */}
+      <section className="relative h-[60vh] md:h-[75vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)]"> {/* Adjust for header height */}
         <div className="absolute inset-0">
           <Image
-            src={featuredAnime.bannerImage || 'https://picsum.photos/seed/hero-banner/1600/900'}
+            src={featuredAnime.bannerImage || `https://picsum.photos/seed/${featuredAnime.id}-hero/1600/900`}
             alt={`${featuredAnime.title} banner`}
             fill
             style={{ objectFit: 'cover' }}
@@ -47,9 +47,9 @@ export default function Home() {
             <p className="text-base md:text-lg text-muted-foreground mb-6 line-clamp-3">
               {featuredAnime.synopsis}
             </p>
-            <div className="flex space-x-4">
+            <div className="flex flex-wrap gap-2 sm:gap-4">
               <Button asChild size="lg" className="btn-primary-gradient">
-                <Link href={`/anime/${featuredAnime.id}`}>
+                <Link href={`/play/${featuredAnime.id}`}>
                   Watch Now <ChevronRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
@@ -61,7 +61,7 @@ export default function Home() {
         </Container>
       </section>
       
-      <Container>
+      <Container className="overflow-hidden"> {/* Added overflow-hidden to container to help with responsiveness */}
         <AnimeCarousel title="Trending Now" animeList={trendingAnime} />
         <AnimeCarousel title="Popular Choices" animeList={popularAnime} />
         <AnimeCarousel title="Recently Added" animeList={recentlyAddedAnime} />

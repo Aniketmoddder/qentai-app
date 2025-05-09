@@ -55,14 +55,22 @@ body {
     --sidebar-accent-foreground: 111 100% 54%; /* Neon Green text on hover */
     --sidebar-border: 0 0% 20%;
     --sidebar-ring: 111 100% 54%;
+
+    --header-height: 4rem; /* Default header height, will be updated by JS */
   }
 
   html {
     @apply overflow-x-hidden;
+    -webkit-tap-highlight-color: transparent; /* Prevents tap highlight on mobile */
   }
   body {
-    @apply bg-background text-foreground overflow-x-hidden; /* Added overflow-x-hidden here too for good measure */
+    @apply bg-background text-foreground overflow-x-hidden min-h-screen flex flex-col;
+    /* Ensure body takes full viewport height and enables flex column for sticky footer */
   }
+  main {
+    @apply flex-grow; /* Allows main content to push footer down */
+  }
+
   /* Custom scrollbar for a more modern look */
   ::-webkit-scrollbar {
     width: 8px;
@@ -79,6 +87,13 @@ body {
   ::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--primary));
   }
+  /* For Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--secondary)) hsl(var(--background) / 0.5);
+  }
+
+
 }
 
 @layer utilities {
@@ -88,6 +103,24 @@ body {
   }
   .btn-primary-gradient:hover {
     background-position: right center; /* Change gradient direction on hover */
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted)) transparent; /* thumb track */
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 3px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary));
   }
 }
 
