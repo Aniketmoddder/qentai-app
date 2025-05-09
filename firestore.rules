@@ -1,58 +1,27 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Allow public read access for general anime data (adjust collection name if different)
-    // For example, if you have an 'animes' collection storing anime details:
-    // match /animes/{animeId} {
-    //   allow read: if true;
-    //   // Write access to animes should typically be restricted to admins/backend functions
-    //   allow write: if false; // Or implement admin-only rules
-    // }
-
-    // Secure user-specific data
-    match /users/{userId} {
-      // Allow a user to read and write their own document (if you store user profile info here)
+    // Matches any document in the 'users' collection and its subcollections.
+    // Example: /users/{userId}, /users/{userId}/favorites/{animeId}, /users/{userId}/wishlist/{animeId}
+    match /users/{userId}/{document=**} {
+      // Authenticated users can read and write their own data.
       allow read, write: if request.auth != null && request.auth.uid == userId;
-
-      // Secure favorites subcollection
-      match /favorites/{animeId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-        // Add validation for create/update if needed, e.g., ensure specific fields exist
-        // allow create: if request.auth != null && request.auth.uid == userId
-        //                  && request.resource.data.animeId == animeId
-        //                  && request.resource.data.addedAt == request.time;
-      }
-
-      // Secure wishlist subcollection
-      match /wishlist/{animeId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-        // Add validation for create/update if needed
-        // allow create: if request.auth != null && request.auth.uid == userId
-        //                  && request.resource.data.animeId == animeId
-        //                  && request.resource.data.addedAt == request.time;
-      }
-
-      // Deny access to other subcollections under /users/{userId} unless explicitly defined
-      match /{allOtherDocs=**} {
-        allow read, write: if false;
-      }
     }
 
-    // By default, disallow access to other collections unless explicitly defined above or below.
-    // If you have other collections, add rules for them.
-    // For example, if you have a general 'site_config' collection:
-    // match /site_config/{configId} {
-    //   allow read: if true;
-    //   allow write: if false; // Admin only
-    // }
-
-    // Catch-all for any other paths not explicitly matched.
-    // This makes the rules more secure by defaulting to no access.
+    // Generic rule for other collections (e.g., anime details if they are public)
+    // This is a very open rule for reading, be sure this is intended.
+    // For anime data, you might want a specific path like /anime/{animeId}
     match /{document=**} {
-      allow read, write: if false;
+      // Anyone can read any document not covered by more specific rules.
+      // For production, you should restrict this further, e.g., only allow reads on specific public collections.
+      allow read: if true;
+
+      // Only authenticated users can create, update, or delete documents
+      // not covered by more specific rules.
+      // This prevents anonymous users from writing to arbitrary collections.
+      allow create, update, delete: if request.auth != null;
     }
   }
 }
