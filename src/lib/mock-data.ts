@@ -101,7 +101,11 @@ export const mockAnimeData: Anime[] = [
     synopsis: 'In a world where hunters with magical abilities battle deadly monsters to protect humanity, a notoriously weak hunter Jinwoo Sung finds himself in a relentless struggle for survival.',
     averageRating: 4.8,
     type: 'TV',
-    episodes: placeholderEpisodes.map((ep, i) => ({...ep, id: `sl-e${i+1}`, title: `SL ${ep.title}`})),
+    episodes: [
+      { id: 'sl-e1', title: 'Episode 1: The Weakest Hunter', episodeNumber: 1, url: 'https://playertest.longtailvideo.com/adaptive/wowzaid3/playlist.m3u8', duration: '24min', thumbnail: `https://picsum.photos/seed/sl-e1-thumb/320/180` },
+      { id: 'sl-e2', title: 'Episode 2: The Reawakening', episodeNumber: 2, url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4', duration: '23min', thumbnail: `https://picsum.photos/seed/sl-e2-thumb/320/180` },
+      { id: 'sl-e3', title: 'Episode 3: The First Dungeon', episodeNumber: 3, url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-1080p.mp4', duration: '25min', thumbnail: `https://picsum.photos/seed/sl-e3-thumb/320/180` },
+    ],
   },
   {
     id: '8',
