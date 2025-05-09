@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -9,8 +10,8 @@ import { Loader2, Wand2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { mockAnimeData } from '@/lib/mock-data'; // For placeholder display
 
-// Simulate user watch history
-const mockWatchHistory = ['Attack on Titan', 'Jujutsu Kaisen'];
+// Simulate user watch history - updated to reflect reduced mock data
+const mockWatchHistory = ['Attack on Titan', 'Solo Leveling'];
 
 export default function RecommendationsSection() {
   const [recommendations, setRecommendations] = useState<Anime[]>([]);
@@ -21,26 +22,30 @@ export default function RecommendationsSection() {
     setIsLoading(true);
     setError(null);
     try {
-      // This assumes the user is authenticated and watchHistory is available.
-      // For now, using mockWatchHistory.
       const result = await generateAnimeRecommendations({ watchHistory: mockWatchHistory });
       
-      // The AI flow returns titles. We need to map these to full Anime objects.
-      // This is a placeholder: in a real app, you'd fetch details for these titles.
       const detailedRecommendations = result.recommendations
-        .map(title => mockAnimeData.find(anime => anime.title.toLowerCase().includes(title.toLowerCase())) || {
-          id: title.replace(/\s+/g, '-').toLowerCase(), // crude id
-          title: title,
-          coverImage: `https://picsum.photos/seed/${title.replace(/\s+/g, '')}/300/450`,
-          year: new Date().getFullYear(),
-          genre: ['Recommended'],
-          status: 'Ongoing', // Default status
-          synopsis: `An exciting anime recommended just for you: ${title}.`,
-          type: 'TV',
-        } as Anime)
+        .map(title => {
+          const found = mockAnimeData.find(anime => anime.title.toLowerCase().includes(title.toLowerCase()));
+          if (found) return found;
+          // Create a fallback if not found in the small mock dataset
+          return {
+            id: title.replace(/\s+/g, '-').toLowerCase() + `-${Math.random().toString(36).substr(2, 5)}`, // more unique id
+            title: title,
+            coverImage: `https://picsum.photos/seed/${title.replace(/\s+/g, '')}/300/450`,
+            bannerImage: `https://picsum.photos/seed/${title.replace(/\s+/g, '')}-banner/1200/400`,
+            year: new Date().getFullYear(),
+            genre: ['Recommended'],
+            status: 'Ongoing',
+            synopsis: `An exciting anime recommended just for you: ${title}. Details may be limited.`,
+            type: 'TV',
+            episodes: [], // No episodes for purely AI generated titles not in mock
+            averageRating: Math.floor(Math.random() * (50 - 35) + 35) / 10, // Random rating 3.5-4.9
+          } as Anime;
+        })
         .filter(anime => anime !== undefined) as Anime[];
 
-      setRecommendations(detailedRecommendations.slice(0, 5)); // Limit to 5 recommendations
+      setRecommendations(detailedRecommendations.slice(0, 5));
     } catch (e) {
       console.error("Failed to fetch recommendations:", e);
       setError("Could not load recommendations. Please try again.");
@@ -49,7 +54,6 @@ export default function RecommendationsSection() {
     }
   };
 
-  // Fetch recommendations on component mount or when watch history changes (if real)
   useEffect(() => {
     fetchRecommendations();
   }, []);
@@ -75,9 +79,9 @@ export default function RecommendationsSection() {
       )}
 
       {isLoading && recommendations.length === 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
           {[...Array(5)].map((_, index) => (
-            <div key={index} className="bg-card p-4 rounded-lg shadow-md animate-pulse">
+            <div key={index} className="bg-card p-2 sm:p-3 rounded-lg shadow-md animate-pulse w-[45vw] max-w-[180px] h-[270px]">
               <div className="aspect-[2/3] bg-muted rounded mb-2"></div>
               <div className="h-4 bg-muted rounded w-3/4 mb-1"></div>
               <div className="h-3 bg-muted rounded w-1/2"></div>
@@ -93,7 +97,7 @@ export default function RecommendationsSection() {
       )}
 
       {recommendations.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-4 sm:gap-x-4 place-items-center sm:place-items-stretch">
           {recommendations.map((anime) => (
             <AnimeCard key={anime.id} anime={anime} />
           ))}
@@ -102,3 +106,4 @@ export default function RecommendationsSection() {
     </section>
   );
 }
+

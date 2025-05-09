@@ -18,50 +18,58 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 };
 
 export default function Home() {
-  const trendingAnime = shuffleArray(mockAnimeData).slice(0, 10);
-  const popularAnime = shuffleArray(mockAnimeData).slice(0, 10);
+  const trendingAnime = shuffleArray([...mockAnimeData]).slice(0, 10); // Use spread to avoid mutating original
+  const popularAnime = shuffleArray([...mockAnimeData]).slice(0, 10);
   const recentlyAddedAnime = [...mockAnimeData].sort((a,b) => b.year - a.year).slice(0,10);
-  const featuredAnime = mockAnimeData.find(anime => anime.id === '8') || mockAnimeData[0];
+  
+  // Make featuredAnime selection robust: try specific ID, fallback to first, then null
+  let featuredAnime = mockAnimeData.find(anime => anime.id === '7'); // Try Solo Leveling (ID '7')
+  if (!featuredAnime && mockAnimeData.length > 0) {
+    featuredAnime = mockAnimeData[0]; // Fallback to the first anime in the (reduced) list
+  }
+
 
   return (
     <>
       {/* Hero Section */}
-      <section className="relative h-[60vh] md:h-[75vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)]"> {/* Adjust for header height */}
-        <div className="absolute inset-0">
-          <Image
-            src={featuredAnime.bannerImage || `https://picsum.photos/seed/${featuredAnime.id}-hero/1600/900`}
-            alt={`${featuredAnime.title} banner`}
-            fill
-            style={{ objectFit: 'cover' }}
-            className="opacity-60"
-            priority
-            data-ai-hint="anime landscape"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent"></div>
-        </div>
-        <Container className="relative z-10 pb-12 md:pb-20">
-          <div className="max-w-xl">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 leading-tight text-foreground">
-              {featuredAnime.title}
-            </h1>
-            <p className="text-base md:text-lg text-muted-foreground mb-6 line-clamp-3">
-              {featuredAnime.synopsis}
-            </p>
-            <div className="flex flex-wrap gap-2 sm:gap-4">
-              <Button asChild size="lg" className="btn-primary-gradient">
-                <Link href={`/play/${featuredAnime.id}`}>
-                  Watch Now <ChevronRight className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg" className="border-foreground/50 text-foreground hover:bg-foreground/10">
-                <Link href={`/anime/${featuredAnime.id}`}>More Info</Link>
-              </Button>
-            </div>
+      {featuredAnime && (
+        <section className="relative h-[60vh] md:h-[75vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)]"> {/* Adjust for header height */}
+          <div className="absolute inset-0">
+            <Image
+              src={featuredAnime.bannerImage || `https://picsum.photos/seed/${featuredAnime.id}-hero/1600/900`}
+              alt={`${featuredAnime.title} banner`}
+              fill
+              style={{ objectFit: 'cover' }}
+              className="opacity-60"
+              priority
+              data-ai-hint="anime landscape action"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent"></div>
           </div>
-        </Container>
-      </section>
+          <Container className="relative z-10 pb-12 md:pb-20">
+            <div className="max-w-xl">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 leading-tight text-foreground">
+                {featuredAnime.title}
+              </h1>
+              <p className="text-base md:text-lg text-muted-foreground mb-6 line-clamp-3">
+                {featuredAnime.synopsis}
+              </p>
+              <div className="flex flex-wrap gap-2 sm:gap-4">
+                <Button asChild size="lg" className="btn-primary-gradient">
+                  <Link href={`/play/${featuredAnime.id}`}>
+                    Watch Now <ChevronRight className="ml-2 h-5 w-5" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="border-foreground/50 text-foreground hover:bg-foreground/10">
+                  <Link href={`/anime/${featuredAnime.id}`}>More Info</Link>
+                </Button>
+              </div>
+            </div>
+          </Container>
+        </section>
+      )}
       
-      <Container className="overflow-hidden"> {/* Added overflow-hidden to container to help with responsiveness */}
+      <Container className="overflow-x-clip"> {/* Changed overflow-hidden to overflow-x-clip to prevent horizontal scroll issues */}
         <AnimeCarousel title="Trending Now" animeList={trendingAnime} />
         <AnimeCarousel title="Popular Choices" animeList={popularAnime} />
         <AnimeCarousel title="Recently Added" animeList={recentlyAddedAnime} />
