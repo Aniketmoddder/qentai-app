@@ -18,10 +18,6 @@ import Hls from 'hls.js';
 
 // Dynamically import Plyr to avoid SSR issues
 import dynamic from 'next/dynamic';
-import type { APITypes as PlyrReactAPITypes } from 'plyr-react'; // Renamed to avoid conflict
-import 'plyr-react/plyr.css';
-
-
 const Plyr = dynamic(() => import('plyr-react').then((mod) => mod.default), {
   ssr: false,
   loading: () => (
@@ -30,6 +26,7 @@ const Plyr = dynamic(() => import('plyr-react').then((mod) => mod.default), {
     </div>
   ),
 });
+import 'plyr-react/plyr.css';
 
 
 async function getAnimeDetails(id: string): Promise<Anime | undefined> {
@@ -44,7 +41,10 @@ const getMimeType = (url: string): string | undefined => {
   if (url.endsWith('.mp4')) {
     return 'video/mp4';
   }
-  return undefined;
+  // Add more MIME types if needed, e.g., for WebM, Ogg
+  // if (url.endsWith('.webm')) return 'video/webm';
+  // if (url.endsWith('.ogv')) return 'video/ogg';
+  return undefined; // Let Plyr attempt to infer or handle if not explicitly known
 };
 
 
@@ -60,8 +60,9 @@ export default function PlayerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const plyrRef = useRef<PlyrReactAPITypes | null>(null); 
-  const hlsRef = useRef<Hls | null>(null);
+  const plyrApiRef = useRef<PlyrType | null>(null);
+  const hlsInstanceRef = useRef<Hls | null>(null);
+  const videoElementRef = useRef<HTMLVideoElement | null>(null);
 
 
   useEffect(() => {
@@ -85,7 +86,6 @@ export default function PlayerPage() {
             if (foundEpisode) initialEpisode = foundEpisode;
           } else if (details.episodes && details.episodes.length > 0) {
             initialEpisode = details.episodes[0];
-             // Update URL only if it's different to avoid unnecessary history entries
             if (searchParams.get('episode') !== initialEpisode.id) {
                  router.replace(`/play/${animeId}?episode=${initialEpisode.id}`, { scroll: false });
             }
@@ -102,103 +102,7 @@ export default function PlayerPage() {
       }
     };
     fetchDetails();
-  }, [animeId, searchParams, router]); // router added as dependency
-
-  useEffect(() => {
-    return () => {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
-    };
-  }, []);
-
-  const handlePlayerError = useCallback((plyrErrorSource: any ) => {
-    let errorMessage = "An unknown player error occurred.";
-    if (plyrErrorSource && typeof plyrErrorSource === 'object') {
-        if (plyrErrorSource.message) errorMessage = plyrErrorSource.message;
-        else if (plyrErrorSource.error && plyrErrorSource.error.message) errorMessage = plyrErrorSource.error.message;
-        else if (plyrErrorSource.source && plyrErrorSource.source.error && plyrErrorSource.source.error.message) errorMessage = plyrErrorSource.source.error.message;
-    } else if (typeof plyrErrorSource === 'string') {
-        errorMessage = plyrErrorSource;
-    }
-    setError(`Player error: ${errorMessage}`);
-}, [setError]);
-
-
-  const setupHlsOrMp4 = useCallback((player: PlyrType.Player) => {
-    if (!currentEpisode?.url) {
-        if (hlsRef.current) {
-            hlsRef.current.destroy();
-            hlsRef.current = null;
-        }
-        if (player && player.media && (player.media as HTMLVideoElement).src) {
-             (player.media as HTMLVideoElement).src = ''; 
-        }
-        return;
-    }
-    
-    const sourceUrl = currentEpisode.url;
-    const mimeType = getMimeType(sourceUrl);
-    const videoElement = player.media as HTMLVideoElement;
-
-    if (!videoElement) {
-        console.error("Plyr media element not found for HLS/MP4 setup.");
-        setError("Player media element could not be accessed.");
-        return;
-    }
-
-    if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-    }
-    
-    if (player.playing) player.stop();
-
-    if (Hls.isSupported() && mimeType === 'application/x-mpegURL') {
-        const hlsInstance = new Hls({
-            debug: process.env.NODE_ENV === 'development',
-            capLevelToPlayerSize: true, 
-            maxMaxBufferLength: 30, 
-            maxBufferHole: 0.5,
-        });
-        hlsRef.current = hlsInstance;
-
-        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
-            console.error('HLS.js Error:', event, data);
-            if (data.fatal) {
-                switch (data.type) {
-                    case Hls.ErrorTypes.NETWORK_ERROR:
-                        setError(`Network error loading video: ${data.details}.`);
-                        break;
-                    case Hls.ErrorTypes.MEDIA_ERROR:
-                        setError(`Media error: ${data.details}.`);
-                        break;
-                    default:
-                        setError(`Video stream error: ${data.details}.`);
-                        break;
-                }
-                if(hlsRef.current) {
-                    if (hlsRef.current.media) hlsRef.current.detachMedia();
-                    hlsRef.current.destroy();
-                    hlsRef.current = null;
-                }
-            }
-        });
-        
-        hlsInstance.loadSource(sourceUrl);
-        hlsInstance.attachMedia(videoElement);
-        // player.play(); // Plyr should handle play, or autoPlay option
-        
-    } else if (mimeType === 'video/mp4') {
-      // For MP4, Plyr handles it via the `source` prop update.
-      // No direct HLS setup needed. Player should re-initialize with new source.
-    } else if (sourceUrl) { 
-        console.warn("Unsupported video type or HLS not supported for this source:", mimeType, sourceUrl);
-        setError("Unsupported video format or HLS is not supported by your browser.");
-    }
-  }, [currentEpisode, setError]);
-
+  }, [animeId, searchParams, router]);
 
   const handleEpisodeSelect = useCallback((episode: Episode) => {
     setError(null); 
@@ -229,19 +133,14 @@ export default function PlayerPage() {
     const sourceUrl = currentEpisode.url;
     const mimeType = getMimeType(sourceUrl);
 
-    let plyrSources: PlyrType.Source[] = [];
-    if (mimeType === 'application/x-mpegURL' || mimeType === 'video/mp4') {
-      plyrSources.push({ src: sourceUrl, type: mimeType }); 
-    } else if (sourceUrl) { 
-        plyrSources.push({src: sourceUrl }); 
-    } else {
-        return null;
-    }
-
     return {
       type: 'video' as const,
       title: currentEpisode.title,
-      sources: plyrSources,
+      sources: [{
+        src: sourceUrl,
+        // type: mimeType, // Plyr can often infer type, but providing it can be more robust
+        ...(mimeType && { type: mimeType }) // Conditionally add type if known
+      }],
       poster: currentEpisode.thumbnail || anime?.coverImage || `https://picsum.photos/seed/${animeId}-${currentEpisode.id}-poster/1280/720`,
     };
   }, [currentEpisode, anime?.coverImage, animeId]);
@@ -254,45 +153,155 @@ export default function PlayerPage() {
     ],
     settings: ['captions', 'quality', 'speed', 'loop'],
     tooltips: { controls: true, seek: true },
-    autoplay: false, // Autoplay can be problematic, manage manually if needed
+    autoplay: false,
     loop: { active: false },
     keyboard: { focused: true, global: false },
-    // Ensure html5 is enabled for HLS.js and MP4
-    html5: {
-      hls: {
-        // HLS.js specific options if Plyr is managing it internally (not our case here as we manage HLS externally)
-        // qualityLevels: true, // Example
-      }
-    }
+    // No specific HLS options here if we manage HLS.js externally via hlsInstanceRef
+    // If relying on Plyr's internal HLS.js, options would go under html5.hls
   }), []);
 
-  useEffect(() => {
-    const playerInstanceAPI = plyrRef.current?.plyr; // Actual Plyr.JS instance
-    if (playerInstanceAPI && currentEpisode?.url) {
-      // console.log("useEffect [currentEpisode, plyrRef.current?.plyr]: Setting up HLS or MP4 for", currentEpisode.title);
-      setupHlsOrMp4(playerInstanceAPI);
-
-      // Event listeners setup
-      const onEnded = () => handleNextEpisode();
-      // Note: For HLS.js errors, they are handled inside setupHlsOrMp4. 
-      // This 'error' listener is for Plyr's own media errors (e.g. non-HLS MP4 issues).
-      const onError = (event: any) => handlePlayerError(event.detail.plyr); 
-
-      playerInstanceAPI.on('ended', onEnded);
-      playerInstanceAPI.on('error', onError);
-      
-      return () => {
-        // console.log("useEffect [currentEpisode, plyrRef.current?.plyr]: Cleanup. Detaching listeners for", currentEpisode?.title);
-        try {
-          playerInstanceAPI.off('ended', onEnded);
-          playerInstanceAPI.off('error', onError);
-        } catch (e) {
-          // console.warn("Error during event listener cleanup:", e);
-        }
-      };
+   // Callback for when Plyr component is ready and its internal Plyr.JS instance is available
+   const handlePlayerReady = useCallback((playerInstance: PlyrType) => {
+    // console.log('Plyr instance ready:', playerInstance);
+    plyrApiRef.current = playerInstance;
+    if (playerInstance?.media instanceof HTMLVideoElement) {
+      videoElementRef.current = playerInstance.media;
+      // console.log('Video element obtained:', videoElementRef.current);
+    } else {
+      // console.warn("Plyr media element is not an HTMLVideoElement or not found on ready.");
     }
-  }, [currentEpisode, setupHlsOrMp4, handleNextEpisode, handlePlayerError]); // plyrRef is stable, actual instance accessed inside
+  }, []);
 
+  // Effect for HLS.js setup and source changes
+  useEffect(() => {
+    const player = plyrApiRef.current; // This is the Plyr.JS instance
+    const videoEl = videoElementRef.current; // This is the <video> element
+
+    if (!player || !videoEl || !currentEpisode?.url) {
+      // console.log('Player, video element, or episode URL not ready for HLS/MP4 setup. Skipping.');
+      return;
+    }
+    
+    // console.log(`Attempting to set up player for: ${currentEpisode.title} (URL: ${currentEpisode.url})`);
+    const sourceUrl = currentEpisode.url;
+    const mimeType = getMimeType(sourceUrl);
+
+    // 1. Clean up previous HLS instance
+    if (hlsInstanceRef.current) {
+      // console.log('Destroying previous HLS instance.');
+      hlsInstanceRef.current.destroy();
+      hlsInstanceRef.current = null;
+    }
+
+    // 2. Setup new source
+    if (Hls.isSupported() && mimeType === 'application/x-mpegURL') {
+      // console.log('Setting up HLS.js for M3U8 stream.');
+      setError(null); // Clear previous errors
+      const hls = new Hls({
+        debug: process.env.NODE_ENV === 'development',
+        // Consider adding more HLS config if needed, e.g., capLevelToPlayerSize: true
+      });
+      hlsInstanceRef.current = hls;
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        // console.log('HLS.js: Manifest parsed.');
+        // player.play(); // Consider if autoplay is desired after manifest parsing
+      });
+
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        console.error('HLS.js Error:', event, data);
+        if (data.fatal) {
+          let errorMsg = `Video stream error: ${data.details}`;
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              errorMsg = `Video network error: ${data.details}. Check network or CORS.`;
+              // Attempt to recover network errors
+              // hls.startLoad(); 
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              errorMsg = `Video media error: ${data.details}. Stream might be corrupt.`;
+              // Attempt to recover media errors
+              // hls.recoverMediaError();
+              break;
+            default:
+              // For other fatal errors, destroying HLS might be safest
+              // if (hlsInstanceRef.current) {
+              //   hlsInstanceRef.current.destroy();
+              //   hlsInstanceRef.current = null;
+              // }
+              break;
+          }
+          setError(errorMsg);
+        } else {
+            // Non-fatal errors, log them
+            // console.warn('HLS.js non-fatal error:', data.details);
+        }
+      });
+
+      hls.loadSource(sourceUrl);
+      hls.attachMedia(videoEl);
+      // Plyr component receives the sourceUrl via its `source` prop (from `videoSource` memo).
+      // HLS.js takes control of streaming for the `videoEl`.
+    } else if (mimeType === 'video/mp4' || !mimeType) { // MP4 or if Plyr can infer
+      // console.log('Setting up for MP4 or direct Plyr handling. Plyr source prop should handle this.');
+      setError(null); // Clear previous errors
+      // For MP4s, Plyr handles playback directly if `source` prop is set.
+      // No specific HLS.js action needed here.
+      // Ensure the <Plyr source={...}> prop is correctly updated by `videoSource` memo.
+    } else {
+      // console.warn(`Unsupported video type: ${mimeType} for URL: ${sourceUrl}`);
+      setError(`Unsupported video type: ${mimeType}`);
+    }
+
+    return () => {
+      // console.log('Cleanup: Destroying HLS instance in useEffect for currentEpisode.url or player/videoEl change.');
+      if (hlsInstanceRef.current) {
+        hlsInstanceRef.current.destroy();
+        hlsInstanceRef.current = null;
+      }
+    };
+  }, [currentEpisode?.url, plyrApiRef, videoElementRef, setError]); // Re-run if episode URL or player/video refs change
+
+  // Effect for Plyr event listeners (e.g., 'ended', 'error' from Plyr itself)
+  useEffect(() => {
+    const player = plyrApiRef.current;
+    if (!player) return;
+
+    // console.log('Attaching Plyr event listeners to Plyr.JS instance.');
+    
+    const onPlayerError = (event: any) => {
+      const plyrError = event.detail.plyr; // Plyr's error object
+      // console.error('Plyr Player Error Event:', plyrError);
+      // Avoid double-reporting HLS errors if HLS.js already set an error
+      if (!error && (!hlsInstanceRef.current || !hlsInstanceRef.current.streamController /* crude check if HLS is active */)) {
+        setError(`Player error: ${plyrError.message || 'Unknown player error'}`);
+      }
+    };
+
+    const onPlayerEnded = () => {
+      // console.log('Plyr: Video ended, calling handleNextEpisode.');
+      handleNextEpisode();
+    };
+    
+    if (typeof player.on === 'function') {
+      player.on('error', onPlayerError);
+      player.on('ended', onPlayerEnded);
+    } else {
+      // console.warn("Plyr instance does not have 'on' method when trying to attach listeners.");
+    }
+
+    return () => {
+      // console.log('Cleanup: Removing Plyr event listeners from Plyr.JS instance.');
+      if (player && typeof player.off === 'function') {
+        try {
+          player.off('error', onPlayerError);
+          player.off('ended', onPlayerEnded);
+        } catch(e) {
+          // console.warn("Error removing Plyr event listeners during cleanup:", e);
+        }
+      }
+    };
+  }, [plyrApiRef, handleNextEpisode, setError, error]); // `error` added to dependency to avoid re-attaching if error already set by HLS
 
   if (isLoading) {
     return (
@@ -303,7 +312,7 @@ export default function PlayerPage() {
     );
   }
 
-  if (error && !anime && !currentEpisode) {
+  if (error && !anime && !currentEpisode) { // Initial load error before anime/episode selected
     return (
       <Container className="flex flex-col items-center justify-center min-h-[calc(100vh-var(--header-height,4rem)-1px)] py-12 text-center">
         <AlertTriangle className="w-12 h-12 text-destructive mb-4" />
@@ -337,11 +346,10 @@ export default function PlayerPage() {
             <div className="aspect-video bg-black rounded-lg overflow-hidden shadow-2xl mb-4 w-full relative">
                 {Plyr && videoSource ? (
                     <Plyr
-                        key={currentEpisode?.id || 'plyr-player'} 
-                        ref={plyrRef}
+                        key={currentEpisode?.id || 'plyr-player'} // Force re-mount on episode change if needed
                         source={videoSource} 
                         options={playerOptions}
-                        // onReady prop removed as it was causing warnings and logic is handled in useEffect
+                        onReady={handlePlayerReady} // Critical for getting player instance and video element
                         className="[&>.plyr]:rounded-lg"
                     />
                 ) : (
@@ -350,16 +358,20 @@ export default function PlayerPage() {
                     <p className="mt-4 text-lg">
                         {(anime.episodes && anime.episodes.length > 0 && !currentEpisode) ? 'Select an episode to start watching' : 
                          (!anime.episodes || anime.episodes.length === 0) ? 'No episodes available for this anime.' : 
-                         (error && !currentEpisode) ? error :
+                         (error && !currentEpisode) ? error : // Show initial error if player not ready
                          'Preparing player...'}
                     </p>
                 </div>
                 )}
-                {error && currentEpisode && (
+                {error && currentEpisode && ( // Show error overlay if an episode is selected but error occurs
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 p-4 text-center z-10">
                     <AlertTriangle className="w-10 h-10 text-destructive mb-2" />
                     <p className="text-destructive-foreground text-sm">{error}</p>
-                    <Button variant="outline" size="sm" className="mt-3" onClick={() => {setError(null); if(currentEpisode) handleEpisodeSelect(currentEpisode)}}>Retry</Button>
+                    <Button variant="outline" size="sm" className="mt-3" onClick={() => {setError(null); if(currentEpisode) { 
+                        // Trigger re-setup by slightly changing currentEpisode state or re-calling select.
+                        // For simplicity, re-selecting the episode.
+                        handleEpisodeSelect(currentEpisode);
+                    }}}>Retry</Button>
                   </div>
                 )}
             </div>

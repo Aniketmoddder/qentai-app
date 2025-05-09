@@ -1,10 +1,10 @@
 import type { Anime, Episode } from '@/types/anime';
 
-// Reduced set of placeholder episodes for simplicity, can be expanded later
+// Common episodes, can be used by multiple anime series
 const commonEpisodes: Episode[] = [
-  { id: 'ep1', title: 'Episode 1: The Adventure Begins', episodeNumber: 1, url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-576p.mp4', duration: '24min', thumbnail: 'https://picsum.photos/seed/ep1commonthumb/320/180' },
-  { id: 'ep2', title: 'Episode 2: Facing the Unknown', episodeNumber: 2, url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4', duration: '23min', thumbnail: 'https://picsum.photos/seed/ep2commonthumb/320/180' },
-  { id: 'ep3', title: 'Episode 3: Trials and Tribulations', episodeNumber: 3, url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-1080p.mp4', duration: '25min', thumbnail: 'https://picsum.photos/seed/ep3commonthumb/320/180' },
+  { id: 'ep1-common', title: 'The Journey Unfolds', episodeNumber: 1, url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-576p.mp4', duration: '24min', thumbnail: 'https://picsum.photos/seed/ep1commonthumb/320/180' },
+  { id: 'ep2-common', title: 'Secrets Revealed', episodeNumber: 2, url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', duration: '23min', thumbnail: 'https://picsum.photos/seed/ep2commonthumb/320/180' },
+  { id: 'ep3-common', title: 'The Final Confrontation', episodeNumber: 3, url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-1080p.mp4', duration: '25min', thumbnail: 'https://picsum.photos/seed/ep3commonthumb/320/180' },
 ];
 
 export const mockAnimeData: Anime[] = [
@@ -21,7 +21,7 @@ export const mockAnimeData: Anime[] = [
     type: 'TV',
     episodes: [
       { id: 'sl-e1', title: 'The Weakest Hunter', episodeNumber: 1, url: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4', duration: '24min', thumbnail: `https://picsum.photos/seed/sl-e1-thumb/320/180` },
-      { id: 'sl-e2', title: 'The Reawakening', episodeNumber: 2, url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4', duration: '23min', thumbnail: `https://picsum.photos/seed/sl-e2-thumb/320/180` },
+      { id: 'sl-e2', title: 'The Reawakening', episodeNumber: 2, url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', duration: '23min', thumbnail: `https://picsum.photos/seed/sl-e2-thumb/320/180` },
       { id: 'sl-e3', title: 'The First Dungeon', episodeNumber: 3, url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-1080p.mp4', duration: '25min', thumbnail: `https://picsum.photos/seed/sl-e3-thumb/320/180` },
     ],
   },
@@ -36,7 +36,7 @@ export const mockAnimeData: Anime[] = [
     synopsis: 'After his hometown is destroyed and his mother is killed, young Eren Jaeger vows to cleanse the earth of the giant humanoid Titans that have brought humanity to the brink of extinction.',
     averageRating: 4.8,
     type: 'TV',
-    episodes: commonEpisodes.map((ep, i) => ({...ep, id: `aot-e${i+1}`, title: `Titan Episode ${ep.episodeNumber}: ${ep.title.split(': ')[1]}`})),
+    episodes: commonEpisodes.map((ep, i) => ({...ep, id: `aot-e${i+1}`, title: `Titan Episode ${ep.episodeNumber}: ${ep.title.split(': ')[1]}`, url: ep.url.includes('google') ? 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4' : ep.url })),
   },
   {
     id: '6',
