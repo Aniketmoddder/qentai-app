@@ -14,14 +14,15 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'; // TooltipProvider is already in RootLayout
 import type PlyrType from 'plyr';
-import dynamic from 'next/dynamic';
+import Hls from 'hls.js';
 
 // Dynamically import Plyr to avoid SSR issues
 const Plyr = dynamic(() => import('plyr-react').then((mod) => mod.default), {
   ssr: false,
-  loading: () => <div className="w-full aspect-video bg-black flex items-center justify-center text-muted-foreground rounded-lg"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>,
+  loading: () => <div className="w-full aspect-video bg-card flex items-center justify-center text-muted-foreground rounded-lg"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>,
 });
 import 'plyr-react/plyr.css';
+import dynamic from 'next/dynamic';
 
 
 // Simulate fetching anime data by ID (client-side for this example)
@@ -38,8 +39,7 @@ const getMimeType = (url: string): string | undefined => {
   if (url.endsWith('.mp4')) {
     return 'video/mp4';
   }
-  // Add other types if needed, e.g. 'video/webm'
-  return undefined; // Let the browser infer if not specified or recognized
+  return undefined;
 };
 
 
@@ -56,6 +56,7 @@ export default function PlayerPage() {
   const [error, setError] = useState<string | null>(null);
   
   const plyrRef = useRef<{ plyr: PlyrType } | null>(null);
+  const hlsRef = useRef<Hls | null>(null);
 
 
   useEffect(() => {
@@ -102,21 +103,43 @@ export default function PlayerPage() {
     if (playerInstance && currentEpisode?.url) {
         const sourceUrl = currentEpisode.url;
         const mimeType = getMimeType(sourceUrl);
-        
-        playerInstance.source = {
-            type: 'video',
-            title: currentEpisode.title,
-            sources: [
-                {
-                    src: sourceUrl,
-                    provider: 'html5',
-                    ...(mimeType && { type: mimeType }),
-                },
-            ],
-            poster: currentEpisode.thumbnail || anime?.coverImage || `https://picsum.photos/seed/${animeId}-${currentEpisode.id}-poster/1280/720`,
+
+        if (hlsRef.current) {
+          hlsRef.current.destroy();
+          hlsRef.current = null;
+        }
+
+        let plyrSource: PlyrType.SourceInfo = {
+          type: 'video',
+          title: currentEpisode.title,
+          sources: [
+            {
+              src: sourceUrl,
+              provider: 'html5', // Plyr will use html5 for mp4 and m3u8 if Hls.js is integrated
+              ...(mimeType && { type: mimeType }),
+            },
+          ],
+          poster: currentEpisode.thumbnail || anime?.coverImage || `https://picsum.photos/seed/${animeId}-${currentEpisode.id}-poster/1280/720`,
         };
+        
+        if (sourceUrl.endsWith('.m3u8') && Hls.isSupported()) {
+            const hls = new Hls();
+            hlsRef.current = hls;
+            hls.loadSource(sourceUrl);
+            // Bind hls.js to the video element Plyr uses
+            // Ensure the video element is available. This might require waiting for Plyr to mount it.
+            // A common way is to pass the video element to hls.attachMedia(videoElement)
+            // Plyr-react might not expose the video element directly or easily for this.
+            // The 'ready' event of Plyr might be a place to do this, but Plyr's source setter should ideally handle it.
+            // For plyr-react, it often handles HLS internally if `type: 'application/x-mpegURL'` is set.
+            // Let's rely on Plyr's HLS.js integration through type setting.
+            if (playerInstance.media instanceof HTMLVideoElement) {
+              hls.attachMedia(playerInstance.media);
+            }
+        }
+        playerInstance.source = plyrSource;
     }
-  }, [currentEpisode, anime, animeId, plyrRef.current?.plyr]);
+  }, [currentEpisode, anime, animeId]);
 
 
   const handleEpisodeSelect = useCallback((episode: Episode) => {
@@ -152,15 +175,15 @@ export default function PlayerPage() {
       sources: [
         {
           src: sourceUrl,
-          provider: 'html5' as const,
-          ...(mimeType && { type: mimeType }),
+          provider: 'html5' as const, // Plyr handles m3u8 with Hls.js if type is correct
+          ...(mimeType && { type: mimeType }), // Important for HLS: type: 'application/x-mpegURL'
         },
       ],
       poster: currentEpisode.thumbnail || anime?.coverImage || `https://picsum.photos/seed/${animeId}-${currentEpisode.id}-poster/1280/720`,
     };
   }, [currentEpisode, anime?.coverImage, animeId]);
   
-  const playerOptions = useMemo<PlyrType.Options>(() => ({ // Added useMemo for options
+  const playerOptions = useMemo<PlyrType.Options>(() => ({ 
     controls: [
         'play-large', 'rewind', 'play', 'fast-forward', 'progress', 
         'current-time', 'duration', 'mute', 'volume', 'captions', 
@@ -169,17 +192,17 @@ export default function PlayerPage() {
     settings: ['captions', 'quality', 'speed', 'loop'],
     quality: {
       default: 720, 
-      options: [1080, 720, 480], // Example qualities
+      options: [1080, 720, 480], 
     },
     tooltips: { controls: true, seek: true },
     autoplay: false,
     loop: { active: false },
     keyboard: { focused: true, global: false },
-    // Consider adding hls.js config here if needed for broader M3U8 support
+    // Plyr specific HLS config if needed, often not required if source type is set correctly
+    // For HLS.js to work with Plyr, ensure Hls is available globally or Plyr is configured to use it.
+    // Plyr has built-in HLS.js support that it tries to use if the source type indicates HLS.
     // config: {
-    //   hls: {
-    //     // hls.js specific options
-    //   }
+    //   forceHLS: true, // Might be an option depending on Plyr version/wrapper
     // }
   }), []);
 
@@ -193,19 +216,24 @@ export default function PlayerPage() {
       };
       
       playerInstance.on('ended', onEnded);
-      // Example: playerInstance.on('error', (event) => console.error("Plyr Error: ", event.detail.plyr.source));
+      // playerInstance.on('error', (event) => console.error("Plyr Error: ", event.detail.plyr.source));
       
       return () => {
-        if (playerInstance.ready) { // Check if player is ready before calling off
-          try {
-            playerInstance.off('ended', onEnded);
-          } catch(e) {
-            // console.warn("Error removing Plyr event listener:", e);
-          }
+        // Check if player instance exists and is ready to avoid errors during cleanup
+        if (plyrRef.current?.plyr && plyrRef.current.plyr.ready) {
+             try {
+                plyrRef.current.plyr.off('ended', onEnded);
+             } catch(e) {
+                // console.warn("Error removing Plyr event listener:", e);
+             }
+        }
+        if (hlsRef.current) {
+          hlsRef.current.destroy();
+          hlsRef.current = null;
         }
       };
     }
-  }, [handleNextEpisode, plyrRef.current?.plyr]); 
+  }, [handleNextEpisode]); // Removed plyrRef.current?.plyr from dependencies
 
 
   if (isLoading) {
@@ -251,9 +279,9 @@ export default function PlayerPage() {
             <div className="aspect-video bg-black rounded-lg overflow-hidden shadow-2xl mb-4 w-full relative">
                 {videoSource && Plyr ? (
                     <Plyr
-                        key={currentEpisode?.id || 'plyr-player'} // Add key to force re-render on episode change
+                        key={currentEpisode?.id || 'plyr-player'} 
                         ref={plyrRef}
-                        source={videoSource} // Initial source
+                        source={videoSource} 
                         options={playerOptions}
                         className="[&>.plyr]:rounded-lg"
                     />
@@ -314,8 +342,7 @@ export default function PlayerPage() {
               <ScrollArea className="flex-grow h-[calc(100vh-280px)] lg:h-[calc(100vh-var(--header-height,4rem)-180px)] pr-2 -mr-2 scrollbar-thin">
                 <div className="space-y-1.5">
                     {anime.episodes?.map((ep) => (
-                    <TooltipTrigger key={ep.id} asChild>
-                        <Tooltip delayDuration={200}>
+                    <Tooltip key={ep.id} delayDuration={200}>
                         <TooltipTrigger asChild>
                             <Button
                                 variant={currentEpisode?.id === ep.id ? 'secondary' : 'ghost'}
@@ -340,8 +367,7 @@ export default function PlayerPage() {
                             <p className="font-semibold">Ep {ep.episodeNumber}: {ep.title}</p>
                             {ep.duration && <p className="text-xs text-muted-foreground">{ep.duration}</p>}
                         </TooltipContent>
-                        </Tooltip>
-                    </TooltipTrigger>
+                    </Tooltip>
                     ))}
                     {(!anime.episodes || anime.episodes.length === 0) && (
                         <p className="text-sm text-muted-foreground py-4 text-center">No episodes available for this series.</p>
@@ -370,5 +396,3 @@ export default function PlayerPage() {
     </div>
   );
 }
-
-    
