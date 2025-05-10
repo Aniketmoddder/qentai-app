@@ -4,28 +4,14 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Container from '@/components/layout/container';
 import { getUniqueGenres } from '@/services/animeService';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tag, Zap, Film, Ghost, Compass, Drama, Rocket, Palette, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button'; // Added Button import
 
 export const metadata: Metadata = {
   title: 'Explore All Genres - Qentai',
   description: 'Discover anime by browsing through a comprehensive list of genres.',
-};
-
-const genreIcons: Record<string, React.ElementType> = {
-  'Action': Zap,
-  'Adventure': Compass,
-  'Comedy': Ghost, // Using Ghost for a playful take on comedy
-  'Drama': Drama,
-  'Fantasy': Palette, // Using Palette for creative fantasy worlds
-  'Sci-Fi': Rocket,
-  'Romance': HeartIcon, // Will define HeartIcon below for clarity
-  'Horror': Ghost,
-  'Mystery': Compass, // Re-using Compass for mystery/exploration
-  'Thriller': Zap, // Re-using Zap for intensity
-  'Sports': Rocket, // Re-using Rocket for dynamic sports
-  'Default': Tag,
 };
 
 // Simple Heart icon for Romance
@@ -43,6 +29,21 @@ const HeartIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
   </svg>
 );
+
+const genreIcons: Record<string, React.ElementType> = {
+  'Action': Zap,
+  'Adventure': Compass,
+  'Comedy': Ghost, // Using Ghost for a playful take on comedy
+  'Drama': Drama,
+  'Fantasy': Palette, // Using Palette for creative fantasy worlds
+  'Sci-Fi': Rocket,
+  'Romance': HeartIcon, 
+  'Horror': Ghost,
+  'Mystery': Compass, // Re-using Compass for mystery/exploration
+  'Thriller': Zap, // Re-using Zap for intensity
+  'Sports': Rocket, // Re-using Rocket for dynamic sports
+  'Default': Tag,
+};
 
 
 async function GenresDisplay() {
