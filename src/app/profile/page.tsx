@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -172,14 +173,14 @@ export default function ProfilePage() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 mb-6">
-          <TabsTrigger value="favorites" className="flex items-center gap-2">
+        <TabsList className="flex flex-wrap justify-start gap-1 p-1 mb-6 rounded-md bg-muted text-muted-foreground">
+          <TabsTrigger value="favorites" className="flex-auto sm:flex-initial data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-sm px-3 py-1.5 text-sm font-medium flex items-center gap-2">
             <Heart className="w-4 h-4" /> Favorites
           </TabsTrigger>
-          <TabsTrigger value="wishlist" className="flex items-center gap-2">
+          <TabsTrigger value="wishlist" className="flex-auto sm:flex-initial data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-sm px-3 py-1.5 text-sm font-medium flex items-center gap-2">
             <Bookmark className="w-4 h-4" /> Wishlist
           </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center gap-2">
+          <TabsTrigger value="settings" className="flex-auto sm:flex-initial data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-sm px-3 py-1.5 text-sm font-medium flex items-center gap-2">
             <Settings className="w-4 h-4" /> Account
           </TabsTrigger>
         </TabsList>
@@ -196,3 +197,4 @@ export default function ProfilePage() {
     </Container>
   );
 }
+
