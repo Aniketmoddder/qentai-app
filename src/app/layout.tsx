@@ -1,6 +1,6 @@
 
 import type { Metadata } from 'next';
-import { Montserrat, Roboto_Mono } from 'next/font/google'; // Changed Inter to Montserrat
+import { Zen_Dots, Roboto_Mono } from 'next/font/google'; // Changed Montserrat to Zen_Dots
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import QueryProvider from '@/components/providers/query-provider';
@@ -10,10 +10,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from '@/context/auth-context';
 
 
-const montserrat = Montserrat({ // Changed from inter
-  variable: '--font-montserrat', // Changed variable name
+const zenDots = Zen_Dots({ // New font: Zen Dots
+  variable: '--font-zen-dots',
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'], // Added more weights for premium feel
+  weight: ['400'], // Zen Dots typically comes in weight 400
   display: 'swap',
 });
 
@@ -37,7 +37,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark h-full overflow-x-hidden">
-      <body className={`${montserrat.variable} ${robotoMono.variable} font-sans antialiased flex flex-col min-h-full bg-background text-foreground overflow-x-hidden`}>
+      <body className={`${zenDots.variable} ${robotoMono.variable} font-sans antialiased flex flex-col min-h-full bg-background text-foreground overflow-x-hidden`}>
         <QueryProvider>
           <AuthProvider>
             <TooltipProvider delayDuration={0}>

@@ -7,9 +7,7 @@
 @tailwind utilities;
 
 
-body {
-  font-family: var(--font-montserrat), Arial, Helvetica, sans-serif; /* Changed from --font-inter */
-}
+/* Removed body font-family, as next/font and tailwind `font-sans` handles this */
 
 @layer base {
   :root {

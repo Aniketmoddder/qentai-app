@@ -27,7 +27,7 @@ export default {
     },
   	extend: {
       fontFamily: {
-        sans: ["var(--font-montserrat)", "system-ui", "sans-serif"], // Changed from --font-inter
+        sans: ["var(--font-zen-dots)", "system-ui", "sans-serif"], // Changed from --font-montserrat to --font-zen-dots
         mono: ["var(--font-roboto-mono)", "monospace"],
       },
   		colors: {
