@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import Container from '@/components/layout/container';
 import { Button } from '@/components/ui/button';
@@ -48,61 +48,44 @@ function AccessDeniedScreen() {
 
 
 export default function AdminPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, appUser } = useAuth(); // Get appUser from useAuth
   const router = useRouter();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const defaultTabFromUrl = searchParams.get('tab') || "dashboard";
   
-  const [currentUserAppRole, setCurrentUserAppRole] = useState<AppUserRole | null>(null);
-  const [isRoleLoading, setIsRoleLoading] = useState(true);
   const [effectiveAuthStatus, setEffectiveAuthStatus] = useState<EffectiveAuthStatus>('loading');
 
-
   useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
+    if (!authLoading) { // Auth context has resolved Firebase user
+      if (!user) { // No Firebase user
         router.push('/login?redirect=/admin');
         setEffectiveAuthStatus('unauthenticated');
-        setIsRoleLoading(false); // No role to load if no user
-      } else {
-        setIsRoleLoading(true);
-        const fetchRole = async () => {
-          try {
-            const appUser = await getAppUserById(user.uid);
-            if (appUser) {
-              setCurrentUserAppRole(appUser.role);
-              if (appUser.role === 'owner' || appUser.role === 'admin') {
-                setEffectiveAuthStatus('authorized');
-              } else {
-                toast({ variant: 'destructive', title: 'Unauthorized', description: 'You do not have permission to access this page.' });
-                router.push('/');
-                setEffectiveAuthStatus('unauthorized');
-              }
-            } else {
-              // Fallback for the first login of the owner before their role is set to 'owner' in DB
-              if (user.email === ADMIN_EMAIL) {
-                setCurrentUserAppRole('owner'); 
-                setEffectiveAuthStatus('authorized');
-              } else {
-                toast({ variant: 'destructive', title: 'Profile Error', description: 'User profile not found. Please contact support.' });
-                router.push('/');
-                setEffectiveAuthStatus('unauthorized');
-              }
-            }
-          } catch (err) {
-            console.error("Failed to fetch user role:", err);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not verify user role.' });
-            router.push('/');
-            setEffectiveAuthStatus('unauthorized');
-          } finally {
-            setIsRoleLoading(false);
-          }
-        };
-        fetchRole();
+      } else if (appUser === undefined) { // appUser still loading from AuthContext
+        setEffectiveAuthStatus('loading'); // Wait for appUser to be fetched by AuthProvider
+      } else if (appUser === null) { // Firebase user exists, but no appUser document (should be rare after upsert)
+         // This case might mean the upsert in AuthProvider is pending or failed.
+         // Or it's the very first login for the owner.
+        if (user.email === ADMIN_EMAIL) {
+          setEffectiveAuthStatus('authorized'); // Assume owner until role is fully set in DB by AuthProvider
+        } else {
+          toast({ variant: 'destructive', title: 'Profile Error', description: 'User profile not found or not fully loaded. Please try again or contact support.' });
+          router.push('/');
+          setEffectiveAuthStatus('unauthorized');
+        }
+      } else { // Both Firebase user and appUser (with role) are available
+        if (appUser.role === 'owner' || appUser.role === 'admin') {
+          setEffectiveAuthStatus('authorized');
+        } else {
+          toast({ variant: 'destructive', title: 'Unauthorized', description: 'You do not have permission to access this page.' });
+          router.push('/');
+          setEffectiveAuthStatus('unauthorized');
+        }
       }
     }
-  }, [user, authLoading, router, toast]);
+  }, [user, authLoading, appUser, router, toast]);
 
-  if (authLoading || isRoleLoading || effectiveAuthStatus === 'loading') {
+  if (effectiveAuthStatus === 'loading') {
     return <AdminLoaderScreen />;
   }
 
@@ -110,6 +93,7 @@ export default function AdminPage() {
      return <AccessDeniedScreen />;
   }
 
+  const currentUserAppRole = appUser?.role;
   const canViewUserManagement = currentUserAppRole === 'owner';
   const canViewStandardAdminTabs = currentUserAppRole === 'owner' || currentUserAppRole === 'admin';
 
@@ -121,7 +105,7 @@ export default function AdminPage() {
         <p className="text-lg text-muted-foreground">Manage Qentai's content, users, and settings.</p>
       </div>
 
-      <Tabs defaultValue="dashboard" className="w-full">
+      <Tabs defaultValue={defaultTabFromUrl} className="w-full">
         <TabsList className="flex flex-nowrap overflow-x-auto md:grid md:grid-cols-3 lg:grid-cols-6 gap-2 mb-8 p-1 bg-card rounded-lg shadow-md scrollbar-hide">
           {canViewStandardAdminTabs && (
             <>

@@ -1,7 +1,6 @@
-
 import type { Timestamp } from 'firebase/firestore';
 
-export type AppUserRole = 'owner' | 'admin' | 'member' | 'moderator';
+export type AppUserRole = 'owner' | 'admin' | 'member'; // Removed 'moderator'
 
 export interface AppUser {
   uid: string;
@@ -14,4 +13,3 @@ export interface AppUser {
   lastLoginAt?: Timestamp | string; // Firestore Timestamp or ISO string
   updatedAt?: Timestamp | string; // Added updatedAt field
 }
-

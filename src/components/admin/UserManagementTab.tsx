@@ -92,6 +92,12 @@ export default function UserManagementTab() {
         setUpdatingUserId(null);
         return;
     }
+     if (currentUserData.role === 'owner' && currentUserData.email !== ADMIN_EMAIL && newRole === 'owner') { // Ensure only primary owner has 'owner'
+      toast({ variant: "destructive", title: "Action Denied", description: "Cannot assign 'owner' role to this account."});
+      setUpdatingUserId(null);
+      return;
+    }
+
 
     try {
       await updateUserRoleInFirestore(uid, newRole);
@@ -126,7 +132,7 @@ export default function UserManagementTab() {
     user.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const availableRoles: AppUserRole[] = ['owner', 'admin', 'moderator', 'member'];
+  const availableRoles: AppUserRole[] = ['owner', 'admin', 'member']; // Removed 'moderator'
 
   return (
     <Card className="shadow-lg border-border/40">
@@ -193,8 +199,7 @@ export default function UserManagementTab() {
                     </Badge>
                     <Badge variant="secondary" className="capitalize text-xs">
                        {user.role === 'owner' ? <ShieldCheck className="w-3 h-3 mr-1 text-amber-500"/> :
-                        user.role === 'admin' ? <ShieldCheck className="w-3 h-3 mr-1 text-primary"/> : 
-                        user.role === 'moderator' ? <ShieldAlert className="w-3 h-3 mr-1 text-yellow-600"/> :
+                        user.role === 'admin' ? <ShieldAlert className="w-3 h-3 mr-1 text-primary"/> : // Changed icon for Admin for differentiation
                         null}
                       {user.role}
                     </Badge>
@@ -205,14 +210,19 @@ export default function UserManagementTab() {
                   <Select 
                     value={user.role} 
                     onValueChange={(newRole) => handleChangeRole(user.uid, newRole as AppUserRole)}
-                    disabled={updatingUserId === user.uid || user.email === ADMIN_EMAIL}
+                    disabled={updatingUserId === user.uid || (user.email === ADMIN_EMAIL && user.role === 'owner')} // Owner cannot change own role if it's already owner
                   >
                     <SelectTrigger className="w-full md:w-[150px] h-9 text-xs bg-input border-border/60 focus:border-primary">
                       <SelectValue placeholder="Change role" />
                     </SelectTrigger>
                     <SelectContent>
                       {availableRoles.map(roleOption => (
-                        <SelectItem key={roleOption} value={roleOption} className="text-xs capitalize">
+                        <SelectItem 
+                          key={roleOption} 
+                          value={roleOption} 
+                          className="text-xs capitalize"
+                          disabled={user.email === ADMIN_EMAIL && roleOption !== 'owner'} // Owner must remain owner
+                        >
                           {roleOption}
                         </SelectItem>
                       ))}

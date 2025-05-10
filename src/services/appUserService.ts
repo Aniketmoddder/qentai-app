@@ -1,4 +1,3 @@
-
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -7,7 +6,7 @@ import {
   collection,
   doc,
   getDocs,
-  getDoc, // Import getDoc
+  getDoc, 
   updateDoc,
   query,
   orderBy,
@@ -18,7 +17,7 @@ import {
 } from 'firebase/firestore';
 
 const usersCollection = collection(db, 'users');
-const ADMIN_EMAIL = 'ninjax.desi@gmail.com'; // Define admin email
+const ADMIN_EMAIL = 'ninjax.desi@gmail.com'; 
 
 const handleFirestoreError = (error: unknown, context: string): FirestoreError => {
   console.error(`Firestore Error in ${context}:`, error);
@@ -37,61 +36,84 @@ const convertUserTimestampsForClient = (userData: any): AppUser => {
   const data = { ...userData };
   if (data.createdAt && data.createdAt instanceof Timestamp) {
     data.createdAt = data.createdAt.toDate().toISOString();
+  } else if (typeof data.createdAt === 'object' && data.createdAt?.seconds) {
+    data.createdAt = new Timestamp(data.createdAt.seconds, data.createdAt.nanoseconds).toDate().toISOString();
   }
+
   if (data.lastLoginAt && data.lastLoginAt instanceof Timestamp) {
     data.lastLoginAt = data.lastLoginAt.toDate().toISOString();
+  } else if (typeof data.lastLoginAt === 'object' && data.lastLoginAt?.seconds) {
+     data.lastLoginAt = new Timestamp(data.lastLoginAt.seconds, data.lastLoginAt.nanoseconds).toDate().toISOString();
   }
-  if (data.updatedAt && data.updatedAt instanceof Timestamp) { // Added handling for updatedAt
+
+  if (data.updatedAt && data.updatedAt instanceof Timestamp) { 
     data.updatedAt = data.updatedAt.toDate().toISOString();
+  } else if (typeof data.updatedAt === 'object' && data.updatedAt?.seconds) {
+     data.updatedAt = new Timestamp(data.updatedAt.seconds, data.updatedAt.nanoseconds).toDate().toISOString();
   }
   return data as AppUser;
 };
 
 
-// Function to create or update user document in Firestore 'users' collection
-export const upsertAppUserInFirestore = async (userData: Partial<Omit<AppUser, 'role' | 'createdAt' | 'lastLoginAt' | 'updatedAt'>> & { uid: string; role?: AppUserRole }): Promise<void> => {
+export const upsertAppUserInFirestore = async (
+  userData: Partial<Omit<AppUser, 'createdAt' | 'lastLoginAt' | 'updatedAt'>> & { uid: string }
+): Promise<AppUser> => {
   const userRef = doc(usersCollection, userData.uid);
   try {
     const userSnap = await getDoc(userRef);
     let role: AppUserRole;
-    let existingStatus: AppUser['status'] | undefined;
+    let finalStatus: AppUser['status'];
+    let finalUserData: AppUser;
 
     if (userSnap.exists()) {
-        const existingData = userSnap.data() as AppUser;
-        role = existingData.role;
-        existingStatus = existingData.status;
-         // If the user is the owner, ensure their role remains 'owner'
-        if (userData.email === ADMIN_EMAIL) {
-            role = 'owner';
+      const existingData = userSnap.data() as AppUser;
+      role = existingData.role; // Preserve existing role unless owner logic applies
+      finalStatus = existingData.status; // Preserve existing status (especially 'banned')
+
+      // Owner check: if this user is the owner, ensure their role is 'owner'
+      // and they cannot be 'banned' through this standard upsert flow.
+      if (userData.email === ADMIN_EMAIL) {
+        role = 'owner';
+        if (finalStatus === 'banned') {
+          console.warn(`Owner account (${ADMIN_EMAIL}) is marked as banned in DB. This should be rectified manually. Retaining 'banned' status for safety.`);
         }
+      }
+      
+      const updatePayload: Partial<AppUser> = {
+        ...userData, // new data from auth provider (displayName, photoURL, email might change)
+        role, // determined role
+        status: finalStatus, // determined status
+        lastLoginAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+      await updateDoc(userRef, updatePayload);
+      finalUserData = { ...existingData, ...updatePayload, uid: userData.uid };
+
     } else {
-        // New user
-        if (userData.email === ADMIN_EMAIL) {
-            role = 'owner';
-        } else {
-            role = userData.role || 'member'; // Default to member or provided role
-        }
+      // New user
+      if (userData.email === ADMIN_EMAIL) {
+        role = 'owner';
+      } else {
+        role = 'member'; // Default new users to 'member'
+      }
+      finalStatus = 'active'; // New users are 'active' by default
+
+      const newUserData: Omit<AppUser, 'createdAt' | 'lastLoginAt' | 'updatedAt'> & { createdAt: any, lastLoginAt: any, updatedAt: any } = {
+        uid: userData.uid,
+        email: userData.email || null,
+        displayName: userData.displayName || null,
+        photoURL: userData.photoURL || null,
+        role: role,
+        status: finalStatus,
+        createdAt: serverTimestamp(),
+        lastLoginAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+      await setDoc(userRef, newUserData);
+      finalUserData = { ...newUserData, uid: userData.uid } as AppUser; // Cast after setting
     }
-
-
-    const dataToSet: Partial<AppUser> = {
-      uid: userData.uid,
-      email: userData.email || null,
-      displayName: userData.displayName || null,
-      photoURL: userData.photoURL || null,
-      role: role,
-      status: existingStatus || userData.status || 'active', // Keep existing status or default to active
-      lastLoginAt: serverTimestamp(),
-    };
-
-    if (!userSnap.exists()) {
-      dataToSet.createdAt = serverTimestamp();
-      dataToSet.updatedAt = serverTimestamp(); // Also set updatedAt on creation
-    } else {
-      dataToSet.updatedAt = serverTimestamp(); // Always update updatedAt timestamp
-    }
-    
-    await setDoc(userRef, dataToSet, { merge: true });
+    // Return the full user data, converting timestamps for immediate use if needed by caller
+    return convertUserTimestampsForClient(finalUserData);
   } catch (error) {
     throw handleFirestoreError(error, `upsertAppUserInFirestore (uid: ${userData.uid})`);
   }
@@ -100,13 +122,7 @@ export const upsertAppUserInFirestore = async (userData: Partial<Omit<AppUser, '
 
 export const getAllAppUsers = async (count: number = 50): Promise<AppUser[]> => {
   try {
-    // Ensure the owner's document is created/updated first if they are logging in.
-    // This scenario is typically handled by upsertAppUserInFirestore on login,
-    // but as a safeguard for this listing:
-    // (This part is complex to add here directly without auth context,
-    //  assuming upsert handles the owner role creation reliably on their login)
-
-    const q = query(usersCollection, orderBy('createdAt', 'desc'));
+    const q = query(usersCollection, orderBy('createdAt', 'desc'), limit(count > 0 ? count : 500));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => convertUserTimestampsForClient(doc.data() as AppUser));
   } catch (error) {
@@ -120,6 +136,10 @@ export const getAllAppUsers = async (count: number = 50): Promise<AppUser[]> => 
 export const updateUserStatusInFirestore = async (uid: string, status: AppUser['status']): Promise<void> => {
   const userRef = doc(usersCollection, uid);
   try {
+    const userDoc = await getDoc(userRef);
+    if (userDoc.exists() && userDoc.data().email === ADMIN_EMAIL && status === 'banned') {
+        throw new Error("The owner account cannot be banned.");
+    }
     await updateDoc(userRef, { status: status, updatedAt: serverTimestamp() });
   } catch (error) {
     throw handleFirestoreError(error, `updateUserStatusInFirestore (uid: ${uid})`);
@@ -133,12 +153,16 @@ export const updateUserRoleInFirestore = async (uid: string, newRole: AppUserRol
       const userDoc = await getDoc(userRef);
       if (userDoc.exists()) {
         const currentUserData = userDoc.data() as AppUser;
-        if (currentUserData.email === ADMIN_EMAIL && newRole !== 'owner') {
-          throw new Error("Cannot change the primary owner's role.");
+        // Prevent changing the primary owner's role from 'owner'
+        if (currentUserData.email === ADMIN_EMAIL && currentUserData.role === 'owner' && newRole !== 'owner') {
+          throw new Error("The primary owner's role cannot be changed from 'owner'.");
         }
-         if (currentUserData.role === 'owner' && currentUserData.email !== ADMIN_EMAIL && newRole === 'owner') {
+        // Prevent assigning 'owner' role to anyone other than the primary owner
+        if (newRole === 'owner' && currentUserData.email !== ADMIN_EMAIL) {
           throw new Error("Cannot assign 'owner' role to a non-primary owner account.");
         }
+      } else {
+        throw new Error(`User with UID ${uid} not found.`);
       }
       await updateDoc(userRef, { role: newRole, updatedAt: serverTimestamp() });
     } catch (error) {
@@ -154,14 +178,9 @@ export const getAppUserById = async (uid: string): Promise<AppUser | null> => {
     if (docSnap.exists()) {
       return convertUserTimestampsForClient(docSnap.data() as AppUser);
     }
-    // If user doc doesn't exist, attempt to create it - this might happen if first access is directly to admin
-    // For example, if the owner logs in and immediately goes to /admin before AuthProvider upsert fully completes or if there was an error
-    // However, this is best handled by the AuthProvider's upsert logic.
-    // For now, we'll just return null if not found, assuming AuthProvider does its job.
-    console.warn(`User document for UID ${uid} not found in getAppUserById. This might be normal if the user is new and upsert is pending, or indicates an issue with user document creation.`);
+    console.warn(`User document for UID ${uid} not found in getAppUserById.`);
     return null;
   } catch (error) {
     throw handleFirestoreError(error, `getAppUserById (uid: ${uid})`);
   }
 };
-
