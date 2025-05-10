@@ -7,6 +7,7 @@ import type { Anime } from '@/types/anime';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Star, PlayCircle } from 'lucide-react';
+import { cn } from '@/lib/utils'; // Added import for cn
 
 interface AnimeCardProps {
   anime: Anime;
@@ -59,7 +60,7 @@ export default function AnimeCard({ anime, className }: AnimeCardProps) {
             className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300 z-20"
         >
             <Link
-                href={`/play/${anime.id}${firstEpisodeId ? `?episode=${firstEpisodeId}` : ''}`}
+                href={`/play/${anime.id}?episode=${firstEpisodeId}`}
                 onClick={(e) => {
                     e.stopPropagation(); // Prevent outer Link (to details page) from firing
                 }}
