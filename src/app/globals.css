@@ -7,8 +7,6 @@
 @tailwind utilities;
 
 
-/* Removed body font-family, as next/font and tailwind `font-sans` handles this */
-
 @layer base {
   :root {
     --background: 0 0% 3%; /* Very Dark Gray/Black */
@@ -70,7 +68,7 @@
     -webkit-tap-highlight-color: transparent; 
   }
   body {
-    @apply bg-background text-foreground font-sans overflow-x-hidden min-h-screen flex flex-col; /* font-sans will now apply Poppins by default */
+    @apply bg-background text-foreground font-sans overflow-x-hidden min-h-screen flex flex-col;
   }
   main {
     @apply flex-grow; 
@@ -82,7 +80,6 @@
   h2, h3 {
     @apply font-orbitron;
   }
-  /* Paragraphs and other elements will inherit Poppins from body via font-sans */
 
 
   /* Custom scrollbar for a more modern look */
