@@ -7,13 +7,12 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight, AlertTriangle, Play, Plus, Tv, Calendar, ListVideo, Star as StarIcon, Volume2, VolumeX } from 'lucide-react';
-import { getAllAnimes } from '@/services/animeService';
+import { getAllAnimes, getFeaturedAnimes } from '@/services/animeService'; // Import getFeaturedAnimes
 import type { Anime } from '@/types/anime';
 import FeaturedAnimeCard from '@/components/anime/FeaturedAnimeCard';
 import TopAnimeListItem from '@/components/anime/TopAnimeListItem';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-// RecommendationsSection and GenreList are passed as props
 
 const shuffleArray = <T,>(array: T[]): T[] => {
   if (!array || array.length === 0) return [];
@@ -57,12 +56,12 @@ const promiseWithTimeout = <T,>(promise: Promise<T>, ms: number, timeoutError = 
   return Promise.race<T | never>([promise, timeout]);
 };
 
-export interface HomeContentProps {
+export interface HomeClientContentProps {
   genreListComponent: React.ReactNode;
   recommendationsSectionComponent: React.ReactNode;
 }
 
-export default function HomeClientContent({ genreListComponent, recommendationsSectionComponent }: HomeContentProps) {
+export default function HomeClientContent({ genreListComponent, recommendationsSectionComponent }: HomeClientContentProps) {
   const [allAnime, setAllAnime] = useState<Anime[]>([]);
   const [featuredAnimesList, setFeaturedAnimesList] = useState<Anime[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -77,7 +76,7 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
     try {
       const fetchDataPromises = [
         getAllAnimes(50), 
-        getAllAnimes(5, { featured: true, sortBy: 'title', sortOrder: 'asc' }) // Added sort for featured
+        getFeaturedAnimes(5) // Use the new dedicated function for featured animes
       ];
       
       const [generalAnimes, featured] = await promiseWithTimeout(
