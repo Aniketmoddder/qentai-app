@@ -1,5 +1,4 @@
-// "use client"; // Removed as Link and Image are server components by default if not in a client boundary higher up.
-
+// src/components/anime/anime-card.tsx
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Anime } from '@/types/anime';
@@ -15,17 +14,15 @@ export default function AnimeCard({ anime }: AnimeCardProps) {
   const firstEpisodeId = anime.episodes?.[0]?.id || '';
 
   return (
-    <div // Outer container for positioning and group hover effects
-      className="group relative w-[45vw] max-w-[180px] h-[270px] rounded-lg cursor-pointer"
-      // No direct click handler here, links below will handle it.
+    <div 
+      className="group relative w-[45vw] max-w-[180px] h-[270px] rounded-lg" // cursor-pointer removed as Links handle it
     >
-      {/* Card visuals (Image and Text) - not directly interactive */}
+      {/* Card visuals (Image and Text) - acts as background for links */}
       <Card
-        tabIndex={-1} // Not focusable itself, links will be
+        tabIndex={-1} // Not focusable itself, Links will be
         className="w-full h-full overflow-hidden bg-card border-border shadow-lg group-hover:shadow-primary/40 transition-all duration-300 flex flex-col rounded-lg"
         data-ai-hint={`${anime.genre[0] || 'anime'} cover`}
       >
-        {/* Image Container */}
         <div className="relative flex-grow w-full">
           <Image
             src={anime.coverImage}
@@ -35,12 +32,9 @@ export default function AnimeCard({ anime }: AnimeCardProps) {
             className="object-cover transition-transform duration-300 group-hover:scale-105"
             priority={false}
           />
-          {/* Gradient overlay for text readability */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent group-hover:via-black/40 transition-all duration-300" />
         </div>
-
-        {/* Text Content - positioned at the bottom */}
-        <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-2.5 text-white z-[5]"> {/* z-index to ensure it's above the image gradient */}
+        <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-2.5 text-white z-[5]"> {/* z-index to ensure text is above image gradient */}
           <h3
             className="text-sm sm:text-base font-semibold leading-tight line-clamp-2 text-foreground group-hover:text-primary transition-colors duration-200"
             title={anime.title}
@@ -63,22 +57,24 @@ export default function AnimeCard({ anime }: AnimeCardProps) {
 
       {/* Clickable overlay Link for details page (covers the entire card, below play button) */}
       <Link
-        href={`/anime/${anime.id}`}
-        className="absolute inset-0 z-10" // z-10 to be clickable over the Card content
+        href={`/anime/${anime.id}`} 
+        className="absolute inset-0 z-10 cursor-pointer" 
         aria-label={`View details for ${anime.title}`}
       >
         <span className="sr-only">View details for {anime.title}</span>
       </Link>
       
-      {/* Play button Link - on top of everything else */}
+      {/* Play button and its Link - on top of everything else, only interactive on hover */}
       <div 
-          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300 z-20" // z-20 to be on top of the details link
+          className="absolute inset-0 flex items-center justify-center opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto transition-opacity duration-300 z-20"
       >
           <Link
               href={`/play/${anime.id}${firstEpisodeId ? `?episode=${firstEpisodeId}` : ''}`}
               aria-label={`Play ${anime.title}`}
-              className="p-2 rounded-full hover:bg-black/50 focus:bg-black/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              // onClick={(e) => e.stopPropagation()} // Not strictly necessary now as links are siblings in stacking context
+              className="p-2 rounded-full hover:bg-black/50 focus:bg-black/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
+              onClick={(e) => {
+                  e.stopPropagation(); // Crucial to prevent the details link from firing
+              }}
           >
               <PlayCircle className="w-12 h-12 sm:w-14 sm:h-14 text-primary filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] group-hover:scale-110 transition-transform duration-300" />
           </Link>
