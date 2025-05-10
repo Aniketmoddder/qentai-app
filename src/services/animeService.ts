@@ -47,7 +47,7 @@ export const addAnimeToFirestore = async (animeData: Omit<Anime, 'id'>): Promise
       tmdbId: animeData.tmdbId,
       isFeatured: animeData.isFeatured || false, 
       trailerUrl: (animeData.trailerUrl === '' || animeData.trailerUrl === undefined || animeData.trailerUrl === null) ? undefined : animeData.trailerUrl,
-      createdAt: serverTimestamp(), // Add a timestamp for potential sorting by "recently added"
+      createdAt: serverTimestamp(),
     };
 
     const cleanedAnimeData: { [key: string]: any } = { ...newAnimeData };
@@ -105,15 +105,16 @@ export const getAllAnimes = async (
 
     if (filters?.sortBy) {
       queryConstraints.push(orderBy(filters.sortBy, filters.sortOrder || 'desc'));
-    } else if (!hasExplicitFiltersOtherThanSort) {
-      // Default sort order if no other filters are applied.
-      // Consider sorting by 'createdAt' for a "recently added" default, or 'title'.
-      queryConstraints.push(orderBy('title', 'asc')); // Default to title if no filters and no specific sort.
+    } else if (filters?.featured === true) {
+      // If filtering by featured, and no other sort is specified,
+      // do not add a default orderBy('title') to avoid needing a composite index (isFeatured, title).
+      // Firebase will use its default ordering (usually by document ID).
+      // The client can sort the limited results if needed.
     }
-    // If filters are present (e.g. type, genre, featured) but no explicit sortBy,
-    // DO NOT add a default orderBy. This is crucial to avoid needing complex composite indexes
-    // for every combination of filter + default sort. The client can sort the limited results if needed.
-
+     else if (!hasExplicitFiltersOtherThanSort) {
+      queryConstraints.push(orderBy('title', 'asc')); 
+    }
+    
     queryConstraints.push(limit(count));
     
     const q = query(animesCollection, ...queryConstraints);
@@ -150,7 +151,6 @@ export const searchAnimes = async (searchTerm: string): Promise<Anime[]> => {
 
 export const getAnimesByType = async (type: Anime['type'], count: number = 20): Promise<Anime[]> => {
   try {
-    // Requires index: (type ASC, title ASC) or (type DESC, title ASC) etc.
     const q = query(animesCollection, where('type', '==', type), orderBy('title', 'asc'), limit(count));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Anime));
@@ -161,7 +161,6 @@ export const getAnimesByType = async (type: Anime['type'], count: number = 20): 
 
 export const getAnimesByGenre = async (genre: string, count: number = 20): Promise<Anime[]> => {
   try {
-    // Requires index: (genre array-contains, title ASC)
     const q = query(animesCollection, where('genre', 'array-contains', genre), orderBy('title', 'asc'), limit(count));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Anime));
@@ -171,14 +170,14 @@ export const getAnimesByGenre = async (genre: string, count: number = 20): Promi
 };
 
 
-export const updateAnimeInFirestore = async (id: string, dataToUpdate: Partial<Omit<Anime, 'episodes' | 'id' | 'createdAt'>>): Promise<void> => {
+export const updateAnimeInFirestore = async (id: string, dataToUpdate: Partial<Omit<Anime, 'id' | 'createdAt'>>): Promise<void> => {
   try {
     const docRef = doc(animesCollection, id);
     const updatePayload: { [key: string]: any } = { ...dataToUpdate, updatedAt: serverTimestamp() };
 
 
     if (updatePayload.hasOwnProperty('trailerUrl')) {
-      updatePayload.trailerUrl = updatePayload.trailerUrl || null;
+      updatePayload.trailerUrl = updatePayload.trailerUrl || null; // Use null instead of undefined for Firestore
     }
     
     if (!updatePayload.hasOwnProperty('isFeatured') || updatePayload.isFeatured === undefined) {
@@ -321,19 +320,22 @@ export const getAnimesByIds = async (ids: string[]): Promise<Anime[]> => {
 
 export const getFeaturedAnimes = async (count: number = 5): Promise<Anime[]> => {
   try {
-    // This query now explicitly orders featured animes by title.
-    // This REQUIRES a composite index in Firebase: (isFeatured ASC, title ASC)
+    // Removed orderBy('title', 'asc') to prevent index error if the composite index (isFeatured ASC, title ASC) is not present.
+    // The user should create this index for optimal performance and sorted results.
     const q = query(
       animesCollection,
       where('isFeatured', '==', true),
-      orderBy('title', 'asc'), // Added sorting
+      // orderBy('title', 'asc'), // This line was causing the index error if the index doesn't exist.
       limit(count)
     );
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Anime));
+    const animes = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Anime));
+    // If specific order is needed and index isn't created, sort client-side:
+    // return animes.sort((a, b) => a.title.localeCompare(b.title));
+    return animes;
   } catch (error) {
     if (error instanceof FirestoreError && error.code === 'failed-precondition') {
-       console.warn(`Firestore query for featured animes requires an index on (isFeatured ASC, title ASC). Please create this index in your Firebase console. Original error: ${error.message}`);
+       console.warn(`Firestore query for featured animes is more efficient with an index on (isFeatured ASC, title ASC). Please create this index in your Firebase console. Original error: ${error.message}`);
     }
     throw handleFirestoreError(error, `getFeaturedAnimes`);
   }
