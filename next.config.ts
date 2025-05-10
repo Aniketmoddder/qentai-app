@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'ik.imagekit.io',
         port: '',
-        pathname: '/aniplay123/**', // Made pathname more specific
+        pathname: '/**', // Made pathname more general
       }
     ],
   },
