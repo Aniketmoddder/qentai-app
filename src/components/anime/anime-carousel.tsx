@@ -16,12 +16,11 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isAtStart, setIsAtStart] = useState(true);
   const [isAtEnd, setIsAtEnd] = useState(false);
-  // Card width is now managed by AnimeCard's responsive classes, no need to calculate here
 
   const checkScrollPosition = useCallback(() => {
     if (scrollContainerRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      const tolerance = 10; // Increased tolerance
+      const tolerance = 10; 
       setIsAtStart(scrollLeft <= tolerance);
       setIsAtEnd(scrollLeft + clientWidth >= scrollWidth - tolerance);
     }
@@ -44,21 +43,18 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
         observer.disconnect();
       };
     }
-  }, [checkScrollPosition, animeList]); // Added animeList to dependencies to re-check on list change
+  }, [checkScrollPosition, animeList]);
 
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
       const container = scrollContainerRef.current;
-      // Approximate scroll amount - 80% of visible width, or at least one card width if possible.
-      // This assumes cards are roughly similar in width for a smooth scroll.
-      const scrollAmount = container.clientWidth * 0.8; 
+      const scrollAmount = container.clientWidth * 0.7; 
 
       container.scrollBy({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth',
       });
-      // Timeout helps ensure scroll position is updated after smooth scroll finishes
       setTimeout(checkScrollPosition, 400); 
     }
   };
@@ -71,27 +67,27 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
   return (
     <section className="py-6 md:py-8 relative group">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl md:text-3xl font-bold text-foreground">{title}</h2>
-        <div className="hidden md:flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <h2 className="text-xl md:text-2xl font-bold text-foreground section-title-bar">{title}</h2>
+        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
             onClick={() => scroll('left')}
             disabled={isAtStart}
-            className="rounded-full bg-card/70 hover:bg-primary hover:text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-full w-8 h-8 bg-card/50 hover:bg-primary hover:text-primary-foreground disabled:opacity-30 disabled:cursor-not-allowed"
             aria-label="Scroll left"
           >
-            <ChevronLeft className="h-6 w-6" />
+            <ChevronLeft className="h-5 w-5" />
           </Button>
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
             onClick={() => scroll('right')}
             disabled={isAtEnd}
-            className="rounded-full bg-card/70 hover:bg-primary hover:text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-full w-8 h-8 bg-card/50 hover:bg-primary hover:text-primary-foreground disabled:opacity-30 disabled:cursor-not-allowed"
             aria-label="Scroll right"
           >
-            <ChevronRight className="h-6 w-6" />
+            <ChevronRight className="h-5 w-5" />
           </Button>
         </div>
       </div>
@@ -103,34 +99,34 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
         {animeList.map((anime) => (
           <div 
             key={anime.id} 
-            className="flex-shrink-0" // Removed w-auto to let AnimeCard control its width via its classes
+            className="flex-shrink-0"
             style={{ scrollSnapAlign: 'start' }}
           >
             <AnimeCard anime={anime} />
           </div>
         ))}
       </div>
-      {/* Mobile scroll buttons */}
-      <div className="md:hidden flex justify-center mt-4 space-x-4">
+      {/* Mobile scroll buttons (always visible) */}
+      <div className="md:hidden flex justify-center mt-4 space-x-3">
           <Button
             variant="outline"
             size="icon"
             onClick={() => scroll('left')}
             disabled={isAtStart}
-            className="rounded-full bg-card/70 hover:bg-primary hover:text-primary-foreground disabled:opacity-50"
+            className="rounded-full w-9 h-9 bg-card/70 border-border/50 hover:bg-primary hover:text-primary-foreground disabled:opacity-40"
             aria-label="Scroll left"
           >
-            <ChevronLeft className="h-6 w-6" />
+            <ChevronLeft className="h-5 w-5" />
           </Button>
           <Button
             variant="outline"
             size="icon"
             onClick={() => scroll('right')}
             disabled={isAtEnd}
-            className="rounded-full bg-card/70 hover:bg-primary hover:text-primary-foreground disabled:opacity-50"
+            className="rounded-full w-9 h-9 bg-card/70 border-border/50 hover:bg-primary hover:text-primary-foreground disabled:opacity-40"
             aria-label="Scroll right"
           >
-            <ChevronRight className="h-6 w-6" />
+            <ChevronRight className="h-5 w-5" />
           </Button>
         </div>
     </section>

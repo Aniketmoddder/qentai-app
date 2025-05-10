@@ -11,13 +11,17 @@ export default {
   theme: {
     container: {
       center: true,
-      padding: "1rem", // Adjusted default padding for better mobile
+      padding: {
+        DEFAULT: '1rem',      // Default padding for mobile
+        sm: '1.5rem',           // Padding for sm screens and up
+        lg: '2rem',           // Padding for lg screens and up
+      },
       screens: {
         sm: "640px",
         md: "768px",
         lg: "1024px",
         xl: "1280px",
-        "2xl": "1400px",
+        "2xl": "1440px", // Slightly wider max container
       },
     },
   	extend: {
@@ -40,6 +44,7 @@ export default {
   				DEFAULT: 'hsl(var(--primary))',
   				foreground: 'hsl(var(--primary-foreground))'
   			},
+        'secondary-accent-pink': 'hsl(var(--secondary-accent-pink))',
   			secondary: {
   				DEFAULT: 'hsl(var(--secondary))',
   				foreground: 'hsl(var(--secondary-foreground))'
@@ -78,9 +83,11 @@ export default {
   			}
   		},
   		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			lg: 'var(--radius)', // 0.75rem
+  			md: 'calc(var(--radius) - 2px)', // 0.75rem - 2px
+  			sm: 'calc(var(--radius) - 4px)', // 0.75rem - 4px
+        xl: 'calc(var(--radius) + 4px)', // 0.75rem + 4px for larger cards if needed
+        full: '9999px',
   		},
   		keyframes: {
   			'accordion-down': {
