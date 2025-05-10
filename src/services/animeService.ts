@@ -99,33 +99,15 @@ export const getAllAnimes = async (
     if (filters?.featured !== undefined) { 
        queryConstraints.push(where('isFeatured', '==', filters.featured));
     }
-
-    // Sorting logic
+    
     if (filters?.sortBy) {
       queryConstraints.push(orderBy(filters.sortBy, filters.sortOrder || 'desc'));
-      // Add secondary sort by title ONLY if primary sort is not title AND we are NOT filtering by featured.
-      // This avoids implicitly requiring a very complex index (e.g. isFeatured + averageRating + title) by default.
-      if (filters.sortBy !== 'title' && filters.featured === undefined) {
+      if (filters.sortBy !== 'title' && !filters.featured && !filters.genre && !filters.type) {
          queryConstraints.push(orderBy('title', 'asc'));
       }
-      // If filters.sortBy is 'title' (and isFeatured might be true), this correctly implies (isFeatured, title) or (title) index.
     } else {
-      // No sortBy explicitly passed by the user.
-      if (filters?.featured === true) {
-        // If filtering by 'featured' and NO sortBy is given,
-        // DO NOT default to orderBy('title'). Let Firestore use its natural/index order for 'isFeatured'
-        // or an index purely on 'isFeatured'.
-        // This avoids the (isFeatured, title) composite index requirement for this default case on homepage.
-        // If a specific order for featured items is desired (e.g., by a rank or date), it should be passed via `sortBy`.
-        // For deterministic order if no other sort specified for featured, you could sort by document ID.
-        // queryConstraints.push(orderBy(documentId(), 'asc')); // This doesn't need a composite index with isFeatured.
-      } else if (filters?.genre) {
-        queryConstraints.push(orderBy('title', 'asc')); // Requires (genre, title ASC) index
-      } else if (filters?.type) {
-        queryConstraints.push(orderBy('title', 'asc')); // Requires (type, title ASC) index
-      } else {
-        // Absolute default if no filters and no sort: order by title.
-        queryConstraints.push(orderBy('title', 'asc')); // Requires (title ASC) index
+      if (!filters?.featured && !filters?.genre && !filters?.type) {
+        queryConstraints.push(orderBy('title', 'asc'));
       }
     }
     
@@ -167,32 +149,26 @@ export const searchAnimes = async (searchTerm: string): Promise<Anime[]> => {
 
 export const getAnimesByType = async (type: Anime['type'], count: number = 20): Promise<Anime[]> => {
   try {
-    // Requires index: (type ASC, title ASC)
-    const q = query(animesCollection, where('type', '==', type), orderBy('title', 'asc'), limit(count));
+    const queryConstraints: QueryConstraint[] = [where('type', '==', type), limit(count)];
+    // Avoid adding orderBy('title') by default to prevent index requirement unless specified for this specific view
+    // If specific sorting is needed for this page, it should be passed or handled in the component
+    const q = query(animesCollection, ...queryConstraints);
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Anime));
   } catch (error) {
-    if (error instanceof FirestoreError && error.code === 'failed-precondition') {
-        console.warn(
-        `Firestore query in getAnimesByType for type '${type}' sorted by title requires an index (type ASC, title ASC). Original error: ${error.message}`
-      );
-    }
     throw handleFirestoreError(error, `getAnimesByType (type: ${type})`);
   }
 };
 
 export const getAnimesByGenre = async (genre: string, count: number = 20): Promise<Anime[]> => {
   try {
-    // Requires index: (genre CONTAINS, title ASC)
-    const q = query(animesCollection, where('genre', 'array-contains', genre), orderBy('title', 'asc'), limit(count));
+     const queryConstraints: QueryConstraint[] = [where('genre', 'array-contains', genre), limit(count)];
+    // Avoid adding orderBy('title') by default to prevent index requirement unless specified for this specific view
+    // If specific sorting is needed for this page, it should be passed or handled in the component
+    const q = query(animesCollection, ...queryConstraints);
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Anime));
   } catch (error) {
-     if (error instanceof FirestoreError && error.code === 'failed-precondition') {
-        console.warn(
-        `Firestore query in getAnimesByGenre for genre '${genre}' sorted by title requires an index (genre CONTAINS, title ASC). Original error: ${error.message}`
-      );
-    }
     throw handleFirestoreError(error, `getAnimesByGenre (genre: ${genre})`);
   }
 };
