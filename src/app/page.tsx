@@ -5,12 +5,13 @@ import RecommendationsSection from '@/components/anime/recommendations-section';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronRight, AlertTriangle, Play, Plus, Tv, Calendar, ListVideo, Filter } from 'lucide-react';
+import { ChevronRight, AlertTriangle, Play, Plus, Tv, Calendar, ListVideo, Filter, Tags } from 'lucide-react';
 import { getAllAnimes } from '@/services/animeService';
 import type { Anime } from '@/types/anime';
 import FeaturedAnimeCard from '@/components/anime/FeaturedAnimeCard';
 import TopAnimeListItem from '@/components/anime/TopAnimeListItem';
 import { Badge } from '@/components/ui/badge';
+import GenreList from '@/components/anime/genre-list';
 
 
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -35,25 +36,21 @@ export default async function Home() {
   }
   
   const trendingAnime = shuffleArray([...allAnime]).slice(0, 10); 
-  const popularAnime = shuffleArray([...allAnime]).slice(0, 10);
-  const recentlyAddedAnime = [...allAnime].sort((a,b) => (b.year || 0) - (a.year || 0)).slice(0,10);
+  const popularAnime = shuffleArray([...allAnime]).filter(a => a.averageRating && a.averageRating >= 7.5).slice(0,10); // Example for "Popular"
+  const recentlyAddedAnime = [...allAnime].sort((a,b) => (b.year || 0) - (a.year || 0)).slice(0,10); // Assuming recently added based on year for now
   const movies = allAnime.filter(a => a.type === 'Movie').slice(0,10);
-  const nextSeasonAnime = shuffleArray([...allAnime].filter(a => a.status === 'Upcoming')).slice(0,10); // Example for "Next Season"
+  const tvSeries = allAnime.filter(a => a.type === 'TV').slice(0,10);
+  const nextSeasonAnime = shuffleArray([...allAnime].filter(a => a.status === 'Upcoming')).slice(0,10);
 
-  // Hero section anime (example: first trending or a highly rated one)
   const heroAnime = trendingAnime[0] || allAnime[0];
+  const featuredAnimes = popularAnime.slice(0, 2).length === 2 ? popularAnime.slice(0,2) : trendingAnime.slice(1,3); 
 
-  // Featured anime (example: next two from trending or popular)
-  const featuredAnimes = popularAnime.slice(1, 3); 
-
-  // Top Anime (sorted by rating, needs actual rating data or placeholder)
   const topAnimeList = [...allAnime]
     .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
     .slice(0, 10);
 
   return (
     <>
-      {/* Hero Section */}
       {heroAnime && !fetchError && (
         <section className="relative h-[70vh] md:h-[85vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)]">
           <div className="absolute inset-0">
@@ -78,7 +75,6 @@ export default async function Home() {
               </h1>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-5">
                 {heroAnime.type && <span className="flex items-center"><Tv className="w-4 h-4 mr-1.5" /> {heroAnime.type}</span>}
-                {/* Placeholder for duration */}
                 {heroAnime.episodes && heroAnime.episodes.length > 0 && 
                   <span className="flex items-center"><ListVideo className="w-4 h-4 mr-1.5" /> {heroAnime.episodes.length} Episodes</span>
                 }
@@ -93,8 +89,10 @@ export default async function Home() {
                     <Play className="mr-2 h-5 w-5 fill-current" /> Watch Now
                   </Link>
                 </Button>
-                <Button variant="outline" size="lg" className="rounded-full px-8 py-3 text-base border-foreground/30 text-foreground hover:bg-foreground/10 hover:border-foreground/50">
-                  <Plus className="mr-2 h-5 w-5" /> Add to List
+                 <Button asChild variant="outline" size="lg" className="rounded-full px-8 py-3 text-base border-foreground/30 text-foreground hover:bg-foreground/10 hover:border-foreground/50">
+                  <Link href={`/anime/${heroAnime.id}`}>
+                    <Plus className="mr-2 h-5 w-5" /> More Info
+                  </Link>
                 </Button>
               </div>
             </div>
@@ -119,7 +117,6 @@ export default async function Home() {
           </div>
         )}
 
-        {/* Featured Anime Section */}
         {featuredAnimes.length > 0 && (
           <section className="py-6 md:py-8">
             <div className="flex justify-between items-center mb-4">
@@ -136,21 +133,23 @@ export default async function Home() {
           </section>
         )}
 
-
         {trendingAnime.length > 0 && <AnimeCarousel title="Trending Now" animeList={trendingAnime} />}
         {popularAnime.length > 0 && <AnimeCarousel title="Popular This Season" animeList={popularAnime} />}
-        {recentlyAddedAnime.length > 0 && <AnimeCarousel title="Latest TV Series" animeList={recentlyAddedAnime} />}
-        {movies.length > 0 && <AnimeCarousel title="Popular Movies" animeList={movies} />}
         
-        {/* Top Anime Section */}
+        <GenreList />
+
+        {recentlyAddedAnime.length > 0 && <AnimeCarousel title="Latest Additions" animeList={recentlyAddedAnime} />}
+        {movies.length > 0 && <AnimeCarousel title="Popular Movies" animeList={movies} />}
+        {tvSeries.length > 0 && <AnimeCarousel title="TV Series" animeList={tvSeries} />}
+        
         {topAnimeList.length > 0 && (
           <section className="py-6 md:py-8">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar">Top Anime</h2>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="border-primary/50 text-primary/90 hover:bg-primary/10">
+                {/* <Button variant="outline" size="sm" className="border-primary/50 text-primary/90 hover:bg-primary/10">
                   <Filter className="w-3.5 h-3.5 mr-1.5"/> Filter
-                </Button>
+                </Button> */}
                 <Button variant="link" asChild className="text-primary hover:text-primary/80">
                   <Link href="/browse?sort=top">View More <ChevronRight className="w-4 h-4 ml-1"/></Link>
                 </Button>
@@ -164,12 +163,10 @@ export default async function Home() {
           </section>
         )}
         
-        {nextSeasonAnime.length > 0 && <AnimeCarousel title="Next Season" animeList={nextSeasonAnime} />}
+        {nextSeasonAnime.length > 0 && <AnimeCarousel title="Coming Next Season" animeList={nextSeasonAnime} />}
         
-        {/* RecommendationsSection can be kept or removed based on if it fits the new design */}
-        {/* <RecommendationsSection /> */}
+         {/* <RecommendationsSection /> */}
       </Container>
     </>
   );
 }
-

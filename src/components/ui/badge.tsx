@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 
@@ -24,12 +25,14 @@ const badgeVariants = cva(
 )
 
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLSpanElement>, // Changed from HTMLDivElement
-    VariantProps<typeof badgeVariants> {}
+  extends React.HTMLAttributes<HTMLElement>, // Changed from HTMLSpanElement to HTMLElement
+    VariantProps<typeof badgeVariants> {
+  as?: 'span' | 'a' | 'div'; // Add 'as' prop
+}
 
-function Badge({ className, variant, ...props }: BadgeProps) {
+function Badge({ className, variant, as: Component = 'span', ...props }: BadgeProps) {
   return (
-    <span className={cn(badgeVariants({ variant }), className)} {...props} /> // Changed from div to span
+    <Component className={cn(badgeVariants({ variant }), className)} {...props} />
   )
 }
 
