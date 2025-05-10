@@ -1,4 +1,3 @@
-
 'use server';
 import { db } from '@/lib/firebase';
 import type { Anime, Episode } from '@/types/anime';
@@ -20,6 +19,7 @@ import {
   serverTimestamp,
   writeBatch,
   QueryConstraint,
+  documentId,
 } from 'firebase/firestore';
 
 const animesCollection = collection(db, 'animes');
@@ -93,9 +93,13 @@ export const getAllAnimes = async (
 
     if (filters?.sortBy) {
       queryConstraints.push(orderBy(filters.sortBy, filters.sortOrder || 'desc'));
-    } else {
-      queryConstraints.push(orderBy('title', 'asc')); // Default sort
+    } else if (!filters?.genre) { 
+      // Only apply default sort by title if NOT filtering by genre to avoid specific composite index error.
+      // If filtering by genre and no sort is specified, Firestore's default order will be used.
+      // For full sort functionality with genre filters, the user needs to create the composite index.
+      queryConstraints.push(orderBy('title', 'asc'));
     }
+    // If filters.genre is present and filters.sortBy is not, no explicit orderBy is added here.
 
     queryConstraints.push(limit(count));
     
@@ -103,6 +107,14 @@ export const getAllAnimes = async (
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Anime));
   } catch (error) {
+    if (error instanceof FirestoreError && error.code === 'failed-precondition') {
+        console.warn(
+        `Firestore query requires an index. This is common when filtering by an array and ordering by another field. Please create the required composite index in your Firebase console. The error message usually provides a link to create it. Original error: ${error.message}`
+      );
+      // Optionally, re-throw a more user-friendly error or return empty array
+      // throw new Error(`Query requires a Firestore index. Check server logs for details or Firebase console. ${error.message}`);
+    }
+    // For other errors, use the generic handler
     throw handleFirestoreError(error, 'getAllAnimes');
   }
 };
@@ -113,8 +125,7 @@ export const searchAnimes = async (searchTerm: string): Promise<Anime[]> => {
   try {
     const searchTermLower = searchTerm.toLowerCase();
     
-    // This is a basic client-side search. For production, use a dedicated search service.
-    const allAnime = await getAllAnimes(200); // Fetch a larger set for local filtering
+    const allAnime = await getAllAnimes(200); 
     
     return allAnime.filter(anime => 
       anime.title.toLowerCase().includes(searchTermLower) ||
@@ -138,10 +149,17 @@ export const getAnimesByType = async (type: Anime['type'], count: number = 20): 
 
 export const getAnimesByGenre = async (genre: string, count: number = 20): Promise<Anime[]> => {
   try {
+    // When querying by genre, if no explicit sort is provided, default to title sort.
+    // This specific combination (array-contains + orderBy another field) needs a composite index.
     const q = query(animesCollection, where('genre', 'array-contains', genre), orderBy('title', 'asc'), limit(count));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Anime));
   } catch (error) {
+     if (error instanceof FirestoreError && error.code === 'failed-precondition') {
+        console.warn(
+        `Firestore query in getAnimesByGenre requires an index for 'genre' (array-contains) and 'title' (orderBy). Please create this index in your Firebase console. Original error: ${error.message}`
+      );
+    }
     throw handleFirestoreError(error, `getAnimesByGenre (genre: ${genre})`);
   }
 };
@@ -217,16 +235,8 @@ export const addEpisodeToSeason = async (animeId: string, episodeData: Episode):
     }
 };
 
-// For genre list on homepage - uses a static list for now
 const staticAvailableGenres = ['Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Sci-Fi', 'Slice of Life', 'Romance', 'Horror', 'Mystery', 'Thriller', 'Sports', 'Supernatural', 'Mecha', 'Historical', 'Music', 'School', 'Shounen', 'Shoujo', 'Seinen', 'Josei', 'Isekai', 'Psychological', 'Ecchi', 'Harem', 'Demons', 'Magic', 'Martial Arts', 'Military', 'Parody', 'Police', 'Samurai', 'Space', 'Super Power', 'Vampire', 'Game'];
 
 export const getUniqueGenres = async (): Promise<string[]> => {
-  // In a real app, this might query a separate 'genres' collection or use a predefined list.
-  // For simplicity, using the static list. If dynamic needed:
-  // const allAnime = await getAllAnimes(500); // Fetch a large number to get most genres
-  // const genresSet = new Set<string>();
-  // allAnime.forEach(anime => anime.genre.forEach(g => genresSet.add(g)));
-  // return Array.from(genresSet).sort();
   return staticAvailableGenres.sort();
 };
-
