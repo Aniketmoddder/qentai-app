@@ -1,4 +1,3 @@
-
 'use server';
 import { db } from '@/lib/firebase';
 import type { Anime, Episode } from '@/types/anime';
@@ -109,24 +108,23 @@ export const getAllAnimes = async (
     } else {
       // Default sort orders if no explicit sortBy is provided for specific filters
       if (filters.type) {
-        queryConstraints.push(orderBy('averageRating', 'desc')); 
+        // If filtering by type, and no specific sort is given, default to title sort.
+        queryConstraints.push(orderBy('title', 'asc'));
       } else if (filters.genre) {
-        queryConstraints.push(orderBy('averageRating', 'desc'));
+        // If filtering by genre, and no specific sort, default to title sort.
+        queryConstraints.push(orderBy('title', 'asc'));
       } else if (typeof filters.featured === 'boolean' && filters.featured) {
-         queryConstraints.push(orderBy('title', 'asc')); // Example: sort featured by title if no other sort is given
+         queryConstraints.push(orderBy('title', 'asc')); 
       } else {
-        // Default sort for general getAllAnimes call (e.g., for 'Recently Added' which might use 'createdAt' or 'updatedAt')
+        // Default sort for general getAllAnimes call
         queryConstraints.push(orderBy('updatedAt', filters.sortOrder || 'desc'));
       }
     }
     
     if (count > 0) {
         queryConstraints.push(limit(count));
-    } else if (count === 0) { // Handle case for fetching all matching documents
-        // No limit applied, or you might adjust this based on how "all" should behave for performance.
-        // For very large datasets, fetching "all" without any limit is usually not recommended.
-        // Consider setting a sane upper limit if `count === 0` means "fetch all available within reason".
-        // Example: queryConstraints.push(limit(1000)); // A reasonable upper bound
+    } else if (count === 0) { 
+        queryConstraints.push(limit(1000)); 
     }
     
     const q = query(animesCollection, ...queryConstraints);
@@ -353,6 +351,7 @@ export const getAnimesByIds = async (ids: string[]): Promise<Anime[]> => {
 
 export const getFeaturedAnimes = async (count: number = 5): Promise<Anime[]> => {
   try {
+    // When isFeatured is true, sort by title. This aligns with common index patterns.
     const q = query(animesCollection, where('isFeatured', '==', true), orderBy('title', 'asc'), limit(count));
     const querySnapshot = await getDocs(q);
     const animes = querySnapshot.docs.map(doc => convertAnimeTimestampsForClient({ id: doc.id, ...doc.data() }) as Anime);
