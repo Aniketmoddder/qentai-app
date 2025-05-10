@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -16,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { FirestoreError } from 'firebase/firestore';
 import AccountSettingsTab from '@/components/profile/AccountSettingsTab';
 import { cn } from '@/lib/utils';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'; // Added ScrollArea and ScrollBar
 
 export default function ProfilePage() {
   const { user, appUser, loading: authLoading } = useAuth();
@@ -173,44 +175,48 @@ export default function ProfilePage() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="flex flex-col sm:flex-row sm:items-center gap-2 mb-6 p-0 bg-transparent">
-          <TabsTrigger
-            value="favorites"
-            className={cn(
-              "w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md border transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              activeTab === 'favorites'
-                ? 'bg-destructive/10 text-destructive border-destructive hover:bg-destructive/20'
-                : 'bg-card text-card-foreground border-border hover:bg-muted'
-            )}
-          >
-            <Heart className={cn("w-5 h-5", activeTab === 'favorites' && 'fill-destructive')} /> Favorites
-          </TabsTrigger>
-          <TabsTrigger
-            value="wishlist"
-            className={cn(
-              "w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md border transition-colors",
-               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              activeTab === 'wishlist'
-                ? 'bg-primary/10 text-primary border-primary hover:bg-primary/20'
-                : 'bg-card text-card-foreground border-border hover:bg-muted'
-            )}
-          >
-            <Bookmark className={cn("w-5 h-5", activeTab === 'wishlist' && 'fill-primary')} /> Wishlist
-          </TabsTrigger>
-          <TabsTrigger
-            value="settings"
-            className={cn(
-              "w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md border transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              activeTab === 'settings'
-                ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/90'
-                : 'bg-card text-card-foreground border-border hover:bg-muted'
-            )}
-          >
-            <Settings className="w-5 h-5" /> Account
-          </TabsTrigger>
-        </TabsList>
+        <ScrollArea className="w-full whitespace-nowrap sm:whitespace-normal mb-6">
+          <TabsList className="inline-flex sm:flex sm:flex-col sm:items-start gap-2 p-0 bg-transparent">
+            <TabsTrigger
+              value="favorites"
+              className={cn(
+                "w-full sm:w-auto flex items-center justify-center sm:justify-start gap-2 px-4 py-2.5 text-sm font-medium rounded-md border transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                activeTab === 'favorites'
+                  ? 'bg-destructive/10 text-destructive border-destructive hover:bg-destructive/20'
+                  : 'bg-card text-card-foreground border-border hover:bg-muted'
+              )}
+            >
+              <Heart className={cn("w-5 h-5", activeTab === 'favorites' && 'fill-destructive')} /> Favorites
+            </TabsTrigger>
+            <TabsTrigger
+              value="wishlist"
+              className={cn(
+                "w-full sm:w-auto flex items-center justify-center sm:justify-start gap-2 px-4 py-2.5 text-sm font-medium rounded-md border transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                activeTab === 'wishlist'
+                  ? 'bg-primary/10 text-primary border-primary hover:bg-primary/20'
+                  : 'bg-card text-card-foreground border-border hover:bg-muted'
+              )}
+            >
+              <Bookmark className={cn("w-5 h-5", activeTab === 'wishlist' && 'fill-primary')} /> Wishlist
+            </TabsTrigger>
+            <TabsTrigger
+              value="settings"
+              className={cn(
+                "w-full sm:w-auto flex items-center justify-center sm:justify-start gap-2 px-4 py-2.5 text-sm font-medium rounded-md border transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                activeTab === 'settings'
+                  ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/90'
+                  : 'bg-card text-card-foreground border-border hover:bg-muted'
+              )}
+            >
+              <Settings className="w-5 h-5" /> Account
+            </TabsTrigger>
+          </TabsList>
+          <ScrollBar orientation="horizontal" className="sm:hidden h-1.5" />
+        </ScrollArea>
+        
         <TabsContent value="favorites">
           {renderAnimeList(favoritesList, 'favorite')}
         </TabsContent>
@@ -224,3 +230,4 @@ export default function ProfilePage() {
     </Container>
   );
 }
+
