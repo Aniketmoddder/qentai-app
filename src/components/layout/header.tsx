@@ -45,6 +45,7 @@ export default function Header() {
   
   useEffect(() => {
     if (isMobileMenuOpen || isSearchDrawerOpen) {
+      // Close menus when path changes
       setIsMobileMenuOpen(false);
       setIsSearchDrawerOpen(false);
     }
@@ -97,7 +98,7 @@ export default function Header() {
     >
       <Container className="flex items-center justify-between py-3">
         <div className="flex items-center gap-4">
-          <Logo />
+          <Logo iconSize={7} textSize="text-xl" />
           <nav className="hidden lg:flex items-center space-x-5">
             {navItems.map((item) => (
               <Link
@@ -208,7 +209,7 @@ export default function Header() {
               <SheetContent side="right" className="bg-card p-0 flex flex-col w-[80vw] max-w-xs sm:max-w-sm border-l-border">
                 <SheetHeader className="p-4 pb-2 border-b border-border"> 
                   <SheetTitle>
-                    <Logo />
+                    <Logo iconSize={7} textSize="text-xl" />
                   </SheetTitle>
                 </SheetHeader>
                 <div className="flex-grow overflow-y-auto">
@@ -300,4 +301,3 @@ export default function Header() {
     </header>
   );
 }
-

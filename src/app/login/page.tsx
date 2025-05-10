@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams as useNextSearchParams } from 'next/navigation'; // Renamed useSearchParams to avoid conflict
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
@@ -25,6 +25,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useNextSearchParams(); // Using the renamed import
   const { user, loading: authLoading, setLoading: setAuthContextLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -33,9 +34,10 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.push('/'); 
+      const redirectUrl = searchParams.get('redirect') || '/';
+      router.push(redirectUrl); 
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, searchParams]);
 
   const handleLogin = async (values: LoginFormValues) => {
     setIsLoading(true);
@@ -46,7 +48,8 @@ export default function LoginPage() {
         title: "Login Successful",
         description: "Welcome back!",
       });
-      router.push('/'); 
+      const redirectUrl = searchParams.get('redirect') || '/';
+      router.push(redirectUrl); 
     } catch (e: any) {
       const errorMessage = e.message?.replace('Firebase: ', '').split(' (')[0] || 'Failed to sign in. Please check your credentials.';
       setError(errorMessage);
@@ -70,7 +73,8 @@ export default function LoginPage() {
         title: "Login Successful",
         description: "Welcome!",
       });
-      router.push('/');
+      const redirectUrl = searchParams.get('redirect') || '/';
+      router.push(redirectUrl);
     } catch (e: any) {
       let errorMessage = "Failed to sign in with Google. Please try again.";
       const errorCode = e.code;
@@ -115,7 +119,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-sm">
         <CardHeader className="text-center">
           <div className="mx-auto mb-6">
-            <Logo />
+            <Logo iconSize={10} textSize="text-3xl" />
           </div>
           <CardTitle className="text-3xl font-bold">Welcome Back!</CardTitle>
           <CardDescription>Sign in to continue to Qentai.</CardDescription>

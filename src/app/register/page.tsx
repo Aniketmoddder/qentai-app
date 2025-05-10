@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams as useNextSearchParams } from 'next/navigation'; // Renamed
 import { createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
@@ -30,6 +30,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useNextSearchParams(); // Renamed
   const { user, loading: authLoading, setLoading: setAuthContextLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -38,9 +39,10 @@ export default function RegisterPage() {
 
  useEffect(() => {
     if (!authLoading && user) {
-      router.push('/'); 
+      const redirectUrl = searchParams.get('redirect') || '/';
+      router.push(redirectUrl); 
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, searchParams]);
 
   const handleRegister = async (values: RegisterFormValues) => {
     setIsLoading(true);
@@ -51,7 +53,8 @@ export default function RegisterPage() {
         title: "Account Created",
         description: "Welcome to Qentai!",
       });
-      router.push('/'); 
+      const redirectUrl = searchParams.get('redirect') || '/';
+      router.push(redirectUrl); 
     } catch (e: any) {
       const errorMessage = e.message?.replace('Firebase: ', '').split(' (')[0] || 'Failed to create account. Please try again.';
       setError(errorMessage);
@@ -75,7 +78,8 @@ export default function RegisterPage() {
         title: "Sign Up Successful",
         description: "Welcome to Qentai!",
       });
-      router.push('/');
+      const redirectUrl = searchParams.get('redirect') || '/';
+      router.push(redirectUrl);
     } catch (e: any) {
       let errorMessage = "Failed to sign up with Google. Please try again.";
       const errorCode = e.code; 
@@ -120,7 +124,7 @@ export default function RegisterPage() {
       <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-sm">
          <CardHeader className="text-center">
           <div className="mx-auto mb-6">
-            <Logo />
+            <Logo iconSize={10} textSize="text-3xl" />
           </div>
           <CardTitle className="text-3xl font-bold">Create an Account</CardTitle>
           <CardDescription>Join Qentai to discover and watch your favorite anime.</CardDescription>

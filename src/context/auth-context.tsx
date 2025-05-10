@@ -36,7 +36,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground">
         <Container className="text-center">
           <div className="mb-8">
-            <Logo className="text-4xl justify-center" />
+            <Logo iconSize={12} textSize="text-4xl" className="justify-center" />
           </div>
           <Loader2 className="w-16 h-16 mx-auto animate-spin text-primary mb-6" />
           <p className="text-xl font-semibold text-foreground/90">Loading Qentai</p>
