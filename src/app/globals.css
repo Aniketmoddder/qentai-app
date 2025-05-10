@@ -1,3 +1,7 @@
+/* Vidstack Player Styles */
+@import 'vidstack/player/styles/default/theme.css';
+@import 'vidstack/player/styles/default/layouts/video.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

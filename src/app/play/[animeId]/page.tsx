@@ -11,9 +11,12 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import type PlyrType from 'plyr';
-// HLS.js is conditionally imported.
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+// Vidstack imports
+import { MediaPlayer, MediaProvider } from '@vidstack/react';
+import type { MediaPlayerInstance, MediaSrc, MediaErrorDetail } from '@vidstack/react';
+import { DefaultVideoLayout, defaultLayoutIcons } from '@vidstack/react/player/layouts/default';
 
 
 export default function PlayerPage() {
@@ -28,9 +31,7 @@ export default function PlayerPage() {
   const [pageIsLoading, setPageIsLoading] = useState(true);
   const [playerError, setPlayerError] = useState<string | null>(null);
   
-  const videoRef = useRef<HTMLVideoElement | null>(null); 
-  const playerRef = useRef<PlyrType | null>(null); 
-  const hlsRef = useRef<any | null>(null); 
+  const playerRef = useRef<MediaPlayerInstance | null>(null); 
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -61,7 +62,15 @@ export default function PlayerPage() {
           } else {
             setCurrentEpisode(null); 
             if (details.episodes && details.episodes.length > 0) {
-              setPlayerError("Selected episode not found, but other episodes exist.");
+              // This case implies an invalid episode ID was in the URL, but the anime has episodes.
+              // We could set to the first episode or show a specific message.
+              // For now, currentEpisode remains null, and the UI will handle it.
+               if (details.episodes[0]) {
+                 router.replace(`/play/${animeId}?episode=${details.episodes[0].id}`, { scroll: false });
+                 setCurrentEpisode(details.episodes[0]);
+               } else {
+                 setPlayerError("No episodes available for this anime.");
+               }
             } else {
               setPlayerError("No episodes available for this anime.");
             }
@@ -108,156 +117,17 @@ export default function PlayerPage() {
     }
   }, [anime, currentEpisode, handleEpisodeSelect]);
 
-
-  useEffect(() => {
-    const videoElement = videoRef.current;
-  
-    // If there's no video element or no current episode URL, ensure existing instances are destroyed.
-    if (!videoElement || !currentEpisode?.url) {
-      if (playerRef.current) {
-        try {
-          playerRef.current.destroy();
-        } catch (e) { console.warn("Error destroying playerRef in early exit:", e); }
-        playerRef.current = null;
-      }
-      if (hlsRef.current) {
-        try {
-          hlsRef.current.destroy();
-        } catch (e) { console.warn("Error destroying hlsRef in early exit:", e); }
-        hlsRef.current = null;
-      }
-      return;
+  const onPlayerError = useCallback((detail: MediaErrorDetail, nativeError?: unknown) => {
+    console.error("Vidstack Player Error:", detail, nativeError);
+    let message = "Video playback error.";
+    if (detail?.message) {
+        message = `Video error: ${detail.message}`;
+    } else if (nativeError instanceof Error) {
+        message = `Video error: ${nativeError.message}`;
     }
-  
-    // Variables to hold instances created in this effect run
-    let newPlayerInstance: PlyrType | null = null;
-    let newHlsInstance: any | null = null;
-  
-    Promise.all([
-      import('plyr'),
-      currentEpisode.url.includes('.m3u8') ? import('hls.js') : Promise.resolve(null),
-    ])
-      .then(([{ default: PlyrConstructor }, HlsModule]) => {
-        // Check if the video element is still the same, or if episode changed again during async load
-        if (videoRef.current !== videoElement || !currentEpisode?.url) {
-          console.log("Player init aborted: video element or episode changed during async import. CurrentEp ID:", currentEpisode?.id);
-          return;
-        }
-  
-        const Hls = HlsModule?.default;
-        console.log("Initializing Plyr for episode:", currentEpisode.title, "URL:", currentEpisode.url);
-  
-        // Destroy any existing player instance before creating a new one
-        // This is important if the key on the video element itself doesn't fully handle cleanup
-        // or if we want more direct control.
-        if (playerRef.current) {
-          try {
-            playerRef.current.destroy();
-          } catch (e) { console.warn("Error destroying old playerRef before new init:", e); }
-        }
-        if (hlsRef.current) {
-           try {
-            hlsRef.current.destroy();
-          } catch (e) { console.warn("Error destroying old hlsRef before new init:", e); }
-        }
+    setPlayerError(message);
+  }, []);
 
-        newPlayerInstance = new PlyrConstructor(videoElement, {
-          debug: process.env.NODE_ENV === 'development',
-          autoplay: true,
-          controls: [
-            'play-large', 'play', 'progress', 'current-time', 'mute',
-            'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen',
-          ],
-        });
-        playerRef.current = newPlayerInstance; // Store the new player instance
-  
-        if (currentEpisode.url.includes('.m3u8') && Hls) {
-          if (Hls.isSupported()) {
-            console.log("HLS is supported, attaching HLS. Episode ID:", currentEpisode.id);
-            newHlsInstance = new Hls();
-            newHlsInstance.loadSource(currentEpisode.url);
-            newHlsInstance.attachMedia(videoElement);
-            hlsRef.current = newHlsInstance; // Store the new HLS instance
-  
-            newHlsInstance.on(Hls.Events.ERROR, (_event: string, data: any) => {
-              if (!videoRef.current) return; // Check if component/video still mounted
-              console.error('HLS.js Error:', data);
-              if (data.fatal) {
-                setPlayerError(`Video error (HLS): ${data.details || data.type}`);
-              }
-            });
-          } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-            console.log("HLS.js not supported, browser might play m3u8 natively. Episode ID:", currentEpisode.id);
-            videoElement.src = currentEpisode.url;
-          } else {
-            setPlayerError('HLS.js is not supported, and native m3u8 playback failed.');
-          }
-        } else {
-          console.log("Setting video source directly (not HLS or HLS not used). Episode ID:", currentEpisode.id);
-          videoElement.src = currentEpisode.url;
-        }
-  
-        newPlayerInstance.on('ready', () => {
-          if (!videoRef.current) return;
-          console.log('Plyr ready for:', currentEpisode?.title);
-        });
-  
-        newPlayerInstance.on('ended', handleNextEpisode);
-        
-        newPlayerInstance.on('error', (event: any) => {
-          if (!videoRef.current) return;
-          console.error("Plyr Player Error Event:", event);
-          const mediaError = (event.detail?.plyr?.media as HTMLVideoElement)?.error;
-          let message = "Video playback error.";
-
-          if (mediaError) {
-              message += ` Code: ${mediaError.code}. Message: ${mediaError.message || 'No specific message.'}`;
-          } else if (event.detail?.plyr?.source) { 
-              message += ` Problem with source: ${event.detail.plyr.source}.`;
-          } else if (typeof event.detail === 'string') {
-              message += ` Details: ${event.detail}`;
-          } else if (event.message) {
-              message += ` Details: ${event.message}`;
-          }
-          setPlayerError(message);
-        });
-  
-      })
-      .catch((err) => {
-        console.error('Failed to load Plyr or HLS.js:', err);
-        setPlayerError('Could not load video player components.');
-      });
-  
-    return () => {
-      console.log("Cleanup for Plyr effect, episode ID:", currentEpisode?.id);
-      // Destroy HLS instance first, then Plyr.
-      // Use the instances created in *this specific effect run*.
-      if (newHlsInstance) {
-        try {
-          newHlsInstance.destroy();
-          console.log("Cleaned up newHlsInstance for", currentEpisode?.id);
-        } catch (e) {
-          console.warn('Error destroying newHlsInstance during cleanup:', e);
-        }
-      }
-      if (newPlayerInstance) {
-        try {
-          newPlayerInstance.destroy();
-          console.log("Cleaned up newPlayerInstance for", currentEpisode?.id);
-        } catch (e) {
-          console.warn('Error destroying newPlayerInstance during cleanup:', e);
-        }
-      }
-      // Defensive cleanup for main refs if they point to the instances being destroyed.
-      if (hlsRef.current === newHlsInstance) {
-        hlsRef.current = null;
-      }
-      if (playerRef.current === newPlayerInstance) {
-        playerRef.current = null;
-      }
-    };
-  }, [currentEpisode?.id, currentEpisode?.url, animeId, handleNextEpisode]); // Key dependencies that trigger re-initialization
-  
 
   if (pageIsLoading && !anime) {
     return (
@@ -268,7 +138,7 @@ export default function PlayerPage() {
     );
   }
 
-  if (playerError && (!anime || !currentEpisode && !pageIsLoading )) { 
+  if (playerError && (!anime || (!currentEpisode && !pageIsLoading))) { 
     return (
       <Container className="flex flex-col items-center justify-center min-h-[calc(100vh-var(--header-height,4rem)-1px)] py-12 text-center">
         <AlertTriangle className="w-12 h-12 text-destructive mb-4" />
@@ -296,22 +166,14 @@ export default function PlayerPage() {
   }
   
   const currentEpisodeIndex = anime?.episodes?.findIndex(ep => ep.id === currentEpisode?.id) ?? -1;
+  const videoSrc: MediaSrc | undefined = currentEpisode?.url ? { src: currentEpisode.url, type: currentEpisode.url.includes('.m3u8') ? 'application/x-mpegurl' : 'video/mp4' } : undefined;
 
   return (
     <div className="min-h-screen flex flex-col bg-background -mt-[calc(var(--header-height,4rem)+1px)] pt-[calc(var(--header-height,4rem)+1px)]">
-      <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
       <Container className="py-4 md:py-6 flex-grow w-full max-w-full px-0 sm:px-4 md:px-6 lg:px-8">
         <div className="lg:flex lg:gap-6 xl:gap-8 h-full">
           <div className="lg:flex-grow mb-6 lg:mb-0 h-full flex flex-col">
             <div className="aspect-video bg-black rounded-lg overflow-hidden shadow-2xl mb-4 w-full relative">
-                {/* The key forces React to re-mount the video element when episode changes, aiding cleanup */}
-                <video 
-                    ref={videoRef} 
-                    key={`${currentEpisode?.id || 'no-episode'}-${animeId}`} 
-                    poster={currentEpisode?.thumbnail || anime?.coverImage || `https://picsum.photos/seed/${animeId}-${currentEpisode?.id}-poster/1280/720`}
-                    data-ai-hint="video player content"
-                    className="w-full h-full" // Ensure video tag takes full space for Plyr
-                />
                 {pageIsLoading && currentEpisode && ( 
                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 z-20">
                         <Loader2 className="w-10 h-10 animate-spin text-primary" />
@@ -324,14 +186,18 @@ export default function PlayerPage() {
                     <p className="text-destructive-foreground text-sm">{playerError}</p>
                     <Button variant="outline" size="sm" className="mt-3" onClick={() => {
                         setPlayerError(null); 
-                        // Force re-initialization by briefly unsetting and resetting currentEpisode
-                        const tempEp = {...currentEpisode};
-                        setCurrentEpisode(null); 
-                        setTimeout(() => setCurrentEpisode(tempEp), 50); 
+                        // Attempt to reload by forcing a re-render or re-init.
+                        // With Vidstack, changing the key or src should re-trigger.
+                        if (currentEpisode) {
+                           const tempEp = {...currentEpisode};
+                           setCurrentEpisode(null); // Briefly nullify to ensure key change
+                           setTimeout(() => setCurrentEpisode(tempEp), 50);
+                        }
                     }}>Retry</Button>
                   </div>
                 )}
-                {!currentEpisode?.url && !pageIsLoading && !playerError && anime && ( 
+                
+                {(!currentEpisode?.url && !pageIsLoading && !playerError && anime) ? ( 
                      <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-card pointer-events-none">
                         <PlayCircleIcon className="w-24 h-24 opacity-30" />
                         <p className="mt-4 text-lg">
@@ -340,6 +206,24 @@ export default function PlayerPage() {
                             'Video source is missing for this episode.'}
                         </p>
                     </div>
+                ) : videoSrc && (
+                    <MediaPlayer
+                        key={currentEpisode?.id || 'vidstack-player'} // Key to re-mount on episode change
+                        className="w-full h-full"
+                        title={currentEpisode?.title || anime?.title}
+                        src={videoSrc}
+                        poster={currentEpisode?.thumbnail || anime?.coverImage || `https://picsum.photos/seed/${animeId}-${currentEpisode?.id}-poster/1280/720`}
+                        aspectRatio={16 / 9}
+                        autoplay
+                        onEnded={handleNextEpisode}
+                        onError={onPlayerError}
+                        ref={playerRef}
+                        crossorigin="" // Added for HLS/DASH if CORS issues arise
+                        playsinline // Important for iOS
+                    >
+                        <MediaProvider />
+                        <DefaultVideoLayout icons={defaultLayoutIcons} />
+                    </MediaPlayer>
                 )}
             </div>
 
@@ -403,8 +287,7 @@ export default function PlayerPage() {
               <ScrollArea className="flex-grow h-[calc(100vh-280px)] lg:h-[calc(100vh-var(--header-height,4rem)-180px)] pr-2 -mr-2 scrollbar-thin">
                 <div className="space-y-1.5">
                     {anime?.episodes?.map((ep) => (
-                    <TooltipProvider key={ep.id} delayDuration={200}>
-                      <Tooltip>
+                    <Tooltip key={ep.id} delayDuration={200}>
                         <TooltipTrigger asChild>
                             <Button
                                 variant={currentEpisode?.id === ep.id ? 'secondary' : 'ghost'}
@@ -431,7 +314,6 @@ export default function PlayerPage() {
                             {ep.overview && <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{ep.overview}</p>}
                         </TooltipContent>
                        </Tooltip>
-                    </TooltipProvider>
                     ))}
                     {(!anime?.episodes || anime.episodes.length === 0) && (
                         <p className="text-sm text-muted-foreground py-4 text-center">No episodes available for this series.</p>
