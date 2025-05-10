@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { getUniqueGenres } from '@/services/animeService';
 import { Tag } from 'lucide-react';
 
+// This component is now a standard Server Component.
+// The data fetching part (getUniqueGenres) is async and handled by Next.js.
 export default async function GenreList() {
   const genres = await getUniqueGenres();
 
@@ -33,3 +35,4 @@ export default async function GenreList() {
     </section>
   );
 }
+

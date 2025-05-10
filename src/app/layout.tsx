@@ -1,5 +1,5 @@
 
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Roboto_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
@@ -19,7 +19,17 @@ const robotoMono = Roboto_Mono({
 export const metadata: Metadata = {
   title: 'Qentai - Your Gateway to Anime',
   description: 'Discover, watch, and enjoy your favorite anime series and movies.',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no', // For responsiveness
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: [ // Optional: if you want to set theme color for browser UI
+    { media: '(prefers-color-scheme: light)', color: 'white' },
+    { media: '(prefers-color-scheme: dark)', color: 'hsl(var(--background))' },
+  ],
 };
 
 export default function RootLayout({

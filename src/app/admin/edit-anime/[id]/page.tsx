@@ -35,7 +35,6 @@ const animeSchema = z.object({
   trailerUrl: z.string().url('Must be a valid YouTube URL').optional().or(z.literal('')),
   isFeatured: z.boolean().optional(),
   averageRating: z.coerce.number().min(0).max(10).optional(),
-  // episodes are no longer edited here
 });
 
 type AnimeFormData = z.infer<typeof animeSchema>;
@@ -168,7 +167,7 @@ export default function EditAnimePage() {
     try {
       const updateData: Partial<Omit<Anime, 'episodes'>> = { 
         ...data,
-        trailerUrl: data.trailerUrl || undefined, // Ensure empty string becomes undefined
+        trailerUrl: data.trailerUrl || undefined, 
       };
       await updateAnimeInFirestore(animeId, updateData);
       toast({ title: 'Content Updated', description: `${data.title} has been successfully updated.` });
@@ -297,8 +296,6 @@ export default function EditAnimePage() {
               {form.formState.errors.genre && <p className="text-sm text-destructive mt-1">{form.formState.errors.genre.message}</p>}
             </div>
             
-            {/* Episode editing section removed */}
-
             <Button type="submit" disabled={isSubmitting} className="w-full btn-primary-gradient text-base py-3">
               {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
               Save Changes
@@ -374,3 +371,4 @@ function FormSelectItem({ name, label, items, form }: FormSelectItemProps) {
     </div>
   );
 }
+

@@ -9,7 +9,7 @@ interface LogoProps extends HTMLAttributes<HTMLAnchorElement> {
 }
 
 export default function Logo({ className, iconSize = 27, ...props }: LogoProps) { 
-  const imageDimension = iconSize * 2.5; // Adjust multiplier for desired visual size
+  const imageDimension = iconSize * 2.5; 
 
   return (
     <Link href="/" className={cn("flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm", className)} {...props}>
@@ -19,9 +19,11 @@ export default function Logo({ className, iconSize = 27, ...props }: LogoProps) 
           alt="Qentai Logo"
           fill
           style={{ objectFit: 'contain' }} 
+          sizes={`${imageDimension}px`} // Added sizes prop
           priority 
         />
       </div>
     </Link>
   );
 }
+
