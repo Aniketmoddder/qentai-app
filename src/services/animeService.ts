@@ -75,32 +75,43 @@ export const getAllAnimes = async (
     genre?: string;
     sortBy?: 'averageRating' | 'year' | 'title';
     sortOrder?: 'asc' | 'desc';
-    featured?: boolean; // For a potential "featured" flag in DB
+    featured?: boolean;
   }
 ): Promise<Anime[]> => {
   try {
     const queryConstraints: QueryConstraint[] = [];
+    let isFeaturedQuery = false;
+    let isGenreQuery = false;
+
 
     if (filters?.type) {
       queryConstraints.push(where('type', '==', filters.type));
     }
     if (filters?.genre) {
       queryConstraints.push(where('genre', 'array-contains', filters.genre));
+      isGenreQuery = true;
     }
     if (filters?.featured) {
-       queryConstraints.push(where('isFeatured', '==', true)); // Assuming 'isFeatured' boolean field
+       queryConstraints.push(where('isFeatured', '==', true));
+       isFeaturedQuery = true;
     }
 
     if (filters?.sortBy) {
       queryConstraints.push(orderBy(filters.sortBy, filters.sortOrder || 'desc'));
-    } else if (!filters?.genre) { 
-      // Only apply default sort by title if NOT filtering by genre to avoid specific composite index error.
-      // If filtering by genre and no sort is specified, Firestore's default order will be used.
-      // For full sort functionality with genre filters, the user needs to create the composite index.
+    } else if (!isGenreQuery && !isFeaturedQuery) { 
+      // Only apply default sort by title if NOT filtering by genre or featured
+      // to avoid needing specific composite indexes for those common cases without explicit sort.
+      queryConstraints.push(orderBy('title', 'asc'));
+    } else if (isFeaturedQuery && !filters?.sortBy) {
+      // If filtering by featured and no other sort, default to title sort
+      // This requires an index on isFeatured AND title
+      queryConstraints.push(orderBy('title', 'asc'));
+    } else if (isGenreQuery && !filters?.sortBy) {
+      // If filtering by genre and no other sort, default to title sort
+      // This requires an index on genre AND title
       queryConstraints.push(orderBy('title', 'asc'));
     }
-    // If filters.genre is present and filters.sortBy is not, no explicit orderBy is added here.
-
+    
     queryConstraints.push(limit(count));
     
     const q = query(animesCollection, ...queryConstraints);
@@ -108,13 +119,15 @@ export const getAllAnimes = async (
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Anime));
   } catch (error) {
     if (error instanceof FirestoreError && error.code === 'failed-precondition') {
-        console.warn(
-        `Firestore query requires an index. This is common when filtering by an array and ordering by another field. Please create the required composite index in your Firebase console. The error message usually provides a link to create it. Original error: ${error.message}`
-      );
-      // Optionally, re-throw a more user-friendly error or return empty array
-      // throw new Error(`Query requires a Firestore index. Check server logs for details or Firebase console. ${error.message}`);
+      let warningMessage = `Firestore query requires an index. Please create the required composite index in your Firebase console. The error message usually provides a link to create it. Original error: ${error.message}`;
+      
+      if (isFeaturedQuery && !filters?.sortBy) {
+        warningMessage = `The query for featured animes (sorted by title by default) requires a composite index. Please create an index in Firestore on the 'animes' collection with fields: 'isFeatured' (Ascending) and 'title' (Ascending). The Firebase console error message should provide a direct link to create this index. Original error: ${error.message}`;
+      } else if (isGenreQuery && !filters?.sortBy) {
+        warningMessage = `The query for animes filtered by genre (sorted by title by default) requires a composite index. Please create an index in Firestore on the 'animes' collection with fields: 'genre' (Array-Contains) and 'title' (Ascending). The Firebase console error message should provide a direct link to create this index. Original error: ${error.message}`;
+      }
+      console.warn(warningMessage);
     }
-    // For other errors, use the generic handler
     throw handleFirestoreError(error, 'getAllAnimes');
   }
 };
@@ -149,8 +162,6 @@ export const getAnimesByType = async (type: Anime['type'], count: number = 20): 
 
 export const getAnimesByGenre = async (genre: string, count: number = 20): Promise<Anime[]> => {
   try {
-    // When querying by genre, if no explicit sort is provided, default to title sort.
-    // This specific combination (array-contains + orderBy another field) needs a composite index.
     const q = query(animesCollection, where('genre', 'array-contains', genre), orderBy('title', 'asc'), limit(count));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Anime));
@@ -190,7 +201,12 @@ export const updateAnimeEpisode = async (animeId: string, episodeId: string, upd
 
     if (episodeIndex === -1) {
        console.warn(`Episode with ID ${episodeId} not found in anime ${animeId}. Cannot update.`);
-       return; 
+       // Check if it's a movie - movies might have a generic episode ID like 'animeId-movie'
+       if (animeData.type === 'Movie' && episodes.length === 1 && updatedEpisodeData.url) {
+         episodes[0] = { ...episodes[0], ...updatedEpisodeData }; // Update the single movie entry
+       } else {
+         return; 
+       }
     } else {
       episodes[episodeIndex] = { ...episodes[episodeIndex], ...updatedEpisodeData };
     }
