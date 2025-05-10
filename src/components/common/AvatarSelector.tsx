@@ -12,16 +12,16 @@ interface AvatarSelectorProps {
   sectionTitle?: string;
 }
 
-const AVATAR_BASE_URL = 'https://ik.imagekit.io/aniplay123/profile/m';
-const AVATAR_COUNT = 12;
+const AVATAR_BASE_URL = 'https://ik.imagekit.io/aniplay123/profile/';
+const AVATAR_COUNT = 12; // m1.png to m12.png
 
-const avatarUrls = Array.from({ length: AVATAR_COUNT }, (_, i) => `${AVATAR_BASE_URL}${i + 1}.png`);
+const avatarUrls = Array.from({ length: AVATAR_COUNT }, (_, i) => `${AVATAR_BASE_URL}m${i + 1}.png`);
 
 export default function AvatarSelector({
   currentAvatarUrl,
   onAvatarSelect,
   title = "Select Avatar",
-  sectionTitle = "Characters" // Updated default section title
+  sectionTitle = "Characters"
 }: AvatarSelectorProps) {
   return (
     <div className="space-y-4 my-4">

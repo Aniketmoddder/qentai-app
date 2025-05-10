@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from 'next/image';
@@ -12,10 +13,10 @@ interface BannerSelectorProps {
   sectionTitle?: string;
 }
 
-const BANNER_BASE_URL = 'https://ik.imagekit.io/aniplay123/banner/b';
-const BANNER_COUNT = 13; // b1 to b13
+const BANNER_BASE_URL = 'https://ik.imagekit.io/aniplay123/banner/';
+const BANNER_COUNT = 13; // b1.png to b13.png
 
-const bannerUrls = Array.from({ length: BANNER_COUNT }, (_, i) => `${BANNER_BASE_URL}${i + 1}.png`);
+const bannerUrls = Array.from({ length: BANNER_COUNT }, (_, i) => `${BANNER_BASE_URL}b${i + 1}.png`);
 
 export default function BannerSelector({
   currentBannerUrl,
