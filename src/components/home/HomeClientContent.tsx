@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -6,8 +7,8 @@ import AnimeCarousel from '@/components/anime/anime-carousel';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronRight, AlertTriangle, Play, Plus, Tv, Calendar, ListVideo, Star as StarIcon, Volume2, VolumeX } from 'lucide-react';
-import { getAllAnimes, getFeaturedAnimes } from '@/services/animeService';
+import { ChevronRight, AlertTriangle, Play, Plus, Tv, Calendar, ListVideo, Star as StarIcon, Volume2, VolumeX, Loader2 } from 'lucide-react';
+import { getAllAnimes, getFeaturedAnimes, convertAnimeTimestampsForClient } from '@/services/animeService';
 import type { Anime } from '@/types/anime';
 import FeaturedAnimeCard from '@/components/anime/FeaturedAnimeCard';
 import TopAnimeListItem from '@/components/anime/TopAnimeListItem';
@@ -41,14 +42,12 @@ const getYouTubeVideoId = (url?: string): string | null => {
       }
     }
   } catch (e) {
-    // console.error("Error parsing YouTube URL:", e); // Less noisy for optional field
     return null;
   }
   return null;
 };
 
-// Timeout for promises, can be adjusted
-const FETCH_TIMEOUT_MS = 25000; // 25 seconds
+const FETCH_TIMEOUT_MS = 25000; 
 
 const promiseWithTimeout = <T,>(promise: Promise<T>, ms: number, timeoutError = new Error('Promise timed out')) => {
   const timeout = new Promise<never>((_, reject) => {
@@ -60,12 +59,12 @@ const promiseWithTimeout = <T,>(promise: Promise<T>, ms: number, timeoutError = 
   return Promise.race<T | never>([promise, timeout]);
 };
 
-export interface HomeClientContentProps {
+export interface HomeClientProps {
   genreListComponent: React.ReactNode;
   recommendationsSectionComponent: React.ReactNode;
 }
 
-export default function HomeClientContent({ genreListComponent, recommendationsSectionComponent }: HomeClientContentProps) {
+export default function HomeClient({ genreListComponent, recommendationsSectionComponent }: HomeClientProps) {
   const [allAnime, setAllAnime] = useState<Anime[]>([]);
   const [featuredAnimesList, setFeaturedAnimesList] = useState<Anime[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -77,42 +76,43 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setFetchError(null);
-    setAllAnime([]); // Clear previous data
-    setFeaturedAnimesList([]); // Clear previous data
+    setAllAnime([]); 
+    setFeaturedAnimesList([]);
 
-    console.log("HomeClientContent: fetchData started");
     try {
+      // Fetch all animes first, sort by 'updatedAt' by default for general carousels
+      // Fetch featured animes, these will be sorted by 'title' by default as per animeService update
       const fetchDataPromises = [
-        getAllAnimes(50, { sortBy: 'createdAt', sortOrder: 'desc' }), 
-        getFeaturedAnimes(5) // This will now sort by title ASC
+        getAllAnimes(50, { sortBy: 'updatedAt', sortOrder: 'desc' }), 
+        getFeaturedAnimes(5) // Uses new default sort: isFeatured=true, title=asc
       ];
       
-      const [generalAnimesResult, featuredResult] = await promiseWithTimeout(
-        Promise.allSettled(fetchDataPromises), // Use allSettled to get results even if one promise fails
+      const settledResults = await promiseWithTimeout(
+        Promise.allSettled(fetchDataPromises),
         FETCH_TIMEOUT_MS, 
-        new Error(`Failed to load homepage data within ${FETCH_TIMEOUT_MS / 1000} seconds. The server or database might be slow or an index is missing.`)
+        new Error(`Failed to load homepage data within ${FETCH_TIMEOUT_MS / 1000} seconds. This could be due to network issues or missing Firestore indexes.`)
       );
 
       let generalAnimes: Anime[] = [];
       let featured: Anime[] = [];
-      let errors: string[] = [];
+      const errors: string[] = [];
 
+      const generalAnimesResult = settledResults[0];
       if (generalAnimesResult.status === 'fulfilled') {
-        generalAnimes = generalAnimesResult.value || [];
-        console.log("HomeClientContent: generalAnimes fetched successfully", generalAnimes.length);
+        generalAnimes = generalAnimesResult.value.map(a => convertAnimeTimestampsForClient(a) as Anime) || [];
       } else {
-        console.error("HomeClientContent: Error fetching general animes:", generalAnimesResult.reason);
+        console.error("HomeClient: Error fetching general animes:", generalAnimesResult.reason);
         errors.push(generalAnimesResult.reason?.message || "Failed to load general animes.");
          if (generalAnimesResult.reason instanceof FirestoreError && generalAnimesResult.reason.code === 'failed-precondition') {
-           errors.push(`General animes query failed: ${generalAnimesResult.reason.message}. Ensure required Firestore indexes are created.`);
+           errors.push(`General animes query failed: ${generalAnimesResult.reason.message}. Ensure required Firestore indexes (e.g., on 'updatedAt') are created.`);
         }
       }
 
+      const featuredResult = settledResults[1];
       if (featuredResult.status === 'fulfilled') {
-        featured = featuredResult.value || [];
-        console.log("HomeClientContent: featured animes fetched successfully", featured.length);
+        featured = featuredResult.value.map(a => convertAnimeTimestampsForClient(a) as Anime) || [];
       } else {
-        console.error("HomeClientContent: Error fetching featured animes:", featuredResult.reason);
+        console.error("HomeClient: Error fetching featured animes:", featuredResult.reason);
         errors.push(featuredResult.reason?.message || "Failed to load featured animes.");
         if (featuredResult.reason instanceof FirestoreError && featuredResult.reason.code === 'failed-precondition') {
            errors.push(`Featured animes query failed: ${featuredResult.reason.message}. This usually means a composite index (e.g., on 'isFeatured' and 'title') is missing in Firestore. Check the Firebase console for a link to create it.`);
@@ -125,10 +125,8 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
       if (errors.length > 0) {
         setFetchError(errors.join(' | '));
       }
-      console.log("HomeClientContent: state updated");
 
-    } catch (error) { // Catches timeout error or other synchronous errors in useCallback
-      console.error("HomeClientContent: Critical error in fetchData:", error);
+    } catch (error) { 
       let message = "Could not load anime data due to an unexpected issue. Please try again later.";
       if (error instanceof Error) {
         message = error.message;
@@ -138,7 +136,6 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
       setFeaturedAnimesList([]);
     } finally {
       setIsLoading(false);
-      console.log("HomeClientContent: fetchData finished, isLoading set to false");
     }
   }, []);
 
@@ -151,7 +148,7 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (heroAnime && youtubeVideoId && !playTrailer) { // Added !playTrailer to prevent multiple timeouts if heroAnime changes
+    if (heroAnime && youtubeVideoId && !playTrailer) { 
       timer = setTimeout(() => {
         setPlayTrailer(true);
       }, 3000); 
@@ -159,14 +156,12 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
     return () => clearTimeout(timer);
   }, [heroAnime, youtubeVideoId, playTrailer]);
 
-
   const trendingAnime = allAnime.length > 0 ? shuffleArray([...allAnime]).slice(0, 10) : []; 
-  const popularAnime = allAnime.length > 0 ? shuffleArray([...allAnime].filter(a => a.averageRating && a.averageRating >= 7.0)).slice(0,10) : []; // Lowered threshold slightly
-  // Sort by createdAt if available, otherwise by year for recentlyAdded
+  const popularAnime = allAnime.length > 0 ? shuffleArray([...allAnime].filter(a => a.averageRating && a.averageRating >= 7.0)).slice(0,10) : [];
   const recentlyAddedAnime = allAnime.length > 0 
     ? [...allAnime].sort((a,b) => {
-        const dateA = a.createdAt?.toDate()?.getTime() || new Date(a.year, 0, 1).getTime();
-        const dateB = b.createdAt?.toDate()?.getTime() || new Date(b.year, 0, 1).getTime();
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.year, 0, 1).getTime();
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.year, 0, 1).getTime();
         return dateB - dateA;
       }).slice(0,10) 
     : []; 
@@ -175,11 +170,11 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
   const nextSeasonAnime = allAnime.length > 0 ? shuffleArray([...allAnime].filter(a => a.status === 'Upcoming')).slice(0,10) : [];
   
   const topAnimeList = allAnime.length > 0 ? [...allAnime]
-    .filter(a => a.averageRating !== undefined && a.averageRating !== null) // Ensure rating exists
+    .filter(a => a.averageRating !== undefined && a.averageRating !== null) 
     .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
     .slice(0, 10) : [];
 
-  if (isLoading && !heroAnime && fetchError === null) {
+  if (isLoading && !heroAnime && !fetchError) {
     return (
       <>
         <section className="relative h-[70vh] md:h-[85vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] bg-muted/30">
@@ -211,6 +206,7 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
     );
   }
 
+  const noContentAvailable = !isLoading && !fetchError && allAnime.length === 0 && featuredAnimesList.length === 0 && !heroAnime;
 
   return (
     <>
@@ -224,8 +220,8 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
                   title="YouTube video player"
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen // Note: allowFullScreen might not work as expected in all sandboxed iframe contexts
-                  className="w-full h-full scale-[1.8] sm:scale-[1.5] md:scale-[1.4] object-cover" // Increased scale for better coverage
+                  allowFullScreen 
+                  className="w-full h-full scale-[1.8] sm:scale-[1.5] md:scale-[1.4] object-cover"
                 ></iframe>
               </div>
             ) : (
@@ -278,7 +274,6 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
                   </Link>
                 </Button>
                 {playTrailer && youtubeVideoId && (
-                  // Position the mute button to the bottom right of the "More Info" button area
                   <div className="ml-auto sm:ml-3"> 
                     <Button
                         variant="ghost"
@@ -308,12 +303,12 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
               <h3 className="font-semibold font-orbitron text-lg">Error Loading Content</h3>
               <p className="text-sm whitespace-pre-line">{fetchError}</p>
               <Button variant="link" size="sm" onClick={fetchData} className="mt-2 px-0 text-destructive hover:text-destructive/80">
-                Try reloading
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Try reloading
               </Button>
             </div>
           </div>
         )}
-        {!fetchError && allAnime.length === 0 && !isLoading && (
+        {noContentAvailable && (
            <div className="my-8 p-6 bg-card border border-border rounded-lg text-center">
             <h3 className="font-semibold text-xl font-orbitron">No Anime Found</h3>
             <p className="text-muted-foreground">It looks like there's no anime in the database yet. An admin can add some via the admin panel.</p>

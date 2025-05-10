@@ -1,27 +1,20 @@
-// NO 'use client' at the top of this file
-import HomeClientContent from '@/components/home/HomeClientContent';
+// src/app/page.tsx
+import HomeClient from '@/components/home/HomeClientContent'; // Renamed component
 import GenreList from '@/components/anime/genre-list';
 import RecommendationsSection from '@/components/anime/recommendations-section';
 import type { ReactNode } from 'react';
 
-
-// Props for the HomeClientContent component
-export interface HomeContentProps {
+// Props for the HomeClient component
+export interface HomeClientProps { // Renamed interface
   genreListComponent: ReactNode;
   recommendationsSectionComponent: ReactNode;
 }
 
-export default function HomePage() { // This is the main Server Component for the page
-  const genreList = <GenreList />; // Instantiated in Server Component context
-  // RecommendationsSection is a client component, it can be passed directly.
-  // It will be rendered by the client component HomeClientContent.
+export default function HomePageWrapper() { // Renamed component to avoid conflict if page.tsx is also considered HomePage
+  // These Server Components will be rendered on the server and passed to HomeClient
+  const genreList = <GenreList />; 
   const recommendationsSection = <RecommendationsSection />;
 
-  // HomeClientContent will contain the parts that need 'use client'
-  return (
-    <HomeClientContent
-      genreListComponent={genreList}
-      recommendationsSectionComponent={recommendationsSection}
-    />
-  );
+  // HomeClient will contain the parts that need 'use client'
+  return <HomeClient genreListComponent={genreList} recommendationsSectionComponent={recommendationsSection} />;
 }
