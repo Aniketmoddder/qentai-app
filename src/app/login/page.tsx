@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -66,7 +67,7 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     setError(null);
-    setAuthContextLoading(true);
+    setAuthContextLoading(true); // Indicate auth state might change
     try {
       await signInWithPopup(auth, googleProvider);
       toast({
@@ -78,7 +79,7 @@ export default function LoginPage() {
     } catch (e: any) {
       let errorMessage = "Failed to sign in with Google. Please try again.";
       const errorCode = e.code;
-      console.error("Google Sign-In Error:", e); // Full error object
+      console.error("Google Sign-In Error:", e); 
 
       if (errorCode === 'auth/popup-closed-by-user') {
         errorMessage = "Google Sign-In was cancelled. Please try again.";
@@ -100,9 +101,9 @@ export default function LoginPage() {
         title: "Google Sign-In Failed",
         description: `${errorMessage}${errorCode ? ` (Error: ${errorCode})` : ''}`,
       });
-      setAuthContextLoading(false); 
     } finally {
       setIsGoogleLoading(false);
+      setAuthContextLoading(false); // Reset global loading after attempt
     }
   };
   
@@ -119,7 +120,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-sm">
         <CardHeader className="text-center">
           <div className="mx-auto mb-6">
-            <Logo iconSize={10} textSize="text-3xl" />
+            <Logo iconSize={14} /> {/* Adjusted: removed textSize, iconSize for larger logo */}
           </div>
           <CardTitle className="text-3xl font-bold">Welcome Back!</CardTitle>
           <CardDescription>Sign in to continue to Qentai.</CardDescription>

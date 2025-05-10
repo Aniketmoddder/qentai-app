@@ -98,7 +98,7 @@ export default function Header() {
     >
       <Container className="flex items-center justify-between py-3">
         <div className="flex items-center gap-4">
-          <Logo iconSize={7} textSize="text-xl" />
+          <Logo iconSize={14} /> {/* Adjusted iconSize for a larger logo */}
           <nav className="hidden lg:flex items-center space-x-5">
             {navItems.map((item) => (
               <Link
@@ -164,12 +164,6 @@ export default function Header() {
                     Profile
                   </Link>
                 </DropdownMenuItem>
-                {/* <DropdownMenuItem asChild>
-                  <Link href="/settings" className="flex items-center cursor-pointer text-foreground hover:bg-primary/10">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </Link>
-                </DropdownMenuItem>*/}
                 {user.email === 'ninjax.desi@gmail.com' && (
                    <DropdownMenuItem asChild>
                     <Link href="/admin" className="flex items-center cursor-pointer text-foreground hover:bg-primary/10">
@@ -209,7 +203,7 @@ export default function Header() {
               <SheetContent side="right" className="bg-card p-0 flex flex-col w-[80vw] max-w-xs sm:max-w-sm border-l-border">
                 <SheetHeader className="p-4 pb-2 border-b border-border"> 
                   <SheetTitle>
-                    <Logo iconSize={7} textSize="text-xl" />
+                    <Logo iconSize={12} /> {/* Adjusted iconSize for mobile menu */}
                   </SheetTitle>
                 </SheetHeader>
                 <div className="flex-grow overflow-y-auto">

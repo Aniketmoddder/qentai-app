@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -71,7 +72,7 @@ export default function RegisterPage() {
   const handleGoogleSignUp = async () => {
     setIsGoogleLoading(true);
     setError(null);
-    setAuthContextLoading(true);
+    setAuthContextLoading(true); // Indicate auth state might change
     try {
       await signInWithPopup(auth, googleProvider);
       toast({
@@ -83,7 +84,7 @@ export default function RegisterPage() {
     } catch (e: any) {
       let errorMessage = "Failed to sign up with Google. Please try again.";
       const errorCode = e.code; 
-      console.error("Google Sign-Up Error:", e); // Full error object
+      console.error("Google Sign-Up Error:", e); 
 
       if (errorCode === 'auth/popup-closed-by-user') {
         errorMessage = "Google Sign-Up was cancelled. Please try again.";
@@ -105,9 +106,9 @@ export default function RegisterPage() {
         title: "Google Sign-Up Failed",
         description: `${errorMessage}${errorCode ? ` (Error: ${errorCode})` : ''}`,
       });
-      setAuthContextLoading(false);
     } finally {
       setIsGoogleLoading(false);
+      setAuthContextLoading(false); // Reset global loading after attempt
     }
   };
 
@@ -124,7 +125,7 @@ export default function RegisterPage() {
       <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-sm">
          <CardHeader className="text-center">
           <div className="mx-auto mb-6">
-            <Logo iconSize={10} textSize="text-3xl" />
+            <Logo iconSize={14} /> {/* Adjusted: removed textSize, iconSize for larger logo */}
           </div>
           <CardTitle className="text-3xl font-bold">Create an Account</CardTitle>
           <CardDescription>Join Qentai to discover and watch your favorite anime.</CardDescription>

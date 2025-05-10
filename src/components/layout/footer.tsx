@@ -14,7 +14,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           {/* Column 1: Logo & Description */}
           <div className="space-y-3">
-            <Logo iconSize={7} textSize="text-xl" />
+            <Logo iconSize={10} /> {/* Adjusted: removed textSize, potentially adjust iconSize if needed */}
             <p className="text-sm text-muted-foreground leading-relaxed">
               Your ultimate destination for anime streaming. Discover new series and enjoy your favorites, all in one place.
             </p>
