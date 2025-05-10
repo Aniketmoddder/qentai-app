@@ -1,4 +1,3 @@
-
 // src/app/browse/page.tsx
 import type { SuspenseProps } from 'react'; // Import SuspenseProps
 import { Suspense } from 'react';
@@ -9,19 +8,21 @@ import { getAllAnimes } from '@/services/animeService';
 import { AlertCircle, Loader2, ListFilter, FilterX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { FirestoreError } from 'firebase/firestore';
 
 interface BrowsePageProps {
   searchParams: {
     genre?: string;
     type?: Anime['type'];
-    sort?: 'top' | string; // 'top' for averageRating, can extend
-    filter?: 'featured' | string; // 'featured' for featured animes
-    q?: string; // For search, handled by search page but can be integrated
+    sort?: 'top' | 'title' | 'year' | 'updatedAt' | 'createdAt' | string; // Extended sort options
+    sortOrder?: 'asc' | 'desc';
+    filter?: 'featured' | string;
+    q?: string;
   };
 }
 
 async function BrowseContent({ searchParams }: BrowsePageProps) {
-  const { genre, type, sort, filter: queryFilter } = searchParams;
+  const { genre, type, sort, sortOrder, filter: queryFilter } = searchParams;
   let animeList: Anime[] = [];
   let pageTitle = 'Browse All Anime';
   let fetchError: string | null = null;
@@ -36,21 +37,38 @@ async function BrowseContent({ searchParams }: BrowsePageProps) {
       filters.genre = genre;
       pageTitle = `${genre} Anime`;
     }
-    if (sort === 'top') {
-      filters.sortBy = 'averageRating';
-      filters.sortOrder = 'desc';
-      pageTitle = 'Top Rated Anime';
+    if (sort) {
+      // Explicitly handle string to match expected types for sortBy
+      filters.sortBy = sort as 'averageRating' | 'year' | 'title' | 'createdAt' | 'updatedAt';
+      if (sort === 'top') { // 'top' is a shorthand for averageRating desc
+          filters.sortBy = 'averageRating';
+          filters.sortOrder = 'desc';
+          pageTitle = 'Top Rated Anime';
+      } else {
+          pageTitle = `Sorted by ${sort.charAt(0).toUpperCase() + sort.slice(1)}`;
+      }
     }
+    if (sortOrder) {
+        filters.sortOrder = sortOrder;
+    }
+
     if (queryFilter === 'featured') {
-      filters.featured = true; // Assumes a boolean 'isFeatured' field in Firestore
+      filters.featured = true;
       pageTitle = 'Featured Anime';
     }
     
-    animeList = await getAllAnimes(50, filters); // Fetch up to 50 results
+    animeList = await getAllAnimes(50, filters);
 
   } catch (error) {
     console.error("Failed to fetch animes for browse page:", error);
-    fetchError = "Could not load anime data. Please try again later.";
+    if (error instanceof FirestoreError && error.code === 'failed-precondition' && error.message.includes("index")) {
+      fetchError = `The current filter/sort combination requires a Firestore index that hasn't been created yet. Please check the browser's developer console for a direct link to create the missing index in your Firebase project. Details: ${error.message}`;
+    } else if (error instanceof Error) {
+      fetchError = `Could not load anime data: ${error.message}`;
+    }
+     else {
+      fetchError = "Could not load anime data. Please try again later.";
+    }
     pageTitle = "Error Loading Anime";
   }
 
@@ -67,12 +85,15 @@ async function BrowseContent({ searchParams }: BrowsePageProps) {
       </div>
 
       {fetchError && (
-        <div className="my-8 p-6 bg-destructive/10 border border-destructive/30 rounded-lg flex items-center text-destructive">
-          <AlertCircle className="h-6 w-6 mr-3 flex-shrink-0" />
-          <div>
-            <h3 className="font-semibold">Error Loading Content</h3>
-            <p className="text-sm">{fetchError}</p>
+        <div className="my-8 p-6 bg-destructive/10 border border-destructive/30 rounded-lg flex flex-col items-start text-destructive">
+          <div className="flex items-center mb-2">
+            <AlertCircle className="h-6 w-6 mr-3 flex-shrink-0" />
+            <h3 className="font-semibold text-lg">Error Loading Content</h3>
           </div>
+          <p className="text-sm ml-9 whitespace-pre-line">{fetchError}</p>
+           <Button asChild variant="link" className="mt-3 ml-auto text-destructive hover:text-destructive/80">
+            <Link href="/">Go Back to Home</Link>
+          </Button>
         </div>
       )}
 
