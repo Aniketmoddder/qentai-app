@@ -28,7 +28,7 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const currentSearchParams = useSearchParams();
-  const { user, loading: authLoading } = useAuth();
+  const { user, appUser, loading: authLoading } = useAuth(); // Added appUser
   const { toast } = useToast();
 
   useEffect(() => {
@@ -55,8 +55,8 @@ export default function Header() {
   const navItems = [
     { href: '/', label: 'Home' },
     { href: '/browse?sort=top', label: 'Top Anime' },
-    { href: '/genres', label: 'Genres' }, // New Genres link
-    { href: '/browse', label: 'Browse All'} // General browse link
+    { href: '/genres', label: 'Genres' },
+    { href: '/browse', label: 'Browse All'}
   ];
 
   const handleSearchSubmit = (e: FormEvent<HTMLFormElement>, query: string, isMobileSearch: boolean = false) => {
@@ -84,32 +84,44 @@ export default function Header() {
     }
   };
 
-  const getAvatarFallback = (email?: string | null) => {
-    if (!email) return 'U';
-    return email.charAt(0).toUpperCase();
-  }
+  const getAvatarFallback = () => {
+    if (appUser?.displayName) return appUser.displayName.charAt(0).toUpperCase();
+    if (appUser?.email) return appUser.email.charAt(0).toUpperCase();
+    if (user?.displayName) return user.displayName.charAt(0).toUpperCase();
+    if (user?.email) return user.email.charAt(0).toUpperCase();
+    return 'U';
+  };
   
   const isNavItemActive = (itemHref: string) => {
     if (itemHref === '/') return pathname === '/';
     if (itemHref.includes('?')) {
-        // For links with query params, check both pathname and the specific param
         const [pathOnly, queryPart] = itemHref.split('?');
-        const currentQueryString = currentSearchParams.toString();
         if (pathname !== pathOnly) return false;
 
-        // If it's /browse?sort=top, check for sort=top
-        if (queryPart === 'sort=top' && currentSearchParams.get('sort') === 'top' && !currentSearchParams.get('type') && !currentSearchParams.get('genre')) return true;
-        // If it's a general /browse, active if no specific filters are applied
-        if (pathOnly === '/browse' && !queryPart && !currentSearchParams.get('type') && !currentSearchParams.get('genre') && !currentSearchParams.get('sort')) return true;
+        const currentQueryParams = new URLSearchParams(currentSearchParams.toString());
+        const itemQueryParams = new URLSearchParams(queryPart);
         
-        return false; // More specific query matching might be needed for other cases
-    }
-    // For /genres, only active if on /genres page exactly
-    if (itemHref === '/genres') return pathname === '/genres';
+        let allMatch = true;
+        itemQueryParams.forEach((value, key) => {
+            if (currentQueryParams.get(key) !== value) {
+                allMatch = false;
+            }
+        });
+         // Ensure no other unexpected query params are present for "Browse All" or "Top Anime"
+        if ((itemHref === '/browse' || itemHref === '/browse?sort=top') && currentQueryParams.has('genre') && !itemQueryParams.has('genre')) {
+            return false;
+        }
+        if ((itemHref === '/browse' || itemHref === '/browse?sort=top') && currentQueryParams.has('type') && !itemQueryParams.has('type')) {
+            return false;
+        }
+        if(itemHref === '/browse' && currentQueryParams.has('sort') && !itemQueryParams.has('sort')) {
+            return false;
+        }
 
-    // Fallback for paths like /browse (without query)
-    // This means /browse is active if path is /browse AND no ?type or ?genre query params exist
-    return pathname === itemHref && !currentSearchParams.get('type') && !currentSearchParams.get('genre') && !currentSearchParams.get('sort');
+
+        return allMatch;
+    }
+    return pathname === itemHref;
   };
 
 
@@ -159,22 +171,22 @@ export default function Header() {
             <span className="sr-only">Open search</span>
           </Button>
 
-          {!authLoading && user ? (
+          {!authLoading && user && appUser ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.photoURL || undefined} alt={user.displayName || user.email || 'User'} />
-                    <AvatarFallback>{getAvatarFallback(user.email)}</AvatarFallback>
+                    <AvatarImage src={appUser.photoURL || user.photoURL || undefined} alt={appUser.displayName || user.displayName || 'User'} />
+                    <AvatarFallback>{getAvatarFallback()}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 bg-popover border-border shadow-xl" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none text-foreground">{user.displayName || user.email?.split('@')[0]}</p>
+                    <p className="text-sm font-medium leading-none text-foreground">{appUser.fullName || appUser.displayName || user.displayName || user.email?.split('@')[0]}</p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
+                      {appUser.email || user.email}
                     </p>
                   </div>
                 </DropdownMenuLabel>
@@ -185,7 +197,7 @@ export default function Header() {
                     Profile
                   </Link>
                 </DropdownMenuItem>
-                {user.email === 'ninjax.desi@gmail.com' && (
+                {(appUser.role === 'owner' || appUser.role === 'admin') && ( // Check appUser role
                    <DropdownMenuItem asChild>
                     <Link href="/admin" className="flex items-center cursor-pointer text-foreground hover:bg-primary/10">
                         <LayoutGrid className="mr-2 h-4 w-4" /> Admin Panel
@@ -222,9 +234,7 @@ export default function Header() {
               </SheetTrigger>
               <SheetContent side="right" className="bg-card p-0 flex flex-col w-[80vw] max-w-xs sm:max-w-sm border-l-border">
                 <SheetHeader className="p-4 pb-2 border-b border-border"> 
-                  <SheetTitle>
-                    <Logo iconSize={18} />
-                  </SheetTitle>
+                  <SheetTitle><Logo iconSize={27} /></SheetTitle> {/* Added title here for accessibility */}
                 </SheetHeader>
                 <div className="flex-grow overflow-y-auto">
                   <nav className="flex flex-col space-y-1 p-3">
@@ -234,12 +244,12 @@ export default function Header() {
                           href={item.href}
                           className={`text-base font-medium hover:text-primary transition-colors py-2.5 px-3 rounded-md hover:bg-primary/10 ${isNavItemActive(item.href) ? 'text-primary bg-primary/15' : 'text-foreground'}`}
                         >
-                          {item.label === 'Genres' && <Tag className="inline-block w-4 h-4 mr-1.5" />} {/* Icon for Genres */}
+                          {item.label === 'Genres' && <Tag className="inline-block w-4 h-4 mr-1.5" />}
                           {item.label}
                         </Link>
                       </SheetClose>
                     ))}
-                     {!authLoading && user && (
+                     {!authLoading && user && appUser && (
                         <SheetClose asChild>
                            <Link
                             href="/profile"
@@ -249,7 +259,7 @@ export default function Header() {
                           </Link>
                         </SheetClose>
                      )}
-                     {user?.email === 'ninjax.desi@gmail.com' && (
+                     {appUser && (appUser.role === 'owner' || appUser.role === 'admin') && (
                         <SheetClose asChild>
                            <Link
                             href="/admin"
@@ -295,6 +305,9 @@ export default function Header() {
 
       <Sheet open={isSearchDrawerOpen} onOpenChange={setIsSearchDrawerOpen}>
         <SheetContent side="top" className="p-0 bg-background border-b-border">
+          <SheetHeader className="p-4 border-b border-border">
+            <SheetTitle className="text-lg text-center sr-only">Search Qentai</SheetTitle> {/* Added accessible title for search drawer */}
+          </SheetHeader>
           <Container className="py-4">
             <form onSubmit={(e) => handleSearchSubmit(e, mobileSearchQuery, true)} className="flex items-center gap-2">
               <Search className="h-5 w-5 text-muted-foreground flex-shrink-0" />
