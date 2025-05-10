@@ -1,9 +1,8 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams as useNextSearchParams } from 'next/navigation'; // Renamed
-import { createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithPopup, updateProfile } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { z } from 'zod';
@@ -15,9 +14,12 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Chrome, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { upsertAppUserInFirestore } from '@/services/appUserService';
 
 const registerSchema = z
   .object({
+    fullName: z.string().min(2, { message: 'Full name must be at least 2 characters.' }).max(50, { message: 'Full name must be at most 50 characters.'}),
+    username: z.string().min(3, { message: 'Username must be at least 3 characters.' }).max(20, { message: 'Username must be at most 20 characters.'}).regex(/^[a-zA-Z0-9_]+$/, { message: 'Username can only contain letters, numbers, and underscores.'}),
     email: z.string().email({ message: 'Invalid email address.' }),
     password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
     confirmPassword: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
@@ -27,7 +29,7 @@ const registerSchema = z
     path: ['confirmPassword'],
   });
 
-type RegisterFormValues = z.infer<typeof registerSchema>;
+export type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -49,7 +51,24 @@ export default function RegisterPage() {
     setIsLoading(true);
     setError(null);
     try {
-      await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const firebaseUser = userCredential.user;
+
+      // Update Firebase Auth profile
+      await updateProfile(firebaseUser, {
+        displayName: values.fullName, // Using fullName for Firebase Auth displayName
+      });
+      
+      // Upsert user data in Firestore, including new fields
+      await upsertAppUserInFirestore({
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: values.fullName, // Consistent with Auth profile
+        photoURL: firebaseUser.photoURL,
+        username: values.username,
+        fullName: values.fullName,
+      });
+
       toast({
         title: "Account Created",
         description: "Welcome to Qentai!",
@@ -72,9 +91,23 @@ export default function RegisterPage() {
   const handleGoogleSignUp = async () => {
     setIsGoogleLoading(true);
     setError(null);
-    setAuthContextLoading(true); // Indicate auth state might change
+    setAuthContextLoading(true); 
     try {
-      await signInWithPopup(auth, googleProvider);
+      const userCredential = await signInWithPopup(auth, googleProvider);
+      const firebaseUser = userCredential.user;
+
+      // For Google Sign-Up, username and potentially fullName might not be directly available.
+      // upsertAppUserInFirestore will handle this by using displayName from Google as fullName if not present.
+      // Username could be prompted later or auto-generated. For now, we pass what we have.
+      await upsertAppUserInFirestore({
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName,
+        photoURL: firebaseUser.photoURL,
+        // username: undefined, // Will be handled by upsert logic or remain undefined
+        // fullName: firebaseUser.displayName, // Pass displayName as fullName
+      });
+
       toast({
         title: "Sign Up Successful",
         description: "Welcome to Qentai!",
@@ -108,7 +141,7 @@ export default function RegisterPage() {
       });
     } finally {
       setIsGoogleLoading(false);
-      setAuthContextLoading(false); // Reset global loading after attempt
+      setAuthContextLoading(false); 
     }
   };
 
@@ -125,7 +158,7 @@ export default function RegisterPage() {
       <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-sm">
          <CardHeader className="text-center">
           <div className="mx-auto mb-6">
-            <Logo iconSize={18} /> {/* Increased iconSize from 14 to 18 */}
+            <Logo iconSize={27} /> 
           </div>
           <CardTitle className="text-3xl font-bold">Create an Account</CardTitle>
           <CardDescription>Join Qentai to discover and watch your favorite anime.</CardDescription>
@@ -138,6 +171,13 @@ export default function RegisterPage() {
             isLoading={isLoading}
             error={error}
             setError={setError}
+            defaultValues={{
+              fullName: '',
+              username: '',
+              email: '',
+              password: '',
+              confirmPassword: '',
+            }}
           />
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
@@ -158,4 +198,3 @@ export default function RegisterPage() {
     </Container>
   );
 }
-

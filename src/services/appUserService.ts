@@ -2,11 +2,12 @@
 
 import { db } from '@/lib/firebase';
 import type { AppUser, AppUserRole } from '@/types/appUser';
+import { convertUserTimestampsForClient } from '@/lib/userUtils'; // Import from new location
 import {
   collection,
   doc,
   getDocs,
-  getDoc, 
+  getDoc,
   updateDoc,
   query,
   orderBy,
@@ -18,7 +19,7 @@ import {
 } from 'firebase/firestore';
 
 const usersCollection = collection(db, 'users');
-const ADMIN_EMAIL = 'ninjax.desi@gmail.com'; 
+const ADMIN_EMAIL = 'ninjax.desi@gmail.com';
 
 const handleFirestoreError = (error: unknown, context: string): FirestoreError => {
   console.error(`Firestore Error in ${context}:`, error);
@@ -32,39 +33,6 @@ const handleFirestoreError = (error: unknown, context: string): FirestoreError =
   return genericError;
 };
 
-// Helper to convert Firestore Timestamps if they exist
-const convertUserTimestampsForClient = (userData: any): AppUser => {
-  const data = { ...userData };
-  
-  const convertTimestamp = (field: any): string | undefined => {
-    if (field instanceof Timestamp) {
-      return field.toDate().toISOString();
-    }
-    if (typeof field === 'object' && field !== null && 'seconds' in field && 'nanoseconds' in field) {
-      return new Timestamp(field.seconds, field.nanoseconds).toDate().toISOString();
-    }
-    if (typeof field === 'string') { // Already a string, assume ISO
-        try {
-            // Validate if it's a valid ISO string, otherwise it might be some other string
-            new Date(field).toISOString();
-            return field;
-        } catch (e) {
-            // Not a valid date string, return undefined or handle as error
-            console.warn(`Invalid date string encountered: ${field}`);
-            return undefined; 
-        }
-    }
-    return undefined; // Return undefined if not a recognizable timestamp format
-  };
-
-  data.createdAt = convertTimestamp(data.createdAt);
-  data.lastLoginAt = convertTimestamp(data.lastLoginAt);
-  data.updatedAt = convertTimestamp(data.updatedAt);
-  
-  return data as AppUser;
-};
-
-
 export const upsertAppUserInFirestore = async (
   userData: Partial<Omit<AppUser, 'createdAt' | 'lastLoginAt' | 'updatedAt'>> & { uid: string }
 ): Promise<AppUser> => {
@@ -73,42 +41,56 @@ export const upsertAppUserInFirestore = async (
     const userSnap = await getDoc(userRef);
     let role: AppUserRole;
     let finalStatus: AppUser['status'];
-    let finalUserDataForDb: any; // Use 'any' temporarily for DB payload
+    let finalUserDataForDb: any;
 
     if (userSnap.exists()) {
       const existingData = userSnap.data() as AppUser;
-      role = existingData.role; 
-      finalStatus = existingData.status; 
+      role = existingData.role;
+      finalStatus = existingData.status;
 
-      if (userData.email === ADMIN_EMAIL) {
+      if (userData.email === ADMIN_EMAIL && existingData.role !== 'owner') { // Only upgrade to owner if not already owner
         role = 'owner';
-        if (finalStatus === 'banned') {
-          console.warn(`Owner account (${ADMIN_EMAIL}) is marked as banned in DB. Retaining 'banned' status.`);
-        }
+      } else if (userData.email === ADMIN_EMAIL && existingData.role === 'owner') {
+        role = 'owner'; // Maintain owner role
       }
-      
+
+
       finalUserDataForDb = {
-        ...userData, 
-        role, 
-        status: finalStatus, 
+        email: userData.email || existingData.email,
+        displayName: userData.displayName || existingData.displayName,
+        photoURL: userData.photoURL || existingData.photoURL,
+        username: userData.username || existingData.username || userData.email?.split('@')[0] || `user_${userData.uid.substring(0,5)}`,
+        fullName: userData.fullName || existingData.fullName || userData.displayName,
+        role,
+        status: finalStatus,
         lastLoginAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
+      Object.keys(finalUserDataForDb).forEach(key => finalUserDataForDb[key] === undefined && delete finalUserDataForDb[key]);
+
       await updateDoc(userRef, finalUserDataForDb);
-      // For returning, merge existing with updates, then convert
-      const mergedData = { ...existingData, ...userData, role, status: finalStatus, uid: userData.uid, lastLoginAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-       return convertUserTimestampsForClient(mergedData);
+      const updatedData = { 
+        ...existingData, 
+        ...finalUserDataForDb, 
+        uid: userData.uid,
+        // Simulate serverTimestamp resolution for client:
+        lastLoginAt: new Date().toISOString(), 
+        updatedAt: new Date().toISOString() 
+      };
+       return convertUserTimestampsForClient(updatedData);
 
     } else {
       // New user
       role = userData.email === ADMIN_EMAIL ? 'owner' : 'member';
-      finalStatus = 'active'; 
+      finalStatus = 'active';
 
       finalUserDataForDb = {
         uid: userData.uid,
         email: userData.email || null,
         displayName: userData.displayName || null,
         photoURL: userData.photoURL || null,
+        username: userData.username || userData.email?.split('@')[0] || `user_${userData.uid.substring(0,5)}`,
+        fullName: userData.fullName || userData.displayName || null,
         role: role,
         status: finalStatus,
         createdAt: serverTimestamp(),
@@ -116,9 +98,9 @@ export const upsertAppUserInFirestore = async (
         updatedAt: serverTimestamp(),
       };
       await setDoc(userRef, finalUserDataForDb);
-      // For returning, convert serverTimestamps to something client-can-use immediately
       const newUserDataForClient = {
         ...finalUserDataForDb,
+        // Simulate serverTimestamp resolution for client:
         createdAt: new Date().toISOString(),
         lastLoginAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -130,12 +112,26 @@ export const upsertAppUserInFirestore = async (
   }
 };
 
+export const updateAppUserProfile = async (
+  uid: string,
+  profileData: { username?: string; fullName?: string; photoURL?: string }
+): Promise<void> => {
+  const userRef = doc(usersCollection, uid);
+  try {
+    const dataToUpdate: { [key: string]: any } = { ...profileData, updatedAt: serverTimestamp() };
+    Object.keys(dataToUpdate).forEach(key => dataToUpdate[key] === undefined && delete dataToUpdate[key]);
+
+    if (Object.keys(dataToUpdate).length > 1) {
+        await updateDoc(userRef, dataToUpdate);
+    }
+  } catch (error) {
+    throw handleFirestoreError(error, `updateAppUserProfile (uid: ${uid})`);
+  }
+};
+
 
 export const getAllAppUsers = async (count: number = 50): Promise<AppUser[]> => {
   try {
-    // Firestore default order is by document ID if no orderBy is specified.
-    // For user management, ordering by 'createdAt' or 'lastLoginAt' is common.
-    // Ensure the index `users/createdAt DESC` exists.
     const q = query(usersCollection, orderBy('createdAt', 'desc'), limit(count > 0 ? count : 500));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => convertUserTimestampsForClient(doc.data() as AppUser));
@@ -167,13 +163,13 @@ export const updateUserRoleInFirestore = async (uid: string, newRole: AppUserRol
       const userDoc = await getDoc(userRef);
       if (userDoc.exists()) {
         const currentUserData = userDoc.data() as AppUser;
-        // Prevent changing the primary owner's role from 'owner'
         if (currentUserData.email === ADMIN_EMAIL && currentUserData.role === 'owner' && newRole !== 'owner') {
           throw new Error("The primary owner's role cannot be changed from 'owner'.");
         }
-        // Prevent assigning 'owner' role to anyone other than the primary owner
+        // Allow any owner to change roles of others, but only primary admin can be 'owner'
+        // Non-owners cannot make someone else an owner.
         if (newRole === 'owner' && currentUserData.email !== ADMIN_EMAIL) {
-          throw new Error("Cannot assign 'owner' role to a non-primary owner account.");
+             throw new Error("Cannot assign 'owner' role to a non-primary owner account.");
         }
       } else {
         throw new Error(`User with UID ${uid} not found.`);

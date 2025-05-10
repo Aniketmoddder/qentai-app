@@ -1,0 +1,142 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
+import { updateAppUserProfile } from '@/services/appUserService';
+import { updateProfile as updateFirebaseAuthProfile } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Loader2, Save } from 'lucide-react';
+
+const profileDetailsSchema = z.object({
+  fullName: z.string().min(2, 'Full name must be at least 2 characters.').max(50, 'Full name must be at most 50 characters.'),
+  username: z.string().min(3, 'Username must be at least 3 characters.').max(20, 'Username must be at most 20 characters.').regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores.'),
+  // photoURL: z.string().url('Must be a valid URL.').optional().or(z.literal('')), // If you add photoURL editing
+});
+
+type ProfileDetailsFormValues = z.infer<typeof profileDetailsSchema>;
+
+export default function ProfileDetailsForm() {
+  const { user, appUser, setLoading: setAuthLoading } = useAuth(); // Assuming appUser is available and up-to-date
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const form = useForm<ProfileDetailsFormValues>({
+    resolver: zodResolver(profileDetailsSchema),
+    defaultValues: {
+      fullName: '',
+      username: '',
+      // photoURL: '',
+    },
+  });
+
+  useEffect(() => {
+    if (appUser) {
+      form.reset({
+        fullName: appUser.fullName || appUser.displayName || '',
+        username: appUser.username || '',
+        // photoURL: appUser.photoURL || '',
+      });
+    }
+  }, [appUser, form]);
+
+  const onSubmit = async (data: ProfileDetailsFormValues) => {
+    if (!user || !appUser) {
+      toast({ variant: 'destructive', title: 'Error', description: 'User not found.' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Update Firestore appUser document
+      await updateAppUserProfile(user.uid, {
+        fullName: data.fullName,
+        username: data.username,
+        // photoURL: data.photoURL,
+      });
+
+      // Update Firebase Auth profile (displayName and photoURL)
+      if (auth.currentUser) { // Ensure currentUser is available
+        await updateFirebaseAuthProfile(auth.currentUser, {
+          displayName: data.fullName,
+          // photoURL: data.photoURL,
+        });
+      }
+      
+      // Manually trigger AuthContext loading to re-fetch appUser with updated details
+      setAuthLoading(true);
+      setTimeout(() => setAuthLoading(false), 1000); // Give some time for potential propagation
+
+
+      toast({ title: 'Profile Updated', description: 'Your profile details have been saved.' });
+    } catch (error: any) {
+      console.error("Error updating profile:", error);
+      toast({ variant: 'destructive', title: 'Update Failed', description: error.message || 'Could not update profile.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!appUser) {
+    return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="fullName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Full Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Your full name" {...field} className="bg-input border-border/70 focus:border-primary" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="username"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Username</FormLabel>
+              <FormControl>
+                <Input placeholder="Your unique username" {...field} className="bg-input border-border/70 focus:border-primary" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {/* 
+        <FormField
+          control={form.control}
+          name="photoURL"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Photo URL (Optional)</FormLabel>
+              <FormControl>
+                <Input placeholder="https://example.com/your-avatar.png" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        */}
+        <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto btn-primary-gradient">
+          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          Save Changes
+        </Button>
+      </form>
+    </Form>
+  );
+}

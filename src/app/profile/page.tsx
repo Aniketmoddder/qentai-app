@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -8,16 +7,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AnimeCard from '@/components/anime/anime-card';
 import type { Anime } from '@/types/anime';
 import { getUserFavoriteIds, getUserWishlistIds } from '@/services/userDataService';
-import { getAnimeById } from '@/services/animeService'; // Import service to fetch anime details
-import { Loader2, User, Heart, Bookmark, AlertCircle, RotateCcw } from 'lucide-react';
+import { getAnimesByIds } from '@/services/animeService';
+import { Loader2, User, Heart, Bookmark, AlertCircle, RotateCcw, Settings } from 'lucide-react';
 import Container from '@/components/layout/container';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from '@/components/ui/button';
 import { FirestoreError } from 'firebase/firestore';
+import AccountSettingsTab from '@/components/profile/AccountSettingsTab';
 
 export default function ProfilePage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, appUser, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState('favorites');
@@ -28,7 +28,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push('/login');
+      router.push('/login?redirect=/profile');
     }
   }, [user, authLoading, router]);
 
@@ -49,11 +49,9 @@ export default function ProfilePage() {
   };
 
   const fetchFullAnimeDetails = async (ids: string[]): Promise<Anime[]> => {
-    const animeDetailsPromises = ids.map(id => getAnimeById(id));
-    const results = await Promise.allSettled(animeDetailsPromises);
-    return results
-      .filter(result => result.status === 'fulfilled' && result.value)
-      .map(result => (result as PromiseFulfilledResult<Anime>).value);
+    if (ids.length === 0) return [];
+    // Using getAnimesByIds for batch fetching
+    return getAnimesByIds(ids);
   };
 
   const fetchLists = useCallback(async () => {
@@ -85,10 +83,10 @@ export default function ProfilePage() {
   }, [user]);
 
   useEffect(() => {
-    if (user) {
+    if (user && (activeTab === 'favorites' || activeTab === 'wishlist')) {
       fetchLists();
     }
-  }, [user, fetchLists]);
+  }, [user, fetchLists, activeTab]);
 
   if (authLoading || (!user && !authLoading)) {
     return (
@@ -98,7 +96,7 @@ export default function ProfilePage() {
     );
   }
   
-  if (!user) return null; 
+  if (!user || !appUser) return null; 
 
   const renderAnimeList = (list: Anime[], type: 'favorite' | 'wishlist') => {
     if (isLoadingLists) {
@@ -114,7 +112,7 @@ export default function ProfilePage() {
         </div>
       );
     }
-    if (listError && type === activeTab) { 
+    if (listError && (type === 'favorite' && activeTab === 'favorites' || type === 'wishlist' && activeTab === 'wishlist')) { 
       return (
         <Alert variant="destructive" className="mt-4">
           <AlertCircle className="h-4 w-4" />
@@ -154,12 +152,13 @@ export default function ProfilePage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8 pb-6 border-b border-border">
         <User className="w-16 h-16 sm:w-20 sm:h-20 text-primary bg-card p-3 rounded-full" />
         <div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-foreground">My Profile</h1>
-          {user.email && <p className="text-muted-foreground text-sm sm:text-base">{user.email}</p>}
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground">{appUser.fullName || appUser.displayName || 'User Profile'}</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">@{appUser.username || appUser.email?.split('@')[0]}</p>
+          {user.email && <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">{user.email}</p>}
         </div>
       </div>
       
-      {listError && !isLoadingLists && activeTab === '' && ( 
+      {listError && !isLoadingLists && (activeTab === 'favorites' || activeTab === 'wishlist') && ( 
          <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Error Loading Lists</AlertTitle>
@@ -173,12 +172,15 @@ export default function ProfilePage() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:max-w-md mb-6">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 mb-6">
           <TabsTrigger value="favorites" className="flex items-center gap-2">
             <Heart className="w-4 h-4" /> Favorites
           </TabsTrigger>
           <TabsTrigger value="wishlist" className="flex items-center gap-2">
             <Bookmark className="w-4 h-4" /> Wishlist
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Settings className="w-4 h-4" /> Account
           </TabsTrigger>
         </TabsList>
         <TabsContent value="favorites">
@@ -186,6 +188,9 @@ export default function ProfilePage() {
         </TabsContent>
         <TabsContent value="wishlist">
           {renderAnimeList(wishlistList, 'wishlist')}
+        </TabsContent>
+         <TabsContent value="settings">
+          <AccountSettingsTab />
         </TabsContent>
       </Tabs>
     </Container>

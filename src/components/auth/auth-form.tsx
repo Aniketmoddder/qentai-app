@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { UseFormReturn } from 'react-hook-form';
@@ -20,6 +19,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
+import type { RegisterFormValues } from '@/app/register/page'; // Import type for defaultValues
 
 interface AuthFormProps<T extends z.ZodType<any, any>> {
   formSchema: T;
@@ -27,7 +27,8 @@ interface AuthFormProps<T extends z.ZodType<any, any>> {
   isRegister?: boolean;
   isLoading: boolean;
   error: string | null;
-  setError: React.Dispatch<React.SetStateAction<string | null>>; // Added setError prop
+  setError: React.Dispatch<React.SetStateAction<string | null>>;
+  defaultValues?: Partial<z.infer<T>>; // Make defaultValues prop optional
 }
 
 export function AuthForm<T extends z.ZodType<any, any>>({
@@ -36,16 +37,17 @@ export function AuthForm<T extends z.ZodType<any, any>>({
   isRegister = false,
   isLoading,
   error,
-  setError, // Destructure setError
+  setError,
+  defaultValues,
 }: AuthFormProps<T>) {
   const form = useForm<z.infer<T>>({
     resolver: zodResolver(formSchema),
-    defaultValues: isRegister ? { email: '', password: '', confirmPassword: '' } : { email: '', password: '' },
+    defaultValues: defaultValues || (isRegister ? { fullName: '', username: '', email: '', password: '', confirmPassword: '' } : { email: '', password: '' }) as z.infer<T>,
   });
 
   const handleFormChange = () => {
     if (error) {
-      setError(null); // Clear error when user starts typing
+      setError(null); 
     }
   };
 
@@ -58,6 +60,36 @@ export function AuthForm<T extends z.ZodType<any, any>>({
             <AlertTitle>Authentication Error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
+        )}
+        {isRegister && (
+          <>
+            <FormField
+              control={form.control}
+              name="fullName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Full Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Son Goku" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Username</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., goku_dbz" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
         )}
         <FormField
           control={form.control}
