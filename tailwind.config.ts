@@ -27,8 +27,10 @@ export default {
     },
   	extend: {
       fontFamily: {
-        sans: ["Zen Dots", "system-ui", "-apple-system", "BlinkMacSystemFont", "\"Segoe UI\"", "Roboto", "\"Helvetica Neue\"", "Arial", "\"Noto Sans\"", "sans-serif", "\"Apple Color Emoji\"", "\"Segoe UI Emoji\"", "\"Segoe UI Symbol\"", "\"Noto Color Emoji\""],
+        sans: ['Poppins', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', '"Noto Sans"', 'sans-serif', '"Apple Color Emoji"', '"Segoe UI Emoji"', '"Segoe UI Symbol"', '"Noto Color Emoji"'],
         mono: ["var(--font-roboto-mono)", "monospace"],
+        'zen-dots': ['"Zen Dots"', 'cursive'],
+        orbitron: ['Orbitron', 'sans-serif'],
       },
   		colors: {
   			background: 'hsl(var(--background))',
@@ -132,3 +134,4 @@ export default {
     })
   ],
 } satisfies Config;
+

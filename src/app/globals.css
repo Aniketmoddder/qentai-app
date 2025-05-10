@@ -70,11 +70,20 @@
     -webkit-tap-highlight-color: transparent; 
   }
   body {
-    @apply bg-background text-foreground overflow-x-hidden min-h-screen flex flex-col;
+    @apply bg-background text-foreground font-sans overflow-x-hidden min-h-screen flex flex-col; /* font-sans will now apply Poppins by default */
   }
   main {
     @apply flex-grow; 
   }
+
+  h1 {
+    @apply font-zen-dots;
+  }
+  h2, h3 {
+    @apply font-orbitron;
+  }
+  /* Paragraphs and other elements will inherit Poppins from body via font-sans */
+
 
   /* Custom scrollbar for a more modern look */
   ::-webkit-scrollbar {
@@ -148,3 +157,4 @@
     @apply border-border;
   }
 }
+

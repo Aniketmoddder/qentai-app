@@ -1,6 +1,6 @@
 
 import type { Metadata } from 'next';
-import { Roboto_Mono } from 'next/font/google'; // Zen_Dots import removed
+import { Roboto_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import QueryProvider from '@/components/providers/query-provider';
@@ -8,8 +8,6 @@ import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from '@/context/auth-context';
-
-// Zen_Dots constant definition using next/font removed
 
 const robotoMono = Roboto_Mono({
   variable: '--font-roboto-mono',
@@ -35,8 +33,9 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Zen+Dots&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
-      {/* Removed zenDots.variable from body className, ensure font-sans in tailwind.config.ts uses "Zen Dots" directly */}
       <body className={`${robotoMono.variable} font-sans antialiased flex flex-col min-h-full bg-background text-foreground overflow-x-hidden`}>
         <QueryProvider>
           <AuthProvider>
@@ -52,3 +51,4 @@ export default function RootLayout({
     </html>
   );
 }
+
