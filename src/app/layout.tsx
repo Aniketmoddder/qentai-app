@@ -10,10 +10,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from '@/context/auth-context';
 
 
-const zenDots = Zen_Dots({ // New font: Zen Dots
+const zenDots = Zen_Dots({ 
   variable: '--font-zen-dots',
   subsets: ['latin'],
-  weight: ['400'], // Zen Dots typically comes in weight 400
+  weight: ['400'], 
   display: 'swap',
 });
 
