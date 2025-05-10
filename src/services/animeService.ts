@@ -22,6 +22,7 @@ import {
   QueryConstraint,
   documentId,
 } from 'firebase/firestore';
+import { convertAnimeTimestampsForClient } from '@/lib/animeUtils'; // Import the utility function
 
 const animesCollection = collection(db, 'animes');
 
@@ -36,64 +37,6 @@ const handleFirestoreError = (error: unknown, context: string): FirestoreError =
   }
   return genericError;
 };
-
-// Helper to convert Firestore Timestamps to ISO strings for client components
-export const convertAnimeTimestampsForClient = (animeData: any): Omit<Anime, 'createdAt' | 'updatedAt'> & { createdAt?: string; updatedAt?: string } => {
-  const data = { ...animeData };
-
-  if (data.createdAt && data.createdAt instanceof Timestamp) {
-    data.createdAt = data.createdAt.toDate().toISOString();
-  } else if (typeof data.createdAt === 'object' && data.createdAt && 'seconds' in data.createdAt && 'nanoseconds' in data.createdAt && typeof data.createdAt.seconds === 'number' && typeof data.createdAt.nanoseconds === 'number') {
-    data.createdAt = new Timestamp(data.createdAt.seconds, data.createdAt.nanoseconds).toDate().toISOString();
-  } else if (typeof data.createdAt === 'string') {
-    try {
-      data.createdAt = new Date(data.createdAt).toISOString();
-    } catch (e) {
-      console.warn("Failed to parse createdAt string, leaving as is:", data.createdAt, e);
-    }
-  } else if (data.createdAt) {
-    console.warn("Unexpected createdAt format, attempting conversion:", data.createdAt);
-    try {
-      data.createdAt = new Date(data.createdAt).toISOString();
-    } catch (e) { console.error("Failed to convert createdAt", e); delete data.createdAt; }
-  }
-
-
-  if (data.updatedAt && data.updatedAt instanceof Timestamp) {
-    data.updatedAt = data.updatedAt.toDate().toISOString();
-  } else if (typeof data.updatedAt === 'object' && data.updatedAt && 'seconds' in data.updatedAt && 'nanoseconds' in data.updatedAt && typeof data.updatedAt.seconds === 'number' && typeof data.updatedAt.nanoseconds === 'number') {
-     data.updatedAt = new Timestamp(data.updatedAt.seconds, data.updatedAt.nanoseconds).toDate().toISOString();
-  } else if (typeof data.updatedAt === 'string') {
-    try {
-      data.updatedAt = new Date(data.updatedAt).toISOString();
-    } catch (e) {
-      console.warn("Failed to parse updatedAt string, leaving as is:", data.updatedAt, e);
-    }
-  } else if (data.updatedAt) {
-    console.warn("Unexpected updatedAt format, attempting conversion:", data.updatedAt);
-     try {
-      data.updatedAt = new Date(data.updatedAt).toISOString();
-    } catch (e) { console.error("Failed to convert updatedAt", e); delete data.updatedAt; }
-  }
-  
-  if (data.episodes && Array.isArray(data.episodes)) {
-    data.episodes = data.episodes.map((ep: any) => {
-      const episode = { ...ep };
-      if (episode.airDate && episode.airDate instanceof Timestamp) {
-        episode.airDate = episode.airDate.toDate().toISOString().split('T')[0];
-      } else if (typeof episode.airDate === 'object' && episode.airDate && 'seconds' in episode.airDate && 'nanoseconds'in episode.airDate) {
-        episode.airDate = new Timestamp(episode.airDate.seconds, episode.airDate.nanoseconds).toDate().toISOString().split('T')[0];
-      } else if (typeof episode.airDate === 'string') {
-         try {
-          episode.airDate = new Date(episode.airDate).toISOString().split('T')[0];
-        } catch (e) { console.warn("Failed to parse episode airDate string", e); }
-      }
-      return episode;
-    });
-  }
-  return data as Omit<Anime, 'createdAt' | 'updatedAt'> & { createdAt?: string; updatedAt?: string };
-};
-
 
 export const addAnimeToFirestore = async (animeData: Omit<Anime, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
   try {
@@ -145,7 +88,7 @@ export const getAllAnimes = async (
     genre?: string;
     sortBy?: 'averageRating' | 'year' | 'title' | 'createdAt' | 'updatedAt';
     sortOrder?: 'asc' | 'desc';
-    featured?: boolean; // This filter is primarily handled by getFeaturedAnimes now
+    featured?: boolean;
   } = {}
 ): Promise<Anime[]> => {
   try {
@@ -157,29 +100,26 @@ export const getAllAnimes = async (
     if (filters.genre) {
       queryConstraints.push(where('genre', 'array-contains', filters.genre));
     }
-    if (typeof filters.featured === 'boolean') { // Can still be used for 'not featured'
+     if (typeof filters.featured === 'boolean') {
        queryConstraints.push(where('isFeatured', '==', filters.featured));
     }
 
     if (filters.sortBy) {
       queryConstraints.push(orderBy(filters.sortBy, filters.sortOrder || 'desc'));
     } else {
-      // Default sorting logic if no specific sortBy is provided
+      // More specific default sorting based on common use cases or if no other filters are applied
       if (typeof filters.featured === 'boolean' && filters.featured === true) {
-        // For featured=true, if no sortBy, Firestore might require a specific index for `isFeatured` with `title`.
-        // To avoid this error by default, we don't add a specific order here.
-        // The getFeaturedAnimes function will handle specific sorting for featured items if needed client-side or with its own query.
-        // Or, if DB sorting for featured is critical, an index on (isFeatured ASC, title ASC) must exist.
-        // For now, we let getFeaturedAnimes handle its own query strategy.
-      } else if (typeof filters.featured === 'boolean' && filters.featured === false) {
-        queryConstraints.push(orderBy('updatedAt', 'desc')); // Default for 'not featured'
+         // No default sort to avoid index issues if only 'isFeatured' is queried. Client can sort.
+         // Or, ensure an index on (isFeatured, title ASC) if sorting by title for featured items is desired by default.
       } else if (!filters.type && !filters.genre && typeof filters.featured === 'undefined') {
-        // Default sort for general browsing: newest first by updatedAt.
+        // Broad query, sort by latest update
         queryConstraints.push(orderBy('updatedAt', 'desc'));
+      } else if (filters.type || filters.genre) {
+        // If specific filters like type or genre are applied, sort by title to provide consistent order.
+        // This might require composite indexes like (type, title) or (genre, title).
+        queryConstraints.push(orderBy('title', 'asc'));
       }
-      // If other specific filters (like type or genre) are applied without a sortBy,
-      // and 'featured' status is not part of the filter,
-      // no additional default sort is added here to avoid unnecessary index requirements.
+      // If only sortBy and sortOrder are missing but other filters exist, Firestore might infer index or error.
     }
     
     queryConstraints.push(limit(count));
@@ -218,8 +158,6 @@ export const searchAnimes = async (searchTerm: string): Promise<Anime[]> => {
 
 export const getAnimesByType = async (type: Anime['type'], count: number = 20): Promise<Anime[]> => {
   try {
-    // Default sort by title if type is specified, to ensure consistent ordering.
-    // Requires an index on (type ASC, title ASC) or (type DESC, title ASC) etc.
     const q = query(animesCollection, where('type', '==', type), orderBy('title', 'asc'), limit(count));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => convertAnimeTimestampsForClient({ id: doc.id, ...doc.data() }) as Anime);
@@ -233,8 +171,6 @@ export const getAnimesByType = async (type: Anime['type'], count: number = 20): 
 
 export const getAnimesByGenre = async (genre: string, count: number = 20): Promise<Anime[]> => {
   try {
-    // Default sort by title if genre is specified.
-    // Requires an index on (genre array-contains, title ASC).
     const q = query(animesCollection, where('genre', 'array-contains', genre), orderBy('title', 'asc'), limit(count));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => convertAnimeTimestampsForClient({ id: doc.id, ...doc.data() }) as Anime);
@@ -256,8 +192,15 @@ export const updateAnimeInFirestore = async (id: string, dataToUpdate: Partial<O
       updatePayload.trailerUrl = (updatePayload.trailerUrl === '' || updatePayload.trailerUrl === undefined) ? null : updatePayload.trailerUrl; 
     }
     
+    // Ensure isFeatured is explicitly set if not provided or if it's undefined
     if (!updatePayload.hasOwnProperty('isFeatured') || typeof updatePayload.isFeatured !== 'boolean') {
-        updatePayload.isFeatured = false;
+        const currentDoc = await getDoc(docRef);
+        if (currentDoc.exists()) {
+            const currentData = currentDoc.data() as Anime;
+            updatePayload.isFeatured = currentData.isFeatured || false;
+        } else {
+            updatePayload.isFeatured = false; // Default if doc doesn't exist (shouldn't happen for update)
+        }
     }
     
     Object.keys(updatePayload).forEach(key => {
@@ -346,7 +289,6 @@ const staticAvailableGenres = ['Action', 'Adventure', 'Animation', 'Comedy', 'Cr
 
 export const getUniqueGenres = async (): Promise<string[]> => {
   try {
-    // Limit the number of documents fetched to avoid performance issues on large datasets.
     const snapshot = await getDocs(query(animesCollection, limit(500))); 
     const allGenres = new Set<string>();
     snapshot.docs.forEach(doc => {
@@ -359,12 +301,10 @@ export const getUniqueGenres = async (): Promise<string[]> => {
         });
       }
     });
-    // Ensure static genres are also included, especially if DB is empty or has limited variety.
     staticAvailableGenres.forEach(g => allGenres.add(g));
     return Array.from(allGenres).sort();
   } catch (error) {
     console.warn("Failed to dynamically fetch genres, falling back to static list with additions:", error);
-    // Fallback to a predefined list if Firestore fetch fails
     return [...new Set(staticAvailableGenres)].sort();
   }
 };
@@ -388,7 +328,6 @@ export const getAnimesByIds = async (ids: string[]): Promise<Anime[]> => {
 
     for (let i = 0; i < ids.length; i += MAX_IDS_PER_QUERY) {
       const batchIds = ids.slice(i, i + MAX_IDS_PER_QUERY);
-      // Firestore 'in' queries are efficient for up to 30 items.
       const q = query(animesCollection, where(documentId(), 'in', batchIds));
       animePromises.push(
         getDocs(q).then(snapshot => snapshot.docs.map(doc => convertAnimeTimestampsForClient({ id: doc.id, ...doc.data() }) as Anime))
@@ -404,18 +343,15 @@ export const getAnimesByIds = async (ids: string[]): Promise<Anime[]> => {
 
 export const getFeaturedAnimes = async (count: number = 5): Promise<Anime[]> => {
   try {
-    // Simple query for featured items. Client will sort if specific order is needed.
-    // This query typically relies on Firestore's automatic single-field indexing for 'isFeatured'.
-    const q = query(animesCollection, where('isFeatured', '==', true), limit(count));
+    const q = query(animesCollection, where('isFeatured', '==', true), orderBy('title', 'asc'), limit(count));
     const querySnapshot = await getDocs(q);
     const animes = querySnapshot.docs.map(doc => convertAnimeTimestampsForClient({ id: doc.id, ...doc.data() }) as Anime);
     return animes;
   } catch (error) {
     if (error instanceof FirestoreError && error.code === 'failed-precondition') {
-      let warningMessage = `Firestore query in getFeaturedAnimes requires an index. Please create an index on 'isFeatured' (boolean) in your Firebase console if it doesn't exist. Original error: ${error.message}`;
+      let warningMessage = `Firestore query in getFeaturedAnimes requires an index. Please create an index on 'isFeatured' (boolean) and 'title' (asc) in your Firebase console if it doesn't exist. Original error: ${error.message}`;
       console.warn(warningMessage);
     }
     throw handleFirestoreError(error, 'getFeaturedAnimes');
   }
 };
-

@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight, AlertTriangle, Play, Plus, Tv, Calendar, ListVideo, Star as StarIcon, Volume2, VolumeX, Loader2 } from 'lucide-react';
-import { getAllAnimes, getFeaturedAnimes, convertAnimeTimestampsForClient } from '@/services/animeService';
+import { getAllAnimes, getFeaturedAnimes } from '@/services/animeService';
+import { convertAnimeTimestampsForClient } from '@/lib/animeUtils';
 import type { Anime } from '@/types/anime';
 import FeaturedAnimeCard from '@/components/anime/FeaturedAnimeCard';
 import TopAnimeListItem from '@/components/anime/TopAnimeListItem';
@@ -76,11 +77,10 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setFetchError(null);
-    // Do not clear allAnime and featuredAnimesList here to avoid UI flicker if fetch fails partially
-
+    
     try {
       const fetchDataPromises = [
-        getAllAnimes(50, { sortBy: 'updatedAt', sortOrder: 'desc' }), 
+        getAllAnimes({ limit: 50, sortBy: 'updatedAt', sortOrder: 'desc' }), 
         getFeaturedAnimes(5) 
       ];
       
@@ -109,7 +109,6 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
       const featuredResult = settledResults[1];
       if (featuredResult.status === 'fulfilled') {
         let fetchedFeatured = featuredResult.value.map(a => convertAnimeTimestampsForClient(a) as Anime) || [];
-        // Sort featured animes by title client-side as getFeaturedAnimes now returns unsorted (by title) list
         fetchedFeatured.sort((a, b) => a.title.localeCompare(b.title));
         featured = fetchedFeatured;
       } else {
@@ -137,9 +136,6 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
         }
       }
       setFetchError(message);
-      // Do not clear existing lists on error to retain some UI if possible
-      // setAllAnime([]); 
-      // setFeaturedAnimesList([]);
     } finally {
       setIsLoading(false);
     }
@@ -216,7 +212,7 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
 
   return (
     <>
-      {heroAnime && ( // Removed !fetchError from this condition; heroAnime might exist from previous successful fetch
+      {heroAnime && ( 
         <section className="relative h-[70vh] md:h-[85vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] overflow-hidden">
           <div className="absolute inset-0">
             {playTrailer && youtubeVideoId ? (
