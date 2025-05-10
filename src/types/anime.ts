@@ -1,4 +1,6 @@
 
+import type { Timestamp } from 'firebase/firestore';
+
 export interface Anime {
   id: string; // Firestore document ID
   tmdbId?: string; // TMDB ID (movie or TV), optional
@@ -15,6 +17,8 @@ export interface Anime {
   sourceAdmin?: 'tmdb' | 'manual'; // To track how it was added
   isFeatured?: boolean; // To mark anime as featured
   trailerUrl?: string; // Optional YouTube video URL for trailer
+  createdAt?: Timestamp; // Firestore Timestamp for when the document was created
+  updatedAt?: Timestamp; // Firestore Timestamp for when the document was last updated
 }
 
 export interface Episode {
