@@ -18,9 +18,9 @@
     --popover: 0 0% 5%; /* Darker popover */
     --popover-foreground: 0 0% 95%;
 
-    --primary: 260 85% 65%; /* Vibrant Purple */
-    --primary-darker: 260 85% 55%; /* Darker Purple for gradient */
-    --primary-foreground: 0 0% 100%; /* White text for on-purple buttons */
+    --primary: 102 100% 40%; /* Neon Green */
+    --primary-darker: 102 100% 30%; /* Darker Neon Green for gradient */
+    --primary-foreground: 0 0% 0%; /* Black text for on-green buttons */
     
     --secondary-accent-pink: 340 80% 60%; /* Pinkish-red for specific badges like #1 Trending */
 
@@ -31,34 +31,34 @@
     --muted: 0 0% 12%; /* Dark Muted */
     --muted-foreground: 0 0% 60%; /* Lighter gray for muted text */
 
-    --accent: 260 85% 65%; /* Purple, same as primary for consistency */
-    --accent-foreground: 0 0% 100%;
+    --accent: 102 100% 40%; /* Neon Green, same as primary for consistency */
+    --accent-foreground: 0 0% 0%; /* Black text for on-green buttons */
 
     --destructive: 0 70% 55%; /* Adjusted for dark theme visibility */
     --destructive-foreground: 0 0% 98%;
 
     --border: 0 0% 18%; /* Slightly lighter border for dark theme */
     --input: 0 0% 10%; /* Dark input backgrounds */
-    --ring: 260 85% 70%; /* Lighter Purple for focus rings */
+    --ring: 102 100% 45%; /* Lighter Neon Green for focus rings */
 
     --radius: 0.75rem; /* Slightly larger radius for modern feel */
 
     /* Chart colors - can be adjusted for new theme */
-    --chart-1: 260 85% 65%; /* Purple */
-    --chart-2: 180 100% 50%; /* Cyan variant */
-    --chart-3: 300 80% 60%; /* Magenta/Violet variant */
-    --chart-4: 60 100% 50%;  /* Yellow variant */
-    --chart-5: 0 100% 60%;   /* Red variant */
+    --chart-1: 102 100% 40%; /* Neon Green */
+    --chart-2: 210 80% 60%;  /* Cool Blue variant */
+    --chart-3: 280 70% 65%;  /* Purple variant */
+    --chart-4: 45 90% 55%;   /* Yellow/Orange variant */
+    --chart-5: 0 0% 50%;     /* Gray variant */
     
     /* Sidebar specific colors, aligned with dark theme */
     --sidebar-background: 0 0% 6%; 
     --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 260 85% 65%; 
-    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-primary: 102 100% 40%; 
+    --sidebar-primary-foreground: 0 0% 0%;
     --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 260 85% 65%; 
+    --sidebar-accent-foreground: 102 100% 40%; 
     --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 260 85% 70%;
+    --sidebar-ring: 102 100% 45%;
 
     --header-height: 4rem; 
   }
@@ -68,17 +68,17 @@
     -webkit-tap-highlight-color: transparent; 
   }
   body {
-    @apply bg-background text-foreground font-sans overflow-x-hidden min-h-screen flex flex-col;
+    @apply bg-background text-foreground font-sans overflow-x-hidden min-h-screen flex flex-col; /* Poppins will be applied via font-sans */
   }
   main {
     @apply flex-grow; 
   }
 
   h1 {
-    @apply font-zen-dots;
+    @apply font-zen-dots; /* Zen Dots for h1 */
   }
   h2, h3 {
-    @apply font-orbitron;
+    @apply font-orbitron; /* Orbitron for h2, h3 */
   }
 
 
@@ -161,3 +161,4 @@
     @apply border-border;
   }
 }
+
