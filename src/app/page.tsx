@@ -13,11 +13,12 @@ import TopAnimeListItem from '@/components/anime/TopAnimeListItem';
 import { Badge } from '@/components/ui/badge';
 import GenreList from '@/components/anime/genre-list';
 import { Skeleton } from '@/components/ui/skeleton';
+import RecommendationsSection from '@/components/anime/recommendations-section';
 
 const shuffleArray = <T,>(array: T[]): T[] => {
   if (!array || array.length === 0) return [];
   const newArray = [...array];
-  for (let i = newArray.length - 1; i > 0; i--) {
+  for (let i = newArray.length - 1; i > 0; i++) {
     const j = Math.floor(Math.random() * (i + 1));
     [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
   }
@@ -71,8 +72,10 @@ export default function Home() {
     setFetchError(null);
     try {
       const fetchDataPromises = [
-        getAllAnimes(50),
-        getAllAnimes(5, { featured: true, sortBy: 'title', sortOrder: 'asc' })
+        getAllAnimes(50), // General animes
+        // Fetch featured animes without explicit title sort to avoid complex index requirement by default.
+        // If specific sorting for featured items is needed, it would require ensuring the relevant Firebase index exists.
+        getAllAnimes(5, { featured: true }) 
       ];
       
       const [generalAnimes, featured] = await promiseWithTimeout(
@@ -221,7 +224,7 @@ export default function Home() {
                     #1 Trending
                 </Badge>
               )}
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-3 leading-tight">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-3 leading-tight font-zen-dots">
                 {heroAnime.title}
               </h1>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-5">
@@ -256,7 +259,7 @@ export default function Home() {
           <div className="my-8 p-6 bg-destructive/10 border border-destructive/30 rounded-lg flex items-center text-destructive">
             <AlertTriangle className="h-6 w-6 mr-3 flex-shrink-0" />
             <div>
-              <h3 className="font-semibold">Error Loading Content</h3>
+              <h3 className="font-semibold font-orbitron">Error Loading Content</h3>
               <p className="text-sm">{fetchError}</p>
               <Button variant="link" size="sm" onClick={fetchData} className="mt-2 px-0 text-destructive hover:text-destructive/80">
                 Try reloading
@@ -266,7 +269,7 @@ export default function Home() {
         )}
         {!fetchError && allAnime.length === 0 && !isLoading && (
            <div className="my-8 p-6 bg-card border border-border rounded-lg text-center">
-            <h3 className="font-semibold text-xl">No Anime Found</h3>
+            <h3 className="font-semibold text-xl font-orbitron">No Anime Found</h3>
             <p className="text-muted-foreground">It looks like there's no anime in the database yet. An admin can add some via the admin panel.</p>
           </div>
         )}
@@ -274,7 +277,7 @@ export default function Home() {
         {featuredAnimesList.length > 0 && !fetchError && (
           <section className="py-6 md:py-8">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar">Featured Anime</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar font-orbitron">Featured Anime</h2>
               <Button variant="link" asChild className="text-primary hover:text-primary/80">
                 <Link href="/browse?filter=featured">View More <ChevronRight className="w-4 h-4 ml-1"/></Link>
               </Button>
@@ -299,7 +302,7 @@ export default function Home() {
         {topAnimeList.length > 0 && (
           <section className="py-6 md:py-8">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar">Top Anime</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar font-orbitron">Top Anime</h2>
               <div className="flex items-center gap-2">
                 <Button variant="link" asChild className="text-primary hover:text-primary/80">
                   <Link href="/browse?sort=top">View More <ChevronRight className="w-4 h-4 ml-1"/></Link>
@@ -316,7 +319,7 @@ export default function Home() {
         
         {nextSeasonAnime.length > 0 && <AnimeCarousel title="Coming Next Season" animeList={nextSeasonAnime} />}
         
-         {/* <RecommendationsSection /> */}
+         <RecommendationsSection />
       </Container>
     </>
   );
