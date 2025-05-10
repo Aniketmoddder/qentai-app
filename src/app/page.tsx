@@ -57,8 +57,13 @@ const promiseWithTimeout = <T,>(promise: Promise<T>, ms: number, timeoutError = 
   return Promise.race<T | never>([promise, timeout]);
 };
 
+interface HomeProps {
+  genreListComponent: React.ReactNode;
+  recommendationsSectionComponent: React.ReactNode;
+}
 
-export default function Home() {
+// This is the Client Component
+function HomeClient({ genreListComponent, recommendationsSectionComponent }: HomeProps) {
   const [allAnime, setAllAnime] = useState<Anime[]>([]);
   const [featuredAnimesList, setFeaturedAnimesList] = useState<Anime[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -72,15 +77,15 @@ export default function Home() {
     setFetchError(null);
     try {
       const fetchDataPromises = [
-        getAllAnimes(50), // General animes
+        getAllAnimes(50), 
         // Fetch featured animes without explicit title sort to avoid complex index requirement by default.
-        // If specific sorting for featured items is needed, it would require ensuring the relevant Firebase index exists.
+        // The `getAllAnimes` service function is designed to handle this.
         getAllAnimes(5, { featured: true }) 
       ];
       
       const [generalAnimes, featured] = await promiseWithTimeout(
         Promise.all(fetchDataPromises), 
-        20000, // 20 seconds timeout
+        20000, 
         new Error('Failed to load homepage data in time. The server might be experiencing issues.')
       );
 
@@ -114,7 +119,7 @@ export default function Home() {
     if (heroAnime && youtubeVideoId) {
       timer = setTimeout(() => {
         setPlayTrailer(true);
-      }, 3000); // 3 seconds delay
+      }, 3000); 
     }
     return () => clearTimeout(timer);
   }, [heroAnime, youtubeVideoId]);
@@ -293,7 +298,7 @@ export default function Home() {
         {trendingAnime.length > 0 && <AnimeCarousel title="Trending Now" animeList={trendingAnime} />}
         {popularAnime.length > 0 && <AnimeCarousel title="Popular This Season" animeList={popularAnime} />}
         
-        <GenreList />
+        {genreListComponent}
 
         {recentlyAddedAnime.length > 0 && <AnimeCarousel title="Latest Additions" animeList={recentlyAddedAnime} />}
         {movies.length > 0 && <AnimeCarousel title="Popular Movies" animeList={movies} />}
@@ -319,8 +324,17 @@ export default function Home() {
         
         {nextSeasonAnime.length > 0 && <AnimeCarousel title="Coming Next Season" animeList={nextSeasonAnime} />}
         
-         <RecommendationsSection />
+         {recommendationsSectionComponent}
       </Container>
     </>
   );
+}
+
+// This is the Server Component Wrapper for the Home page
+export default function HomePageWrapper() {
+  // These Server Components will be rendered on the server and passed to HomeClient
+  const genreList = <GenreList />;
+  const recommendationsSection = <RecommendationsSection />;
+
+  return <HomeClient genreListComponent={genreList} recommendationsSectionComponent={recommendationsSection} />;
 }
