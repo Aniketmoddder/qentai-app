@@ -112,107 +112,130 @@ export default function PlayerPage() {
 
 
   useEffect(() => {
+    const videoElementAtEffectStart = videoRef.current; // Capture the video element at the start of the effect.
+    let isMounted = true; // Flag to check if component is still mounted
+
     const destroyPlayer = () => {
-      if (playerRef.current) {
-        playerRef.current.destroy();
-        playerRef.current = null;
+      if (playerRef.current && typeof playerRef.current.destroy === 'function') {
+        try {
+          playerRef.current.destroy();
+        } catch (e) {
+            console.warn("Error destroying Plyr player:", e);
+        }
       }
+      playerRef.current = null;
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
       }
     };
 
-    if (isLoading || !currentEpisode?.url || !videoRef.current) {
+    // Guard: If no video element, or no current episode URL, or still loading, then cleanup and exit.
+    if (!videoElementAtEffectStart || !currentEpisode?.url || isLoading) {
       destroyPlayer();
       return;
     }
-
-    const videoElement = videoRef.current;
     
-    import('plyr').then(async ({ default: Plyr }) => {
-      destroyPlayer(); // Ensure previous instance is destroyed
+    import('plyr').then(async ({ default: PlyrConstructor }) => {
+      if (!isMounted || !videoRef.current || videoRef.current !== videoElementAtEffectStart) {
+        // Component unmounted or video element changed while Plyr was importing.
+        // This check ensures we don't initialize Plyr on a stale/unmounted node.
+        return;
+      }
 
-      const newPlayer = new Plyr(videoElement, {
+      const currentVideoElement = videoRef.current; // Use the currently referenced video element
+
+      // Destroy any existing player instance before creating a new one.
+      // This handles cases where the effect might re-run rapidly.
+      destroyPlayer();
+
+      const newPlayer = new PlyrConstructor(currentVideoElement, {
         debug: process.env.NODE_ENV === 'development',
         autoplay: true,
-        // Ensure Plyr controls are shown; you can customize these
         controls: [
             'play-large', 'play', 'progress', 'current-time', 
             'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'
         ],
-        // settings: ['captions', 'quality', 'speed', 'loop'], // Example settings
+        // Ensure Plyr handles different source types correctly
+        // No specific 'types' or 'providers' needed for direct HLS/MP4 if Plyr's html5 engine is used.
       });
-      playerRef.current = newPlayer;
+      playerRef.current = newPlayer; // Store the new Plyr instance
 
       if (currentEpisode.url.includes('.m3u8')) {
         const Hls = (await import('hls.js')).default;
         if (Hls.isSupported()) {
           const hlsInstance = new Hls();
           hlsInstance.loadSource(currentEpisode.url);
-          hlsInstance.attachMedia(videoElement);
+          hlsInstance.attachMedia(currentVideoElement); // Attach to the current video element
           hlsRef.current = hlsInstance;
           (window as any).hls = hlsInstance; 
 
-          // Handle HLS errors
           hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+            if (!isMounted) return;
             if (data.fatal) {
               switch(data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
-                  console.error("HLS fatal network error encountered, trying to recover", data);
-                  // hlsInstance.startLoad(); // Or specific recovery strategy
+                  console.error("HLS fatal network error encountered", data);
                   setError(`Video load error (Network): ${data.details}`);
                   break;
                 case Hls.ErrorTypes.MEDIA_ERROR:
-                  console.error("HLS fatal media error encountered, trying to recover", data);
-                  // hlsInstance.recoverMediaError();
+                  console.error("HLS fatal media error encountered", data);
                    setError(`Video playback error (Media): ${data.details}`);
                   break;
                 default:
-                  console.error("HLS fatal error, cannot recover", data);
+                  console.error("HLS fatal error", data);
                   setError(`Video error: ${data.details}`);
-                  // hlsInstance.destroy(); // Destroy on unrecoverable error
                   break;
               }
             } else {
                  console.warn("HLS non-fatal error:", data);
-                 setError(`Video warning: ${data.details}`);
+                 // setError(`Video warning: ${data.details}`); // Can be too noisy
             }
           });
-
-        } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-          // For Safari native HLS support
-          videoElement.src = currentEpisode.url;
+        } else if (currentVideoElement.canPlayType('application/vnd.apple.mpegurl')) {
+          currentVideoElement.src = currentEpisode.url;
         } else {
-            setError("HLS.js is not supported in this browser, and native HLS playback is not available.");
+            if (isMounted) setError("HLS.js is not supported in this browser, and native HLS playback is not available.");
         }
-      } else {
-        // For MP4 or other direct sources
-        videoElement.src = currentEpisode.url;
+      } else { // For MP4 or other direct sources
+        currentVideoElement.src = currentEpisode.url;
       }
       
       newPlayer.on('ready', () => {
-        console.log('Plyr ready for:', currentEpisode.title);
+        if (isMounted) console.log('Plyr ready for:', currentEpisode?.title);
       });
-      newPlayer.on('ended', handleNextEpisode);
+      newPlayer.on('ended', () => {
+        if (isMounted) handleNextEpisode();
+      });
       newPlayer.on('error', (event: any) => {
-        console.error("Plyr Player Error:", event);
-        const plyrError = event.detail?.plyr;
-        let message = "Video playback error.";
-        if (plyrError?.source) message += ` Source: ${plyrError.source}.`;
-        if (plyrError?.error?.message) message += ` Details: ${plyrError.error.message}`;
-        setError(message);
+        if (isMounted) {
+          console.error("Plyr Player Error:", event);
+          const plyrError = event.detail?.plyr; // Plyr event detail structure
+          let message = "Video playback error.";
+          if (plyrError?.source) message += ` Source: ${plyrError.source}.`;
+          // The error object from Plyr might be nested under event.detail.plyr.error
+          if (plyrError?.error?.message) message += ` Details: ${plyrError.error.message}`;
+          else if (event.detail?.message) message += ` Details: ${event.detail.message}`; // Fallback
+          setError(message);
+        }
       });
 
     }).catch(e => {
-      console.error("Failed to import Plyr or HLS.js:", e);
-      setError("Could not load video player components.");
-      destroyPlayer();
+      if (isMounted) {
+        console.error("Failed to import Plyr or HLS.js:", e);
+        setError("Could not load video player components.");
+      }
+      destroyPlayer(); // Ensure cleanup on import error too
     });
 
-    return destroyPlayer;
-
-  }, [currentEpisode, isLoading, error, animeId, handleNextEpisode]); 
+    return () => {
+      isMounted = false;
+      destroyPlayer();
+    };
+  // Key dependencies: currentEpisode ID and URL trigger re-initialization.
+  // isLoading handles the initial loading phase.
+  // animeId and handleNextEpisode are stable or context/callback.
+  }, [currentEpisode?.id, currentEpisode?.url, isLoading, animeId, handleNextEpisode]); 
   
 
   if (isLoading && !anime) {
@@ -253,7 +276,6 @@ export default function PlayerPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background -mt-[calc(var(--header-height,4rem)+1px)] pt-[calc(var(--header-height,4rem)+1px)]">
-       {/* Dynamically load Plyr CSS via link tag as it's not a module for direct import by default */}
       <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
       <Container className="py-4 md:py-6 flex-grow w-full max-w-full px-0 sm:px-4 md:px-6 lg:px-8">
         <div className="lg:flex lg:gap-6 xl:gap-8 h-full">
@@ -261,9 +283,12 @@ export default function PlayerPage() {
             <div className="aspect-video bg-black rounded-lg overflow-hidden shadow-2xl mb-4 w-full relative">
                 <video 
                     ref={videoRef} 
-                    key={currentEpisode?.id || 'no-episode'} 
+                    // Using currentEpisode.id makes sure the video element is re-created on episode change,
+                    // which helps Plyr re-initialize correctly. Adding animeId for further uniqueness.
+                    key={`${currentEpisode?.id || 'no-episode'}-${animeId}`} 
                     poster={currentEpisode?.thumbnail || anime?.coverImage || `https://picsum.photos/seed/${animeId}-${currentEpisode?.id}-poster/1280/720`}
                     data-ai-hint="video player content"
+                    // Do not set src or controls directly when using Plyr to manage it.
                 />
                 {isLoading && currentEpisode && (
                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 z-20">
@@ -277,8 +302,7 @@ export default function PlayerPage() {
                     <p className="text-destructive-foreground text-sm">{error}</p>
                     <Button variant="outline" size="sm" className="mt-3" onClick={() => {
                         setError(null); 
-                        // Force re-fetch or re-init can be handled by state change triggering useEffect
-                         if (currentEpisode) handleEpisodeSelect(currentEpisode); // Re-select current ep to retry
+                         if (currentEpisode) handleEpisodeSelect(currentEpisode); 
                     }}>Retry</Button>
                   </div>
                 )}
@@ -407,3 +431,4 @@ export default function PlayerPage() {
     </div>
   );
 }
+
