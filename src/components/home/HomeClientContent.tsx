@@ -61,11 +61,11 @@ const promiseWithTimeout = <T,>(promise: Promise<T>, ms: number, timeoutError = 
 };
 
 export interface HomeClientProps {
-  genreListComponent: React.ReactNode;
+  homePageGenreSectionComponent: React.ReactNode;
   recommendationsSectionComponent: React.ReactNode;
 }
 
-export default function HomeClient({ genreListComponent, recommendationsSectionComponent }: HomeClientProps) {
+export default function HomeClient({ homePageGenreSectionComponent, recommendationsSectionComponent }: HomeClientProps) {
   const [allAnime, setAllAnime] = useState<Anime[]>([]);
   const [featuredAnimesList, setFeaturedAnimesList] = useState<Anime[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -80,11 +80,10 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
 
     try {
       const fetchDataPromises = [
-        // Corrected: Pass count as first arg, filters as second
-        getAllAnimes(50, { sortBy: 'updatedAt', sortOrder: 'desc' }),
-        getFeaturedAnimes(5)
+        getAllAnimes({ count: 50, filters: { sortBy: 'updatedAt', sortOrder: 'desc' } }),
+        getFeaturedAnimes({ count: 5 })
       ];
-
+      
       const settledResults = await promiseWithTimeout(
         Promise.allSettled(fetchDataPromises),
         FETCH_TIMEOUT_MS,
@@ -110,7 +109,6 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
       const featuredResult = settledResults[1];
       if (featuredResult.status === 'fulfilled') {
         let fetchedFeatured = featuredResult.value.map(a => convertAnimeTimestampsForClient(a)) || [];
-        // fetchedFeatured.sort((a, b) => a.title.localeCompare(b.title)); // Sorting may not be needed if Firestore handles it
         featured = fetchedFeatured;
       } else {
         console.error("HomeClient: Error fetching featured animes:", featuredResult.reason);
@@ -164,7 +162,7 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
   const recentlyAddedAnime = allAnime.length > 0
     ? [...allAnime].sort((a,b) => {
         const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.year, 0, 1).getTime());
-        const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.year, 0, 1).getTime());
+        const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : new Date(a.year, 0, 1).getTime());
         return dateB - dateA;
       }).slice(0,10)
     : [];
@@ -179,7 +177,7 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
 
   if (isLoading && !heroAnime && !fetchError) {
     return (
-      <>
+      <div>
         <section className="relative h-[70vh] md:h-[85vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] bg-muted/30">
           <div className="absolute inset-0">
              <Skeleton className="w-full h-full opacity-40" />
@@ -199,20 +197,14 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
             </div>
           </Container>
         </section>
-        <Container className="py-8">
-          <Skeleton className="h-8 w-48 mb-4 rounded-md" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[300px] w-full rounded-lg" />)}
-          </div>
-        </Container>
-      </>
+      </div>
     );
   }
 
   const noContentAvailable = !isLoading && !fetchError && allAnime.length === 0 && featuredAnimesList.length === 0 && !heroAnime;
 
   return (
-    <>
+    <div> {/* Changed root fragment to div */}
       {heroAnime && (
         <section className="relative h-[70vh] md:h-[85vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] overflow-hidden">
           <div className="absolute inset-0">
@@ -223,7 +215,7 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
                   title="YouTube video player"
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
+                  allowFullScreen // allowFullScreen without value is treated as true
                   className="w-full h-full scale-[1.8] sm:scale-[1.5] md:scale-[1.4] object-cover"
                 ></iframe>
               </div>
@@ -337,7 +329,7 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
         {trendingAnime.length > 0 && <AnimeCarousel title="Trending Now" animeList={trendingAnime} />}
         {popularAnime.length > 0 && <AnimeCarousel title="Popular This Season" animeList={popularAnime} />}
 
-        {genreListComponent}
+        {homePageGenreSectionComponent}
 
         {recentlyAddedAnime.length > 0 && <AnimeCarousel title="Latest Additions" animeList={recentlyAddedAnime} />}
         {movies.length > 0 && <AnimeCarousel title="Popular Movies" animeList={movies} />}
@@ -363,8 +355,10 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
 
         {nextSeasonAnime.length > 0 && <AnimeCarousel title="Coming Next Season" animeList={nextSeasonAnime} />}
 
-         {recommendationsSectionComponent}
+        {recommendationsSectionComponent}
       </Container>
-    </>
+    </div>
   );
 }
+
+    

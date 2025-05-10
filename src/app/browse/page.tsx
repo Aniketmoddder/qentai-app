@@ -1,5 +1,5 @@
 // src/app/browse/page.tsx
-import type { SuspenseProps } from 'react'; // Import SuspenseProps
+import type { SuspenseProps } from 'react'; 
 import { Suspense } from 'react';
 import Container from '@/components/layout/container';
 import AnimeCard from '@/components/anime/anime-card';
@@ -13,42 +13,53 @@ import { FirestoreError } from 'firebase/firestore';
 interface BrowsePageProps {
   searchParams: {
     genre?: string;
-    type?: Anime['type'];
-    sort?: 'top' | 'title' | 'year' | 'updatedAt' | 'createdAt' | string; // Extended sort options
+    type?: Anime['type']; // Keep for potential direct URL access, but UI won't primarily link to this
+    sort?: 'top' | 'title' | 'year' | 'updatedAt' | 'createdAt' | string;
     sortOrder?: 'asc' | 'desc';
     filter?: 'featured' | string;
-    q?: string;
+    q?: string; // For search results that might land here
   };
 }
 
 async function BrowseContent({ searchParams }: BrowsePageProps) {
-  const { genre, type, sort, sortOrder, filter: queryFilter } = searchParams;
+  const { genre, type, sort, sortOrder, filter: queryFilter, q: searchQuery } = searchParams;
   let animeList: Anime[] = [];
   let pageTitle = 'Browse All Anime';
   let fetchError: string | null = null;
 
   try {
-    const filters: Parameters<typeof getAllAnimes>[1] = {};
-    if (type) {
+    const filters: Parameters<typeof getAllAnimes>[0]['filters'] = {}; // Ensure filters is correctly typed
+     if (searchQuery) {
+      // If there's a search query, prioritize that for title and fetch logic
+      pageTitle = `Search Results for "${searchQuery}"`;
+      // The search logic is now primarily in /search/page.tsx
+      // If this page is still hit with a `q` param, it might show "Browse All" with an attempt to filter
+      // For simplicity, let's assume `searchAnimes` is the primary search mechanism.
+      // If direct `q` param usage here is needed, it would require `searchAnimes` or similar logic.
+      // For now, we'll let `getAllAnimes` try its best if `q` is present, but it's not optimized for text search.
+      // A more robust solution would involve a dedicated search service or Algolia/Elasticsearch.
+    } else if (type) {
       filters.type = type;
       pageTitle = type === 'Movie' ? 'Movies' : type === 'TV' ? 'TV Series' : `Browse ${type}`;
     }
+    
     if (genre) {
       filters.genre = genre;
       pageTitle = `${genre} Anime`;
     }
+    
     if (sort) {
-      // Explicitly handle string to match expected types for sortBy
       filters.sortBy = sort as 'averageRating' | 'year' | 'title' | 'createdAt' | 'updatedAt';
-      if (sort === 'top') { // 'top' is a shorthand for averageRating desc
+      if (sort === 'top') { 
           filters.sortBy = 'averageRating';
-          filters.sortOrder = 'desc';
+          filters.sortOrder = 'desc'; // Default to desc for top rated
           pageTitle = 'Top Rated Anime';
       } else {
           pageTitle = `Sorted by ${sort.charAt(0).toUpperCase() + sort.slice(1)}`;
       }
     }
-    if (sortOrder) {
+
+    if (sortOrder) { // Allow explicit sortOrder to override 'top' default
         filters.sortOrder = sortOrder;
     }
 
@@ -57,7 +68,7 @@ async function BrowseContent({ searchParams }: BrowsePageProps) {
       pageTitle = 'Featured Anime';
     }
     
-    animeList = await getAllAnimes(50, filters);
+    animeList = await getAllAnimes({ count: 50, filters });
 
   } catch (error) {
     console.error("Failed to fetch animes for browse page:", error);
@@ -76,7 +87,6 @@ async function BrowseContent({ searchParams }: BrowsePageProps) {
     <Container className="py-8 min-h-[calc(100vh-var(--header-height,4rem)-var(--footer-height,0px)-1px)]">
       <div className="mb-6 md:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h1 className="text-3xl md:text-4xl font-bold text-foreground section-title-bar">{pageTitle}</h1>
-        {/* Placeholder for future filter controls */}
         {/* 
         <Button variant="outline">
           <ListFilter className="mr-2 h-4 w-4" /> Filters
@@ -121,7 +131,6 @@ async function BrowseContent({ searchParams }: BrowsePageProps) {
   );
 }
 
-// Suspense Fallback Component
 function LoadingFallback() {
   return (
     <Container className="flex items-center justify-center min-h-[calc(100vh-var(--header-height)-1px)]">
@@ -135,7 +144,6 @@ function LoadingFallback() {
 
 
 export default function BrowsePage(props: BrowsePageProps) {
-  // The key forces Suspense to re-evaluate when searchParams change
   const key = JSON.stringify(props.searchParams);
   return (
     <Suspense key={key} fallback={<LoadingFallback />}>
@@ -143,6 +151,3 @@ export default function BrowsePage(props: BrowsePageProps) {
     </Suspense>
   );
 }
-
-// If you need to force dynamic rendering (e.g. if searchParams isn't enough to bust cache)
-// export const dynamic = 'force-dynamic';

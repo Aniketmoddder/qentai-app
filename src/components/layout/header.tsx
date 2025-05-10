@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Search, UserCircle, Menu, LogOut, LogIn, UserPlus, User as UserIcon, Settings, LayoutGrid } from 'lucide-react';
+import { Search, Menu, LogOut, LogIn, UserPlus, User as UserIcon, LayoutGrid, Tag } from 'lucide-react'; // Added Tag for Genres
 import Logo from '@/components/common/logo';
 import Container from '@/components/layout/container';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useState, useEffect, FormEvent } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -23,10 +23,11 @@ export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileSearchQuery, setMobileSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isSearchDrawerOpen, setIsSearchDrawerOpen] = useState(false); // For mobile search
+  const [isSearchDrawerOpen, setIsSearchDrawerOpen] = useState(false);
   
   const router = useRouter();
   const pathname = usePathname();
+  const currentSearchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
@@ -45,19 +46,17 @@ export default function Header() {
   
   useEffect(() => {
     if (isMobileMenuOpen || isSearchDrawerOpen) {
-      // Close menus when path changes
       setIsMobileMenuOpen(false);
       setIsSearchDrawerOpen(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [pathname, currentSearchParams]); // Close on pathname or searchParams change
 
-  // Simplified nav items based on screenshot's footer implied structure
   const navItems = [
     { href: '/', label: 'Home' },
     { href: '/browse?sort=top', label: 'Top Anime' },
-    { href: '/browse?type=movie', label: 'Movies' },
-    { href: '/browse?type=tv', label: 'TV Series' },
+    { href: '/genres', label: 'Genres' }, // New Genres link
+    { href: '/browse', label: 'Browse All'} // General browse link
   ];
 
   const handleSearchSubmit = (e: FormEvent<HTMLFormElement>, query: string, isMobileSearch: boolean = false) => {
@@ -66,7 +65,7 @@ export default function Header() {
       router.push(`/search?q=${encodeURIComponent(query.trim())}`);
       if (isMobileSearch) {
         setMobileSearchQuery('');
-        setIsSearchDrawerOpen(false); // Close mobile search drawer
+        setIsSearchDrawerOpen(false); 
       } else {
         setSearchQuery(''); 
       }
@@ -89,6 +88,30 @@ export default function Header() {
     if (!email) return 'U';
     return email.charAt(0).toUpperCase();
   }
+  
+  const isNavItemActive = (itemHref: string) => {
+    if (itemHref === '/') return pathname === '/';
+    if (itemHref.includes('?')) {
+        // For links with query params, check both pathname and the specific param
+        const [pathOnly, queryPart] = itemHref.split('?');
+        const currentQueryString = currentSearchParams.toString();
+        if (pathname !== pathOnly) return false;
+
+        // If it's /browse?sort=top, check for sort=top
+        if (queryPart === 'sort=top' && currentSearchParams.get('sort') === 'top' && !currentSearchParams.get('type') && !currentSearchParams.get('genre')) return true;
+        // If it's a general /browse, active if no specific filters are applied
+        if (pathOnly === '/browse' && !queryPart && !currentSearchParams.get('type') && !currentSearchParams.get('genre') && !currentSearchParams.get('sort')) return true;
+        
+        return false; // More specific query matching might be needed for other cases
+    }
+    // For /genres, only active if on /genres page exactly
+    if (itemHref === '/genres') return pathname === '/genres';
+
+    // Fallback for paths like /browse (without query)
+    // This means /browse is active if path is /browse AND no ?type or ?genre query params exist
+    return pathname === itemHref && !currentSearchParams.get('type') && !currentSearchParams.get('genre') && !currentSearchParams.get('sort');
+  };
+
 
   return (
     <header 
@@ -98,13 +121,13 @@ export default function Header() {
     >
       <Container className="flex items-center justify-between py-3">
         <div className="flex items-center gap-4">
-          <Logo iconSize={27} /> {/* Changed iconSize from 20 to 27 */}
+          <Logo iconSize={27} />
           <nav className="hidden lg:flex items-center space-x-5">
             {navItems.map((item) => (
               <Link
                 key={item.label}
                 href={item.href}
-                className={`text-sm font-medium hover:text-primary transition-colors ${pathname === item.href || (item.href.includes('?') && pathname + location.search === item.href) ? 'text-primary' : 'text-muted-foreground'}`}
+                className={`text-sm font-medium hover:text-primary transition-colors ${isNavItemActive(item.href) ? 'text-primary' : 'text-muted-foreground'}`}
               >
                 {item.label}
               </Link>
@@ -113,7 +136,6 @@ export default function Header() {
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-3">
-          {/* Desktop Search Form */}
           <form
             onSubmit={(e) => handleSearchSubmit(e, searchQuery)}
             className="relative hidden md:block"
@@ -132,7 +154,6 @@ export default function Header() {
             </button>
           </form>
 
-          {/* Mobile Search Trigger */}
           <Button variant="ghost" size="icon" className="md:hidden text-muted-foreground hover:text-primary" onClick={() => setIsSearchDrawerOpen(true)}>
             <Search className="h-5 w-5" />
             <span className="sr-only">Open search</span>
@@ -191,7 +212,6 @@ export default function Header() {
              <Loader2 className="h-5 w-5 animate-spin text-primary" />
           ): null }
 
-          {/* Mobile Main Menu Trigger */}
           <div className="lg:hidden">
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -203,7 +223,7 @@ export default function Header() {
               <SheetContent side="right" className="bg-card p-0 flex flex-col w-[80vw] max-w-xs sm:max-w-sm border-l-border">
                 <SheetHeader className="p-4 pb-2 border-b border-border"> 
                   <SheetTitle>
-                    <Logo iconSize={18} /> {/* Adjusted iconSize for mobile menu */}
+                    <Logo iconSize={18} />
                   </SheetTitle>
                 </SheetHeader>
                 <div className="flex-grow overflow-y-auto">
@@ -212,8 +232,9 @@ export default function Header() {
                       <SheetClose asChild key={item.label}>
                         <Link
                           href={item.href}
-                          className={`text-base font-medium hover:text-primary transition-colors py-2.5 px-3 rounded-md hover:bg-primary/10 ${pathname === item.href || (item.href.includes('?') && pathname + location.search === item.href) ? 'text-primary bg-primary/15' : 'text-foreground'}`}
+                          className={`text-base font-medium hover:text-primary transition-colors py-2.5 px-3 rounded-md hover:bg-primary/10 ${isNavItemActive(item.href) ? 'text-primary bg-primary/15' : 'text-foreground'}`}
                         >
+                          {item.label === 'Genres' && <Tag className="inline-block w-4 h-4 mr-1.5" />} {/* Icon for Genres */}
                           {item.label}
                         </Link>
                       </SheetClose>
@@ -272,7 +293,6 @@ export default function Header() {
         </div>
       </Container>
 
-      {/* Mobile Search Drawer */}
       <Sheet open={isSearchDrawerOpen} onOpenChange={setIsSearchDrawerOpen}>
         <SheetContent side="top" className="p-0 bg-background border-b-border">
           <Container className="py-4">
@@ -295,4 +315,3 @@ export default function Header() {
     </header>
   );
 }
-

@@ -2,7 +2,7 @@
 import Container from '@/components/layout/container';
 import Logo from '@/components/common/logo';
 import Link from 'next/link';
-import { Github, Twitter, Send, ListChecks, History, Moon, Sun, Grid, Settings } from 'lucide-react'; // Using Send for Message Us, ListChecks for Watchlist
+import { Github, Twitter, Send, ListChecks, History, Moon, Sun, Grid, Settings, Tag } from 'lucide-react'; // Added Tag for Genres
 import { Button } from '@/components/ui/button';
 
 export default function Footer() {
@@ -12,36 +12,32 @@ export default function Footer() {
     <footer className="bg-card border-t border-border/30 pt-12 pb-8 mt-16 relative">
       <Container>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
-          {/* Column 1: Logo & Description */}
           <div className="space-y-3">
-            <Logo iconSize={14} /> {/* Increased iconSize from 10 to 14 */}
+            <Logo iconSize={14} />
             <p className="text-sm text-muted-foreground leading-relaxed">
               Your ultimate destination for anime streaming. Discover new series and enjoy your favorites, all in one place.
             </p>
           </div>
 
-          {/* Column 2: Qentai Links */}
           <div className="md:pl-4">
             <h3 className="text-base font-semibold text-foreground mb-3">Qentai</h3>
             <ul className="space-y-1.5">
               <li><Link href="/" className="text-sm text-muted-foreground hover:text-primary transition-colors">Home</Link></li>
               <li><Link href="/browse?sort=top" className="text-sm text-muted-foreground hover:text-primary transition-colors">Top Animes</Link></li>
-              <li><Link href="/browse?type=movie" className="text-sm text-muted-foreground hover:text-primary transition-colors">Movies</Link></li>
-              <li><Link href="/browse?type=tv" className="text-sm text-muted-foreground hover:text-primary transition-colors">TV Series</Link></li>
+              <li><Link href="/genres" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center"><Tag size={14} className="mr-1.5"/>Genres</Link></li>
+              <li><Link href="/browse" className="text-sm text-muted-foreground hover:text-primary transition-colors">Browse All</Link></li>
             </ul>
           </div>
 
-          {/* Column 3: Help Links */}
           <div>
             <h3 className="text-base font-semibold text-foreground mb-3">Help</h3>
             <ul className="space-y-1.5">
               <li><Link href="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center"><Send size={14} className="mr-1.5"/>Message Us</Link></li>
               <li><Link href="/profile?tab=wishlist" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center"><ListChecks size={14} className="mr-1.5"/>Watchlist</Link></li>
-              <li><Link href="/profile?tab=history" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center"><History size={14} className="mr-1.5"/>History</Link></li> {/* Assuming history tab on profile */}
+              <li><Link href="/profile?tab=history" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center"><History size={14} className="mr-1.5"/>History</Link></li>
             </ul>
           </div>
           
-          {/* Column 4: Social & Settings placeholder */}
            <div className="space-y-4">
             <div>
                 <h3 className="text-base font-semibold text-foreground mb-3">Follow Us</h3>
@@ -52,13 +48,12 @@ export default function Footer() {
                 <Button variant="ghost" size="icon" asChild className="text-muted-foreground hover:text-primary w-8 h-8">
                     <Link href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="Github"><Github size={18} /></Link>
                 </Button>
-                {/* Add Discord/Reddit if suitable icons are found or SVGs are used later */}
                 </div>
             </div>
             <div>
                  <h3 className="text-base font-semibold text-foreground mb-2">Theme</h3>
                  <Button variant="outline" size="sm" className="text-muted-foreground border-border/50 hover:bg-primary/10">
-                    <Moon size={14} className="mr-1.5"/> Dark Mode {/* Placeholder toggle */}
+                    <Moon size={14} className="mr-1.5"/> Dark Mode
                  </Button>
             </div>
           </div>
@@ -70,7 +65,6 @@ export default function Footer() {
         </div>
       </Container>
 
-      {/* Floating Action Button - Visual Placeholder */}
       <div className="absolute -top-5 right-8 md:right-12">
         <Button size="icon" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full w-12 h-12 shadow-lg hover:shadow-primary/50">
           <Grid size={24} />
@@ -80,4 +74,3 @@ export default function Footer() {
     </footer>
   );
 }
-
