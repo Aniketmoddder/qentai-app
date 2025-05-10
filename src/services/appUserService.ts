@@ -3,7 +3,7 @@
 
 import { db } from '@/lib/firebase';
 import type { AppUser, AppUserRole } from '@/types/appUser';
-import { convertUserTimestampsForClient } from '@/lib/userUtils'; // Import from new location
+import { convertUserTimestampsForClient } from '@/lib/userUtils'; 
 import {
   collection,
   doc,
@@ -16,7 +16,8 @@ import {
   FirestoreError,
   Timestamp,
   setDoc,
-  limit
+  limit,
+  where, // Added where for username query
 } from 'firebase/firestore';
 
 const usersCollection = collection(db, 'users');
@@ -52,16 +53,16 @@ export const upsertAppUserInFirestore = async (
       if (userData.email === ADMIN_EMAIL && existingData.role !== 'owner') {
         role = 'owner';
       } else if (userData.email === ADMIN_EMAIL && existingData.role === 'owner') {
+        // Keep owner role if already owner
         role = 'owner';
       }
 
+
       finalUserDataForDb = {
         email: userData.email || existingData.email,
-        displayName: userData.displayName || existingData.displayName, // Firebase Auth displayName
+        displayName: userData.displayName || existingData.displayName, 
         photoURL: userData.photoURL || existingData.photoURL,
-        // Prioritize incoming userData.username (e.g., from form) over existing, then default
         username: userData.username || existingData.username || (userData.email ? userData.email.split('@')[0] : `user_${userData.uid.substring(0,5)}`),
-        // Prioritize incoming userData.fullName (e.g., from form) over existing, then fallback to displayName (Firebase Auth)
         fullName: userData.fullName || existingData.fullName || userData.displayName || null,
         role,
         status: finalStatus,
@@ -71,10 +72,12 @@ export const upsertAppUserInFirestore = async (
       Object.keys(finalUserDataForDb).forEach(key => finalUserDataForDb[key] === undefined && delete finalUserDataForDb[key]);
 
       await updateDoc(userRef, finalUserDataForDb);
+      // Construct client-side user object immediately after update
       const updatedData = { 
         ...existingData, 
         ...finalUserDataForDb, 
         uid: userData.uid,
+        // Simulate server timestamps for immediate client update
         lastLoginAt: new Date().toISOString(), 
         updatedAt: new Date().toISOString() 
       };
@@ -88,11 +91,9 @@ export const upsertAppUserInFirestore = async (
       finalUserDataForDb = {
         uid: userData.uid,
         email: userData.email || null,
-        displayName: userData.displayName || null, // Firebase Auth displayName
+        displayName: userData.displayName || null, 
         photoURL: userData.photoURL || null,
-        // Prioritize userData.username (from form); if not, default from email
         username: userData.username || (userData.email ? userData.email.split('@')[0] : `user_${userData.uid.substring(0,5)}`),
-        // Prioritize userData.fullName (from form); if not, use displayName from Auth, then null
         fullName: userData.fullName || userData.displayName || null,
         role: role,
         status: finalStatus,
@@ -101,6 +102,7 @@ export const upsertAppUserInFirestore = async (
         updatedAt: serverTimestamp(),
       };
       await setDoc(userRef, finalUserDataForDb);
+      // Construct client-side user object for new user
       const newUserDataForClient = {
         ...finalUserDataForDb,
         createdAt: new Date().toISOString(),
@@ -122,25 +124,18 @@ export const updateAppUserProfile = async (
   try {
     const dataToUpdate: { [key: string]: any } = { ...profileData, updatedAt: serverTimestamp() };
     
-    // Ensure that if a field is an empty string, it's treated as wanting to set it to empty,
-    // not as `undefined` which would cause it to be deleted by the Object.keys loop below.
-    // However, for username and fullName, we usually want them to be set if provided.
-    // photoURL could be explicitly set to null or an empty string to remove it.
     if (profileData.photoURL === '') {
-        dataToUpdate.photoURL = null; // Or handle as per your preference for empty photoURL
+        dataToUpdate.photoURL = null; 
     }
 
     Object.keys(dataToUpdate).forEach(key => {
-        // Keep username and fullName even if they are empty strings, if explicitly passed.
-        // For other fields that might be optional, delete if undefined.
-        // This logic might need refinement based on how you want to handle empty strings vs. undefined.
-        if (key !== 'username' && key !== 'fullName' && dataToUpdate[key] === undefined) {
+        if (dataToUpdate[key] === undefined) { 
              delete dataToUpdate[key]; 
         }
     });
 
 
-    if (Object.keys(dataToUpdate).length > 1) { // At least one field other than updatedAt
+    if (Object.keys(dataToUpdate).length > 1) { 
         await updateDoc(userRef, dataToUpdate);
     }
   } catch (error) {
@@ -151,7 +146,6 @@ export const updateAppUserProfile = async (
 
 export const getAllAppUsers = async (count: number = 50): Promise<AppUser[]> => {
   try {
-    // Ensure users are ordered, e.g., by creation date, for consistent listing
     const q = query(usersCollection, orderBy('createdAt', 'desc'), limit(count > 0 ? count : 500));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => convertUserTimestampsForClient(doc.data() as AppUser));
@@ -210,5 +204,25 @@ export const getAppUserById = async (uid: string): Promise<AppUser | null> => {
     return null;
   } catch (error) {
     throw handleFirestoreError(error, `getAppUserById (uid: ${uid})`);
+  }
+};
+
+export const getAppUserByUsername = async (username: string): Promise<AppUser | null> => {
+  if (!username || username.trim() === '') return null;
+  try {
+    // Note: This query requires a single-field index on 'username' in the 'users' collection.
+    // Firestore will prompt you to create this index in the console if it's missing.
+    const q = query(usersCollection, where("username", "==", username), limit(1));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      const userDoc = querySnapshot.docs[0];
+      return convertUserTimestampsForClient(userDoc.data() as AppUser);
+    }
+    return null;
+  } catch (error) {
+    if (error instanceof FirestoreError && error.code === 'failed-precondition') {
+      console.warn(`Firestore query in getAppUserByUsername requires an index on 'username'. Please create this index. Original error: ${error.message}`);
+    }
+    throw handleFirestoreError(error, `getAppUserByUsername (username: ${username})`);
   }
 };

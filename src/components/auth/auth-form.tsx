@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { UseFormReturn } from 'react-hook-form';
@@ -42,7 +43,7 @@ export function AuthForm<T extends z.ZodType<any, any>>({
 }: AuthFormProps<T>) {
   const form = useForm<z.infer<T>>({
     resolver: zodResolver(formSchema),
-    defaultValues: defaultValues || (isRegister ? { fullName: '', username: '', email: '', password: '', confirmPassword: '' } : { email: '', password: '' }) as z.infer<T>,
+    defaultValues: defaultValues || (isRegister ? { fullName: '', username: '', email: '', password: '', confirmPassword: '' } : { identifier: '', password: '' }) as z.infer<T>,
   });
 
   const handleFormChange = () => {
@@ -89,21 +90,36 @@ export function AuthForm<T extends z.ZodType<any, any>>({
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="name@example.com" {...field} type="email" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </>
         )}
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input placeholder="name@example.com" {...field} type="email" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {!isRegister && (
+            <FormField
+            control={form.control}
+            name="identifier" // Changed from 'email'
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Email or Username</FormLabel> 
+                <FormControl>
+                    <Input placeholder="name@example.com or your_username" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        )}
         <FormField
           control={form.control}
           name="password"
@@ -167,3 +183,4 @@ export function AuthForm<T extends z.ZodType<any, any>>({
     </Form>
   );
 }
+

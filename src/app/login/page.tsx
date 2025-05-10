@@ -15,10 +15,11 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Chrome, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { getAppUserByUsername } from '@/services/appUserService';
 
 
 const loginSchema = z.object({
-  email: z.string().email({ message: 'Invalid email address.' }),
+  identifier: z.string().min(3, { message: 'Email or Username must be at least 3 characters.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
 });
 
@@ -43,8 +44,40 @@ export default function LoginPage() {
   const handleLogin = async (values: LoginFormValues) => {
     setIsLoading(true);
     setError(null);
+    let emailToUse: string | null = null;
+
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      if (values.identifier.includes('@')) {
+        // Assume it's an email
+        emailToUse = values.identifier;
+      } else {
+        // Assume it's a username, try to fetch user by username
+        // Note: This requires an index on 'username' in Firestore users collection.
+        // Firestore will prompt to create it if missing.
+        const appUser = await getAppUserByUsername(values.identifier);
+        if (appUser && appUser.email) {
+          emailToUse = appUser.email;
+        } else {
+          setError("User with that username not found.");
+          toast({
+            variant: "destructive",
+            title: "Login Failed",
+            description: "User with that username not found.",
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      if (!emailToUse) {
+        // Should not happen if logic above is correct, but as a safeguard
+        setError("Invalid email or username.");
+        toast({ variant: "destructive", title: "Login Failed", description: "Invalid email or username." });
+        setIsLoading(false);
+        return;
+      }
+
+      await signInWithEmailAndPassword(auth, emailToUse, values.password);
       toast({
         title: "Login Successful",
         description: "Welcome back!",
@@ -52,7 +85,12 @@ export default function LoginPage() {
       const redirectUrl = searchParams.get('redirect') || '/';
       router.push(redirectUrl); 
     } catch (e: any) {
-      const errorMessage = e.message?.replace('Firebase: ', '').split(' (')[0] || 'Failed to sign in. Please check your credentials.';
+      let errorMessage = 'Failed to sign in. Please check your credentials.';
+      if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password') {
+        errorMessage = 'Invalid email/username or password.';
+      } else if (e.message) {
+        errorMessage = e.message.replace('Firebase: ', '').split(' (')[0] || errorMessage;
+      }
       setError(errorMessage);
       toast({
         variant: "destructive",
@@ -120,7 +158,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-sm">
         <CardHeader className="text-center">
           <div className="mx-auto mb-6">
-            <Logo iconSize={18} /> {/* Increased iconSize from 14 to 18 */}
+            <Logo iconSize={27} /> 
           </div>
           <CardTitle className="text-3xl font-bold">Welcome Back!</CardTitle>
           <CardDescription>Sign in to continue to Qentai.</CardDescription>
@@ -132,6 +170,7 @@ export default function LoginPage() {
             isLoading={isLoading}
             error={error}
             setError={setError}
+            defaultValues={{ identifier: '', password: ''}} // Provide default values for new schema
           />
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
