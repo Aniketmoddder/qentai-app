@@ -17,7 +17,7 @@ export default function Logo({ className, iconSize = 16, ...props }: LogoProps) 
     <Link href="/" className={`flex items-center justify-center ${className}`} {...props}>
       <div style={{ height: `${imageDimension}px`, width: `${imageDimension}px` }} className="relative">
         <Image
-          src="https://i.ibb.co/pBtGhgL1/9875c735-9fd2-4953-be5e-b8cd64637594.png"
+          src="https://i.ibb.co/0VpP5jzr/Chat-GPT-Image-May-10-2025-10-50-07-AM.png"
           alt="Qentai Logo"
           fill
           style={{ objectFit: 'contain' }} 
