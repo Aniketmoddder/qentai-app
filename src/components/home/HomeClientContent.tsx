@@ -76,21 +76,18 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setFetchError(null);
-    setAllAnime([]); 
-    setFeaturedAnimesList([]);
+    // Do not clear allAnime and featuredAnimesList here to avoid UI flicker if fetch fails partially
 
     try {
-      // Fetch all animes first, sort by 'updatedAt' by default for general carousels
-      // Fetch featured animes, these will be sorted by 'title' by default as per animeService update
       const fetchDataPromises = [
         getAllAnimes(50, { sortBy: 'updatedAt', sortOrder: 'desc' }), 
-        getFeaturedAnimes(5) // Uses new default sort: isFeatured=true, title=asc
+        getFeaturedAnimes(5) 
       ];
       
       const settledResults = await promiseWithTimeout(
         Promise.allSettled(fetchDataPromises),
         FETCH_TIMEOUT_MS, 
-        new Error(`Failed to load homepage data within ${FETCH_TIMEOUT_MS / 1000} seconds. This could be due to network issues or missing Firestore indexes.`)
+        new Error(`Failed to load homepage data within ${FETCH_TIMEOUT_MS / 1000} seconds. This could be due to network issues or missing Firestore indexes. Please check your Firebase console for index creation suggestions (e.g., on 'updatedAt' or 'isFeatured' fields).`)
       );
 
       let generalAnimes: Anime[] = [];
@@ -102,21 +99,26 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
         generalAnimes = generalAnimesResult.value.map(a => convertAnimeTimestampsForClient(a) as Anime) || [];
       } else {
         console.error("HomeClient: Error fetching general animes:", generalAnimesResult.reason);
-        errors.push(generalAnimesResult.reason?.message || "Failed to load general animes.");
-         if (generalAnimesResult.reason instanceof FirestoreError && generalAnimesResult.reason.code === 'failed-precondition') {
-           errors.push(`General animes query failed: ${generalAnimesResult.reason.message}. Ensure required Firestore indexes (e.g., on 'updatedAt') are created.`);
+        let errorMsg = generalAnimesResult.reason?.message || "Failed to load general animes.";
+        if (generalAnimesResult.reason instanceof FirestoreError && generalAnimesResult.reason.code === 'failed-precondition') {
+           errorMsg += ` General animes query failed. Ensure required Firestore indexes (e.g., on 'updatedAt' DESC) are created.`;
         }
+        errors.push(errorMsg);
       }
 
       const featuredResult = settledResults[1];
       if (featuredResult.status === 'fulfilled') {
-        featured = featuredResult.value.map(a => convertAnimeTimestampsForClient(a) as Anime) || [];
+        let fetchedFeatured = featuredResult.value.map(a => convertAnimeTimestampsForClient(a) as Anime) || [];
+        // Sort featured animes by title client-side as getFeaturedAnimes now returns unsorted (by title) list
+        fetchedFeatured.sort((a, b) => a.title.localeCompare(b.title));
+        featured = fetchedFeatured;
       } else {
         console.error("HomeClient: Error fetching featured animes:", featuredResult.reason);
-        errors.push(featuredResult.reason?.message || "Failed to load featured animes.");
+        let errorMsg = featuredResult.reason?.message || "Failed to load featured animes.";
         if (featuredResult.reason instanceof FirestoreError && featuredResult.reason.code === 'failed-precondition') {
-           errors.push(`Featured animes query failed: ${featuredResult.reason.message}. This usually means a composite index (e.g., on 'isFeatured' and 'title') is missing in Firestore. Check the Firebase console for a link to create it.`);
+           errorMsg += ` Featured animes query failed. This usually means an index on 'isFeatured' (boolean) is missing or Firestore requires a more specific composite index. Check the Firebase console for index suggestions.`;
         }
+        errors.push(errorMsg);
       }
       
       setAllAnime(generalAnimes); 
@@ -130,10 +132,14 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
       let message = "Could not load anime data due to an unexpected issue. Please try again later.";
       if (error instanceof Error) {
         message = error.message;
+         if (error.message.includes("index") || (error instanceof FirestoreError && error.code === 'failed-precondition')) {
+            message += " This is often due to missing Firestore indexes. Please check your Firebase console for index creation suggestions.";
+        }
       }
       setFetchError(message);
-      setAllAnime([]); 
-      setFeaturedAnimesList([]);
+      // Do not clear existing lists on error to retain some UI if possible
+      // setAllAnime([]); 
+      // setFeaturedAnimesList([]);
     } finally {
       setIsLoading(false);
     }
@@ -160,8 +166,8 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
   const popularAnime = allAnime.length > 0 ? shuffleArray([...allAnime].filter(a => a.averageRating && a.averageRating >= 7.0)).slice(0,10) : [];
   const recentlyAddedAnime = allAnime.length > 0 
     ? [...allAnime].sort((a,b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.year, 0, 1).getTime();
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.year, 0, 1).getTime();
+        const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.year, 0, 1).getTime());
+        const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.year, 0, 1).getTime());
         return dateB - dateA;
       }).slice(0,10) 
     : []; 
@@ -210,7 +216,7 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
 
   return (
     <>
-      {heroAnime && !fetchError && (
+      {heroAnime && ( // Removed !fetchError from this condition; heroAnime might exist from previous successful fetch
         <section className="relative h-[70vh] md:h-[85vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] overflow-hidden">
           <div className="absolute inset-0">
             {playTrailer && youtubeVideoId ? (
@@ -303,7 +309,7 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
               <h3 className="font-semibold font-orbitron text-lg">Error Loading Content</h3>
               <p className="text-sm whitespace-pre-line">{fetchError}</p>
               <Button variant="link" size="sm" onClick={fetchData} className="mt-2 px-0 text-destructive hover:text-destructive/80">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Try reloading
+                <Loader2 className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin': ''}`} /> Try reloading
               </Button>
             </div>
           </div>
@@ -315,7 +321,7 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
           </div>
         )}
 
-        {featuredAnimesList.length > 0 && !fetchError && (
+        {featuredAnimesList.length > 0 && (
           <section className="py-6 md:py-8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar">Featured Anime</h2>
@@ -365,3 +371,4 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
     </>
   );
 }
+
