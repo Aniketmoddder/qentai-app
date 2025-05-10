@@ -1,9 +1,8 @@
-
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { getAllAppUsers, updateUserStatusInFirestore, updateUserRoleInFirestore } from '@/services/appUserService';
-import type { AppUser } from '@/types/appUser';
+import type { AppUser, AppUserRole } from '@/types/appUser';
 import { Button } from '@/components/ui/button';
 import { Loader2, AlertCircle, UserCog, UserCheck, UserX, ShieldCheck, ShieldAlert, RefreshCw, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +23,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDistanceToNow } from 'date-fns';
+
+const ADMIN_EMAIL = 'ninjax.desi@gmail.com';
 
 
 export default function UserManagementTab() {
@@ -54,19 +55,23 @@ export default function UserManagementTab() {
     fetchUsers();
   }, [fetchUsers]);
 
-  const handleToggleBan = async (user: AppUser) => {
-    setUpdatingUserId(user.uid);
-    const newStatus = user.status === 'banned' ? 'active' : 'banned';
+  const handleToggleBan = async (userToUpdate: AppUser) => {
+    if (userToUpdate.email === ADMIN_EMAIL) {
+        toast({variant: "destructive", title: "Action Denied", description: "The owner account cannot be banned."});
+        return;
+    }
+    setUpdatingUserId(userToUpdate.uid);
+    const newStatus = userToUpdate.status === 'banned' ? 'active' : 'banned';
     try {
-      await updateUserStatusInFirestore(user.uid, newStatus);
+      await updateUserStatusInFirestore(userToUpdate.uid, newStatus);
       setUsers(prevUsers =>
         prevUsers.map(u =>
-          u.uid === user.uid ? { ...u, status: newStatus } : u
+          u.uid === userToUpdate.uid ? { ...u, status: newStatus } : u
         )
       );
       toast({
         title: `User Status Updated`,
-        description: `${user.email || user.displayName || user.uid} is now ${newStatus}.`,
+        description: `${userToUpdate.email || userToUpdate.displayName || userToUpdate.uid} is now ${newStatus}.`,
       });
     } catch (err) {
       console.error('Failed to update user status:', err);
@@ -77,10 +82,16 @@ export default function UserManagementTab() {
     }
   };
 
-  const handleChangeRole = async (uid: string, newRole: AppUser['role']) => {
+  const handleChangeRole = async (uid: string, newRole: AppUserRole) => {
     setUpdatingUserId(uid);
     const userToUpdate = users.find(u => u.uid === uid);
     if (!userToUpdate) return;
+
+    if (userToUpdate.email === ADMIN_EMAIL && newRole !== 'owner') {
+        toast({variant: "destructive", title: "Action Denied", description: "The owner's role cannot be changed from 'owner'."});
+        setUpdatingUserId(null);
+        return;
+    }
 
     try {
       await updateUserRoleInFirestore(uid, newRole);
@@ -114,6 +125,8 @@ export default function UserManagementTab() {
     user.uid.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const availableRoles: AppUserRole[] = ['owner', 'admin', 'moderator', 'member'];
 
   return (
     <Card className="shadow-lg border-border/40">
@@ -179,27 +192,30 @@ export default function UserManagementTab() {
                       {user.status}
                     </Badge>
                     <Badge variant="secondary" className="capitalize text-xs">
-                       {user.role === 'admin' ? <ShieldCheck className="w-3 h-3 mr-1 text-primary"/> : 
+                       {user.role === 'owner' ? <ShieldCheck className="w-3 h-3 mr-1 text-amber-500"/> :
+                        user.role === 'admin' ? <ShieldCheck className="w-3 h-3 mr-1 text-primary"/> : 
                         user.role === 'moderator' ? <ShieldAlert className="w-3 h-3 mr-1 text-yellow-600"/> :
                         null}
                       {user.role}
                     </Badge>
-                    {user.createdAt && <Badge variant="outline" className="text-xs">Joined: {formatDistanceToNow(new Date(user.createdAt.toString()), { addSuffix: true })}</Badge>}
+                    {user.createdAt && typeof user.createdAt === 'string' && <Badge variant="outline" className="text-xs">Joined: {formatDistanceToNow(new Date(user.createdAt), { addSuffix: true })}</Badge>}
                   </div>
                 </div>
                 <div className="flex-shrink-0 flex flex-col md:flex-row items-stretch md:items-center gap-2 mt-3 md:mt-0 w-full md:w-auto">
                   <Select 
                     value={user.role} 
-                    onValueChange={(newRole) => handleChangeRole(user.uid, newRole as AppUser['role'])}
-                    disabled={updatingUserId === user.uid}
+                    onValueChange={(newRole) => handleChangeRole(user.uid, newRole as AppUserRole)}
+                    disabled={updatingUserId === user.uid || user.email === ADMIN_EMAIL}
                   >
                     <SelectTrigger className="w-full md:w-[150px] h-9 text-xs bg-input border-border/60 focus:border-primary">
                       <SelectValue placeholder="Change role" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="member" className="text-xs">Member</SelectItem>
-                      <SelectItem value="moderator" className="text-xs">Moderator</SelectItem>
-                      <SelectItem value="admin" className="text-xs">Admin</SelectItem>
+                      {availableRoles.map(roleOption => (
+                        <SelectItem key={roleOption} value={roleOption} className="text-xs capitalize">
+                          {roleOption}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <AlertDialog>
@@ -208,7 +224,7 @@ export default function UserManagementTab() {
                         variant={user.status === 'banned' ? 'outline' : 'destructive'} 
                         size="sm" 
                         className="w-full md:w-auto text-xs h-9"
-                        disabled={updatingUserId === user.uid}
+                        disabled={updatingUserId === user.uid || user.email === ADMIN_EMAIL}
                        >
                         {updatingUserId === user.uid && user.status === 'active' ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin"/> : user.status === 'banned' ? <UserCheck className="mr-1.5 h-3.5 w-3.5"/> : <UserX className="mr-1.5 h-3.5 w-3.5"/>}
                         {user.status === 'banned' ? 'Unban' : 'Ban User'}

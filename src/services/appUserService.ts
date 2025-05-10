@@ -1,11 +1,12 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import type { AppUser } from '@/types/appUser';
+import type { AppUser, AppUserRole } from '@/types/appUser';
 import {
   collection,
   doc,
   getDocs,
+  getDoc, // Import getDoc
   updateDoc,
   query,
   orderBy,
@@ -44,12 +45,23 @@ const convertUserTimestampsForClient = (userData: any): AppUser => {
 
 
 // Function to create or update user document in Firestore 'users' collection
-export const upsertAppUserInFirestore = async (userData: Partial<AppUser> & { uid: string }): Promise<void> => {
+export const upsertAppUserInFirestore = async (userData: Partial<Omit<AppUser, 'role'>> & { uid: string; role?: AppUserRole }): Promise<void> => {
   const userRef = doc(usersCollection, userData.uid);
   try {
-    let role: AppUser['role'] = userData.role || 'member'; // Default role
+    let role: AppUserRole;
     if (userData.email === ADMIN_EMAIL) {
-      role = 'admin'; // Override to admin if email matches
+      role = 'owner';
+    } else if (userData.role) {
+      role = userData.role; // Use provided role if it exists (e.g., admin, moderator)
+    } else {
+      // Check existing role if not owner and no role provided
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const existingData = userSnap.data() as AppUser;
+        role = existingData.role || 'member'; // Keep existing or default to member
+      } else {
+        role = 'member'; // Default for new users not matching ADMIN_EMAIL
+      }
     }
 
     const dataToSet: Partial<AppUser> = {
@@ -57,22 +69,17 @@ export const upsertAppUserInFirestore = async (userData: Partial<AppUser> & { ui
       email: userData.email || null,
       displayName: userData.displayName || null,
       photoURL: userData.photoURL || null,
-      role: role, 
-      status: userData.status || 'active', // Default status
-      lastLoginAt: serverTimestamp(), // Always update last login
+      role: role,
+      status: userData.status || 'active',
+      lastLoginAt: serverTimestamp(),
     };
 
-    // Only set createdAt if it's a new document or not already set
-    // This requires a read first, or a more complex transaction.
-    // For simplicity, we'll set it if userData.createdAt is not provided.
-    // A more robust solution would check if the doc exists before deciding to set createdAt.
-    // For now, if userData.createdAt is undefined, we assume it's a new user or an update where createdAt should be set.
-    if (!userData.createdAt) {
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
       dataToSet.createdAt = serverTimestamp();
     }
 
-
-    await setDoc(userRef, dataToSet, { merge: true }); 
+    await setDoc(userRef, dataToSet, { merge: true });
   } catch (error) {
     throw handleFirestoreError(error, `upsertAppUserInFirestore (uid: ${userData.uid})`);
   }
@@ -99,18 +106,32 @@ export const updateUserStatusInFirestore = async (uid: string, status: AppUser['
 };
 
 
-export const updateUserRoleInFirestore = async (uid: string, role: AppUser['role']): Promise<void> => {
+export const updateUserRoleInFirestore = async (uid: string, newRole: AppUserRole): Promise<void> => {
     const userRef = doc(usersCollection, uid);
     try {
-      // Prevent changing the admin's role via this function if it's the hardcoded admin email
-      const userDoc = await setDoc(userRef, {}, {merge: true}); // Ensure doc exists
-      // const currentUserData = (await getDoc(userRef)).data() as AppUser | undefined;
-      // if (currentUserData?.email === ADMIN_EMAIL && role !== 'admin') {
-      //   throw new Error("Cannot change the primary admin's role.");
-      // }
-      await updateDoc(userRef, { role: role, updatedAt: serverTimestamp() });
+      const userDoc = await getDoc(userRef);
+      if (userDoc.exists()) {
+        const currentUserData = userDoc.data() as AppUser;
+        if (currentUserData.email === ADMIN_EMAIL && newRole !== 'owner') {
+          throw new Error("Cannot change the primary owner's role.");
+        }
+      }
+      await updateDoc(userRef, { role: newRole, updatedAt: serverTimestamp() });
     } catch (error) {
       throw handleFirestoreError(error, `updateUserRoleInFirestore (uid: ${uid})`);
     }
   };
 
+export const getAppUserById = async (uid: string): Promise<AppUser | null> => {
+  if (!uid) return null;
+  const userRef = doc(usersCollection, uid);
+  try {
+    const docSnap = await getDoc(userRef);
+    if (docSnap.exists()) {
+      return convertUserTimestampsForClient(docSnap.data() as AppUser);
+    }
+    return null;
+  } catch (error) {
+    throw handleFirestoreError(error, `getAppUserById (uid: ${uid})`);
+  }
+};
