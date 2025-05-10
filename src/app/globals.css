@@ -8,7 +8,7 @@
 
 
 body {
-  font-family: var(--font-inter), Arial, Helvetica, sans-serif; /* Changed from --font-geist-sans */
+  font-family: var(--font-montserrat), Arial, Helvetica, sans-serif; /* Changed from --font-inter */
 }
 
 @layer base {

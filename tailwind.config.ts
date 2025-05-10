@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 import plugin from 'tailwindcss/plugin';
 
@@ -26,8 +27,8 @@ export default {
     },
   	extend: {
       fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "sans-serif"], // Changed from --font-geist-sans
-        mono: ["var(--font-roboto-mono)", "monospace"], // Changed from --font-geist-mono
+        sans: ["var(--font-montserrat)", "system-ui", "sans-serif"], // Changed from --font-inter
+        mono: ["var(--font-roboto-mono)", "monospace"],
       },
   		colors: {
   			background: 'hsl(var(--background))',
