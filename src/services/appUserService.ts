@@ -13,7 +13,8 @@ import {
   serverTimestamp,
   FirestoreError,
   Timestamp,
-  setDoc
+  setDoc,
+  limit
 } from 'firebase/firestore';
 
 const usersCollection = collection(db, 'users');
@@ -34,23 +35,32 @@ const handleFirestoreError = (error: unknown, context: string): FirestoreError =
 // Helper to convert Firestore Timestamps if they exist
 const convertUserTimestampsForClient = (userData: any): AppUser => {
   const data = { ...userData };
-  if (data.createdAt && data.createdAt instanceof Timestamp) {
-    data.createdAt = data.createdAt.toDate().toISOString();
-  } else if (typeof data.createdAt === 'object' && data.createdAt?.seconds) {
-    data.createdAt = new Timestamp(data.createdAt.seconds, data.createdAt.nanoseconds).toDate().toISOString();
-  }
+  
+  const convertTimestamp = (field: any): string | undefined => {
+    if (field instanceof Timestamp) {
+      return field.toDate().toISOString();
+    }
+    if (typeof field === 'object' && field !== null && 'seconds' in field && 'nanoseconds' in field) {
+      return new Timestamp(field.seconds, field.nanoseconds).toDate().toISOString();
+    }
+    if (typeof field === 'string') { // Already a string, assume ISO
+        try {
+            // Validate if it's a valid ISO string, otherwise it might be some other string
+            new Date(field).toISOString();
+            return field;
+        } catch (e) {
+            // Not a valid date string, return undefined or handle as error
+            console.warn(`Invalid date string encountered: ${field}`);
+            return undefined; 
+        }
+    }
+    return undefined; // Return undefined if not a recognizable timestamp format
+  };
 
-  if (data.lastLoginAt && data.lastLoginAt instanceof Timestamp) {
-    data.lastLoginAt = data.lastLoginAt.toDate().toISOString();
-  } else if (typeof data.lastLoginAt === 'object' && data.lastLoginAt?.seconds) {
-     data.lastLoginAt = new Timestamp(data.lastLoginAt.seconds, data.lastLoginAt.nanoseconds).toDate().toISOString();
-  }
-
-  if (data.updatedAt && data.updatedAt instanceof Timestamp) { 
-    data.updatedAt = data.updatedAt.toDate().toISOString();
-  } else if (typeof data.updatedAt === 'object' && data.updatedAt?.seconds) {
-     data.updatedAt = new Timestamp(data.updatedAt.seconds, data.updatedAt.nanoseconds).toDate().toISOString();
-  }
+  data.createdAt = convertTimestamp(data.createdAt);
+  data.lastLoginAt = convertTimestamp(data.lastLoginAt);
+  data.updatedAt = convertTimestamp(data.updatedAt);
+  
   return data as AppUser;
 };
 
@@ -63,42 +73,38 @@ export const upsertAppUserInFirestore = async (
     const userSnap = await getDoc(userRef);
     let role: AppUserRole;
     let finalStatus: AppUser['status'];
-    let finalUserData: AppUser;
+    let finalUserDataForDb: any; // Use 'any' temporarily for DB payload
 
     if (userSnap.exists()) {
       const existingData = userSnap.data() as AppUser;
-      role = existingData.role; // Preserve existing role unless owner logic applies
-      finalStatus = existingData.status; // Preserve existing status (especially 'banned')
+      role = existingData.role; 
+      finalStatus = existingData.status; 
 
-      // Owner check: if this user is the owner, ensure their role is 'owner'
-      // and they cannot be 'banned' through this standard upsert flow.
       if (userData.email === ADMIN_EMAIL) {
         role = 'owner';
         if (finalStatus === 'banned') {
-          console.warn(`Owner account (${ADMIN_EMAIL}) is marked as banned in DB. This should be rectified manually. Retaining 'banned' status for safety.`);
+          console.warn(`Owner account (${ADMIN_EMAIL}) is marked as banned in DB. Retaining 'banned' status.`);
         }
       }
       
-      const updatePayload: Partial<AppUser> = {
-        ...userData, // new data from auth provider (displayName, photoURL, email might change)
-        role, // determined role
-        status: finalStatus, // determined status
+      finalUserDataForDb = {
+        ...userData, 
+        role, 
+        status: finalStatus, 
         lastLoginAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
-      await updateDoc(userRef, updatePayload);
-      finalUserData = { ...existingData, ...updatePayload, uid: userData.uid };
+      await updateDoc(userRef, finalUserDataForDb);
+      // For returning, merge existing with updates, then convert
+      const mergedData = { ...existingData, ...userData, role, status: finalStatus, uid: userData.uid, lastLoginAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+       return convertUserTimestampsForClient(mergedData);
 
     } else {
       // New user
-      if (userData.email === ADMIN_EMAIL) {
-        role = 'owner';
-      } else {
-        role = 'member'; // Default new users to 'member'
-      }
-      finalStatus = 'active'; // New users are 'active' by default
+      role = userData.email === ADMIN_EMAIL ? 'owner' : 'member';
+      finalStatus = 'active'; 
 
-      const newUserData: Omit<AppUser, 'createdAt' | 'lastLoginAt' | 'updatedAt'> & { createdAt: any, lastLoginAt: any, updatedAt: any } = {
+      finalUserDataForDb = {
         uid: userData.uid,
         email: userData.email || null,
         displayName: userData.displayName || null,
@@ -109,11 +115,16 @@ export const upsertAppUserInFirestore = async (
         lastLoginAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
-      await setDoc(userRef, newUserData);
-      finalUserData = { ...newUserData, uid: userData.uid } as AppUser; // Cast after setting
+      await setDoc(userRef, finalUserDataForDb);
+      // For returning, convert serverTimestamps to something client-can-use immediately
+      const newUserDataForClient = {
+        ...finalUserDataForDb,
+        createdAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      return convertUserTimestampsForClient(newUserDataForClient);
     }
-    // Return the full user data, converting timestamps for immediate use if needed by caller
-    return convertUserTimestampsForClient(finalUserData);
   } catch (error) {
     throw handleFirestoreError(error, `upsertAppUserInFirestore (uid: ${userData.uid})`);
   }
@@ -122,6 +133,9 @@ export const upsertAppUserInFirestore = async (
 
 export const getAllAppUsers = async (count: number = 50): Promise<AppUser[]> => {
   try {
+    // Firestore default order is by document ID if no orderBy is specified.
+    // For user management, ordering by 'createdAt' or 'lastLoginAt' is common.
+    // Ensure the index `users/createdAt DESC` exists.
     const q = query(usersCollection, orderBy('createdAt', 'desc'), limit(count > 0 ? count : 500));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => convertUserTimestampsForClient(doc.data() as AppUser));
