@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -16,6 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from '@/components/ui/button';
 import { FirestoreError } from 'firebase/firestore';
 import AccountSettingsTab from '@/components/profile/AccountSettingsTab';
+import { cn } from '@/lib/utils';
 
 export default function ProfilePage() {
   const { user, appUser, loading: authLoading } = useAuth();
@@ -173,15 +173,42 @@ export default function ProfilePage() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="flex flex-wrap justify-start gap-1 p-1 mb-6 rounded-md bg-muted text-muted-foreground">
-          <TabsTrigger value="favorites" className="flex-auto sm:flex-initial data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-sm px-3 py-1.5 text-sm font-medium flex items-center gap-2">
-            <Heart className="w-4 h-4" /> Favorites
+        <TabsList className="flex flex-col sm:flex-row sm:items-center gap-2 mb-6 p-0 bg-transparent">
+          <TabsTrigger
+            value="favorites"
+            className={cn(
+              "w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md border transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              activeTab === 'favorites'
+                ? 'bg-destructive/10 text-destructive border-destructive hover:bg-destructive/20'
+                : 'bg-card text-card-foreground border-border hover:bg-muted'
+            )}
+          >
+            <Heart className={cn("w-5 h-5", activeTab === 'favorites' && 'fill-destructive')} /> Favorites
           </TabsTrigger>
-          <TabsTrigger value="wishlist" className="flex-auto sm:flex-initial data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-sm px-3 py-1.5 text-sm font-medium flex items-center gap-2">
-            <Bookmark className="w-4 h-4" /> Wishlist
+          <TabsTrigger
+            value="wishlist"
+            className={cn(
+              "w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md border transition-colors",
+               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              activeTab === 'wishlist'
+                ? 'bg-primary/10 text-primary border-primary hover:bg-primary/20'
+                : 'bg-card text-card-foreground border-border hover:bg-muted'
+            )}
+          >
+            <Bookmark className={cn("w-5 h-5", activeTab === 'wishlist' && 'fill-primary')} /> Wishlist
           </TabsTrigger>
-          <TabsTrigger value="settings" className="flex-auto sm:flex-initial data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-sm px-3 py-1.5 text-sm font-medium flex items-center gap-2">
-            <Settings className="w-4 h-4" /> Account
+          <TabsTrigger
+            value="settings"
+            className={cn(
+              "w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md border transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              activeTab === 'settings'
+                ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/90'
+                : 'bg-card text-card-foreground border-border hover:bg-muted'
+            )}
+          >
+            <Settings className="w-5 h-5" /> Account
           </TabsTrigger>
         </TabsList>
         <TabsContent value="favorites">
@@ -197,4 +224,3 @@ export default function ProfilePage() {
     </Container>
   );
 }
-
