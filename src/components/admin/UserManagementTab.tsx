@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDistanceToNow } from 'date-fns';
+import { useAuth } from '@/hooks/use-auth'; // Import useAuth
 
 const ADMIN_EMAIL = 'ninjax.desi@gmail.com';
 
@@ -34,6 +36,7 @@ export default function UserManagementTab() {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const { appUser: currentUserData } = useAuth(); // Get current admin/owner info
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
@@ -92,7 +95,8 @@ export default function UserManagementTab() {
         setUpdatingUserId(null);
         return;
     }
-     if (currentUserData.role === 'owner' && currentUserData.email !== ADMIN_EMAIL && newRole === 'owner') { // Ensure only primary owner has 'owner'
+    // Ensure currentUserData is loaded before using it
+     if (currentUserData && currentUserData.role === 'owner' && currentUserData.email !== ADMIN_EMAIL && newRole === 'owner') { 
       toast({ variant: "destructive", title: "Action Denied", description: "Cannot assign 'owner' role to this account."});
       setUpdatingUserId(null);
       return;
@@ -132,7 +136,8 @@ export default function UserManagementTab() {
     user.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const availableRoles: AppUserRole[] = ['owner', 'admin', 'member']; // Removed 'moderator'
+  const availableRoles: AppUserRole[] = ['owner', 'admin', 'member'];
+
 
   return (
     <Card className="shadow-lg border-border/40">
@@ -199,7 +204,7 @@ export default function UserManagementTab() {
                     </Badge>
                     <Badge variant="secondary" className="capitalize text-xs">
                        {user.role === 'owner' ? <ShieldCheck className="w-3 h-3 mr-1 text-amber-500"/> :
-                        user.role === 'admin' ? <ShieldAlert className="w-3 h-3 mr-1 text-primary"/> : // Changed icon for Admin for differentiation
+                        user.role === 'admin' ? <ShieldAlert className="w-3 h-3 mr-1 text-primary"/> : 
                         null}
                       {user.role}
                     </Badge>
@@ -210,7 +215,7 @@ export default function UserManagementTab() {
                   <Select 
                     value={user.role} 
                     onValueChange={(newRole) => handleChangeRole(user.uid, newRole as AppUserRole)}
-                    disabled={updatingUserId === user.uid || (user.email === ADMIN_EMAIL && user.role === 'owner')} // Owner cannot change own role if it's already owner
+                    disabled={updatingUserId === user.uid || (user.email === ADMIN_EMAIL && user.role === 'owner')} 
                   >
                     <SelectTrigger className="w-full md:w-[150px] h-9 text-xs bg-input border-border/60 focus:border-primary">
                       <SelectValue placeholder="Change role" />
@@ -221,7 +226,7 @@ export default function UserManagementTab() {
                           key={roleOption} 
                           value={roleOption} 
                           className="text-xs capitalize"
-                          disabled={user.email === ADMIN_EMAIL && roleOption !== 'owner'} // Owner must remain owner
+                          disabled={(user.email === ADMIN_EMAIL && roleOption !== 'owner') || (roleOption === 'owner' && user.email !== ADMIN_EMAIL) } // Owner must remain owner, only primary admin can be owner
                         >
                           {roleOption}
                         </SelectItem>
@@ -269,3 +274,4 @@ export default function UserManagementTab() {
     </Card>
   );
 }
+
