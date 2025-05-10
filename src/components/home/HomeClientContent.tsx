@@ -48,7 +48,7 @@ const getYouTubeVideoId = (url?: string): string | null => {
   return null;
 };
 
-const FETCH_TIMEOUT_MS = 25000; 
+const FETCH_TIMEOUT_MS = 25000;
 
 const promiseWithTimeout = <T,>(promise: Promise<T>, ms: number, timeoutError = new Error('Promise timed out')) => {
   const timeout = new Promise<never>((_, reject) => {
@@ -77,16 +77,17 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setFetchError(null);
-    
+
     try {
       const fetchDataPromises = [
-        getAllAnimes({ limit: 50, sortBy: 'updatedAt', sortOrder: 'desc' }), 
-        getFeaturedAnimes(5) 
+        // Corrected: Pass count as first arg, filters as second
+        getAllAnimes(50, { sortBy: 'updatedAt', sortOrder: 'desc' }),
+        getFeaturedAnimes(5)
       ];
-      
+
       const settledResults = await promiseWithTimeout(
         Promise.allSettled(fetchDataPromises),
-        FETCH_TIMEOUT_MS, 
+        FETCH_TIMEOUT_MS,
         new Error(`Failed to load homepage data within ${FETCH_TIMEOUT_MS / 1000} seconds. This could be due to network issues or missing Firestore indexes. Please check your Firebase console for index creation suggestions (e.g., on 'updatedAt' or 'isFeatured' fields).`)
       );
 
@@ -96,7 +97,7 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
 
       const generalAnimesResult = settledResults[0];
       if (generalAnimesResult.status === 'fulfilled') {
-        generalAnimes = generalAnimesResult.value.map(a => convertAnimeTimestampsForClient(a) as Anime) || [];
+        generalAnimes = generalAnimesResult.value.map(a => convertAnimeTimestampsForClient(a)) || [];
       } else {
         console.error("HomeClient: Error fetching general animes:", generalAnimesResult.reason);
         let errorMsg = generalAnimesResult.reason?.message || "Failed to load general animes.";
@@ -108,26 +109,26 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
 
       const featuredResult = settledResults[1];
       if (featuredResult.status === 'fulfilled') {
-        let fetchedFeatured = featuredResult.value.map(a => convertAnimeTimestampsForClient(a) as Anime) || [];
-        fetchedFeatured.sort((a, b) => a.title.localeCompare(b.title));
+        let fetchedFeatured = featuredResult.value.map(a => convertAnimeTimestampsForClient(a)) || [];
+        // fetchedFeatured.sort((a, b) => a.title.localeCompare(b.title)); // Sorting may not be needed if Firestore handles it
         featured = fetchedFeatured;
       } else {
         console.error("HomeClient: Error fetching featured animes:", featuredResult.reason);
         let errorMsg = featuredResult.reason?.message || "Failed to load featured animes.";
         if (featuredResult.reason instanceof FirestoreError && featuredResult.reason.code === 'failed-precondition') {
-           errorMsg += ` Featured animes query failed. This usually means an index on 'isFeatured' (boolean) is missing or Firestore requires a more specific composite index. Check the Firebase console for index suggestions.`;
+           errorMsg += ` Featured animes query failed. This usually means an index on 'isFeatured' (boolean) and 'title' (asc) is missing or Firestore requires a more specific composite index. Check the Firebase console for index suggestions.`;
         }
         errors.push(errorMsg);
       }
-      
-      setAllAnime(generalAnimes); 
+
+      setAllAnime(generalAnimes);
       setFeaturedAnimesList(featured);
 
       if (errors.length > 0) {
         setFetchError(errors.join(' | '));
       }
 
-    } catch (error) { 
+    } catch (error) {
       let message = "Could not load anime data due to an unexpected issue. Please try again later.";
       if (error instanceof Error) {
         message = error.message;
@@ -144,35 +145,35 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-  
+
   const heroAnime = featuredAnimesList[0] || (allAnime.length > 0 ? shuffleArray([...allAnime])[0] : undefined);
   const youtubeVideoId = heroAnime?.trailerUrl ? getYouTubeVideoId(heroAnime.trailerUrl) : null;
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (heroAnime && youtubeVideoId && !playTrailer) { 
+    if (heroAnime && youtubeVideoId && !playTrailer) {
       timer = setTimeout(() => {
         setPlayTrailer(true);
-      }, 3000); 
+      }, 3000);
     }
     return () => clearTimeout(timer);
   }, [heroAnime, youtubeVideoId, playTrailer]);
 
-  const trendingAnime = allAnime.length > 0 ? shuffleArray([...allAnime]).slice(0, 10) : []; 
+  const trendingAnime = allAnime.length > 0 ? shuffleArray([...allAnime]).slice(0, 10) : [];
   const popularAnime = allAnime.length > 0 ? shuffleArray([...allAnime].filter(a => a.averageRating && a.averageRating >= 7.0)).slice(0,10) : [];
-  const recentlyAddedAnime = allAnime.length > 0 
+  const recentlyAddedAnime = allAnime.length > 0
     ? [...allAnime].sort((a,b) => {
         const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.year, 0, 1).getTime());
         const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.year, 0, 1).getTime());
         return dateB - dateA;
-      }).slice(0,10) 
-    : []; 
+      }).slice(0,10)
+    : [];
   const movies = allAnime.length > 0 ? allAnime.filter(a => a.type === 'Movie').slice(0,10) : [];
   const tvSeries = allAnime.length > 0 ? allAnime.filter(a => a.type === 'TV').slice(0,10) : [];
   const nextSeasonAnime = allAnime.length > 0 ? shuffleArray([...allAnime].filter(a => a.status === 'Upcoming')).slice(0,10) : [];
-  
+
   const topAnimeList = allAnime.length > 0 ? [...allAnime]
-    .filter(a => a.averageRating !== undefined && a.averageRating !== null) 
+    .filter(a => a.averageRating !== undefined && a.averageRating !== null)
     .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
     .slice(0, 10) : [];
 
@@ -212,7 +213,7 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
 
   return (
     <>
-      {heroAnime && ( 
+      {heroAnime && (
         <section className="relative h-[70vh] md:h-[85vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] overflow-hidden">
           <div className="absolute inset-0">
             {playTrailer && youtubeVideoId ? (
@@ -222,7 +223,7 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
                   title="YouTube video player"
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen 
+                  allowFullScreen
                   className="w-full h-full scale-[1.8] sm:scale-[1.5] md:scale-[1.4] object-cover"
                 ></iframe>
               </div>
@@ -256,7 +257,7 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
               </h1>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-5">
                 {heroAnime.type && <span className="flex items-center"><Tv className="w-4 h-4 mr-1.5" /> {heroAnime.type}</span>}
-                {heroAnime.episodes && heroAnime.episodes.length > 0 && 
+                {heroAnime.episodes && heroAnime.episodes.length > 0 &&
                   <span className="flex items-center"><ListVideo className="w-4 h-4 mr-1.5" /> {heroAnime.episodes.length} Episodes</span>
                 }
                  <span className="flex items-center"><Calendar className="w-4 h-4 mr-1.5" /> {heroAnime.year}</span>
@@ -276,7 +277,7 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
                   </Link>
                 </Button>
                 {playTrailer && youtubeVideoId && (
-                  <div className="ml-auto sm:ml-3"> 
+                  <div className="ml-auto sm:ml-3">
                     <Button
                         variant="ghost"
                         size="icon"
@@ -296,7 +297,7 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
           </Container>
         </section>
       )}
-      
+
       <Container className="overflow-x-clip py-8">
         {fetchError && (
           <div className="my-8 p-6 bg-destructive/10 border border-destructive/30 rounded-lg flex items-start text-destructive">
@@ -335,13 +336,13 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
 
         {trendingAnime.length > 0 && <AnimeCarousel title="Trending Now" animeList={trendingAnime} />}
         {popularAnime.length > 0 && <AnimeCarousel title="Popular This Season" animeList={popularAnime} />}
-        
+
         {genreListComponent}
 
         {recentlyAddedAnime.length > 0 && <AnimeCarousel title="Latest Additions" animeList={recentlyAddedAnime} />}
         {movies.length > 0 && <AnimeCarousel title="Popular Movies" animeList={movies} />}
         {tvSeries.length > 0 && <AnimeCarousel title="TV Series" animeList={tvSeries} />}
-        
+
         {topAnimeList.length > 0 && (
           <section className="py-6 md:py-8">
             <div className="flex justify-between items-center mb-6">
@@ -359,12 +360,11 @@ export default function HomeClient({ genreListComponent, recommendationsSectionC
             </div>
           </section>
         )}
-        
+
         {nextSeasonAnime.length > 0 && <AnimeCarousel title="Coming Next Season" animeList={nextSeasonAnime} />}
-        
+
          {recommendationsSectionComponent}
       </Container>
     </>
   );
 }
-
