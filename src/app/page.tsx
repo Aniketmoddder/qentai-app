@@ -26,25 +26,30 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 
 export default async function Home() {
   let allAnime: Anime[] = [];
+  let featuredAnimesList: Anime[] = [];
   let fetchError: string | null = null;
 
   try {
+    // Fetch a general list of animes for various carousels
     allAnime = await getAllAnimes(50); 
+    // Fetch specifically featured animes (e.g., up to 5, sorted by title for consistency)
+    // This requires the (isFeatured ASC, title ASC) index in Firestore
+    featuredAnimesList = await getAllAnimes(5, { featured: true, sortBy: 'title', sortOrder: 'asc' });
   } catch (error) {
     console.error("Failed to fetch animes for homepage:", error);
     fetchError = "Could not load anime data. Please try again later.";
   }
   
   const trendingAnime = shuffleArray([...allAnime]).slice(0, 10); 
-  const popularAnime = shuffleArray([...allAnime]).filter(a => a.averageRating && a.averageRating >= 7.5).slice(0,10); // Example for "Popular"
+  const popularAnime = shuffleArray([...allAnime]).filter(a => a.averageRating && a.averageRating >= 7.5).slice(0,10);
   const recentlyAddedAnime = [...allAnime].sort((a,b) => (b.year || 0) - (a.year || 0)).slice(0,10); // Assuming recently added based on year for now
   const movies = allAnime.filter(a => a.type === 'Movie').slice(0,10);
   const tvSeries = allAnime.filter(a => a.type === 'TV').slice(0,10);
   const nextSeasonAnime = shuffleArray([...allAnime].filter(a => a.status === 'Upcoming')).slice(0,10);
 
-  const heroAnime = trendingAnime[0] || allAnime[0];
-  const featuredAnimes = popularAnime.slice(0, 2).length === 2 ? popularAnime.slice(0,2) : trendingAnime.slice(1,3); 
-
+  // Hero anime: prioritize first featured, then first trending, then first overall
+  const heroAnime = featuredAnimesList[0] || trendingAnime[0] || allAnime[0];
+  
   const topAnimeList = [...allAnime]
     .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
     .slice(0, 10);
@@ -67,9 +72,15 @@ export default async function Home() {
           </div>
           <Container className="relative z-10 pb-12 md:pb-20 text-foreground">
             <div className="max-w-2xl">
-              <Badge className="bg-[hsl(var(--secondary-accent-pink))] text-white text-xs font-semibold px-2.5 py-1 rounded-md mb-3">
-                #1 Trending
-              </Badge>
+              {heroAnime.isFeatured ? (
+                <Badge className="bg-yellow-500/90 text-background text-xs font-semibold px-2.5 py-1 rounded-md mb-3">
+                  <Star className="w-3 h-3 mr-1.5 fill-current"/> Featured Pick
+                </Badge>
+              ) : (
+                 <Badge className="bg-[hsl(var(--secondary-accent-pink))] text-white text-xs font-semibold px-2.5 py-1 rounded-md mb-3">
+                    #1 Trending
+                </Badge>
+              )}
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-3 leading-tight">
                 {heroAnime.title}
               </h1>
@@ -117,7 +128,8 @@ export default async function Home() {
           </div>
         )}
 
-        {featuredAnimes.length > 0 && (
+        {/* Display this section only if there are featured animes and no fetch error */}
+        {featuredAnimesList.length > 0 && !fetchError && (
           <section className="py-6 md:py-8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar">Featured Anime</h2>
@@ -126,7 +138,8 @@ export default async function Home() {
               </Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              {featuredAnimes.map(anime => (
+              {/* Show up to 2 featured animes */}
+              {featuredAnimesList.slice(0, 2).map(anime => (
                 <FeaturedAnimeCard key={anime.id} anime={anime} />
               ))}
             </div>
@@ -147,9 +160,6 @@ export default async function Home() {
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar">Top Anime</h2>
               <div className="flex items-center gap-2">
-                {/* <Button variant="outline" size="sm" className="border-primary/50 text-primary/90 hover:bg-primary/10">
-                  <Filter className="w-3.5 h-3.5 mr-1.5"/> Filter
-                </Button> */}
                 <Button variant="link" asChild className="text-primary hover:text-primary/80">
                   <Link href="/browse?sort=top">View More <ChevronRight className="w-4 h-4 ml-1"/></Link>
                 </Button>
@@ -170,3 +180,4 @@ export default async function Home() {
     </>
   );
 }
+
