@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -50,7 +51,7 @@ type AnimeFormData = z.infer<typeof animeSchema>;
 const ADMIN_EMAIL = 'ninjax.desi@gmail.com';
 
 export default function EditAnimePage() {
-  const { toast } } from useToast();
+  const { toast } = useToast();
   const router = useRouter();
   const params = useParams();
   const animeId = params.id as string;
@@ -145,7 +146,7 @@ export default function EditAnimePage() {
   useEffect(() => {
     const fetchAllUniqueGenres = async () => {
         try {
-            const animes = await getAllAnimes(500); // Fetch a large number to get most genres
+            const animes = await getAllAnimes({limit: 500}); // Fetch a large number to get most genres
             const uniqueGenres = new Set<string>(availableGenres); // Start with predefined
             animes.forEach(anime => anime.genre.forEach(g => uniqueGenres.add(g)));
             setAvailableGenres(Array.from(uniqueGenres).sort());
@@ -468,3 +469,6 @@ function FormSelectItem({ name, label, items, form }: FormSelectItemProps) {
     </div>
   );
 }
+
+
+    
