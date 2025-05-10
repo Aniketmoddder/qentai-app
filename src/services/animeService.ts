@@ -1,4 +1,3 @@
-
 'use server';
 import { db } from '@/lib/firebase';
 import type { Anime, Episode } from '@/types/anime';
@@ -42,12 +41,28 @@ const convertAnimeTimestamps = (animeData: any): Anime => {
   const data = { ...animeData };
   if (data.createdAt && data.createdAt instanceof Timestamp) {
     data.createdAt = data.createdAt.toDate().toISOString();
+  } else if (typeof data.createdAt === 'object' && data.createdAt && 'seconds' in data.createdAt && 'nanoseconds' in data.createdAt) {
+    // Handle cases where Timestamp might be a plain object after serialization/deserialization (e.g., from client components)
+    data.createdAt = new Timestamp(data.createdAt.seconds, data.createdAt.nanoseconds).toDate().toISOString();
   }
+
   if (data.updatedAt && data.updatedAt instanceof Timestamp) {
     data.updatedAt = data.updatedAt.toDate().toISOString();
+  } else if (typeof data.updatedAt === 'object' && data.updatedAt && 'seconds' in data.updatedAt && 'nanoseconds' in data.updatedAt) {
+     data.updatedAt = new Timestamp(data.updatedAt.seconds, data.updatedAt.nanoseconds).toDate().toISOString();
   }
-  // Note: Episode airDate is already a string from TMDB/manual input, so no conversion needed here.
-  // If Episode had its own Timestamps, they would be converted here as well.
+  
+  if (data.episodes && Array.isArray(data.episodes)) {
+    data.episodes = data.episodes.map((ep: any) => {
+      const episode = { ...ep };
+      if (episode.airDate && episode.airDate instanceof Timestamp) {
+        episode.airDate = episode.airDate.toDate().toISOString().split('T')[0]; // Format as YYYY-MM-DD
+      } else if (typeof episode.airDate === 'object' && episode.airDate && 'seconds' in episode.airDate && 'nanoseconds' in episode.airDate) {
+        episode.airDate = new Timestamp(episode.airDate.seconds, episode.airDate.nanoseconds).toDate().toISOString().split('T')[0];
+      }
+      return episode;
+    });
+  }
   return data as Anime;
 };
 
@@ -56,15 +71,13 @@ export const addAnimeToFirestore = async (animeData: Omit<Anime, 'id' | 'created
   try {
     const animeDocRef = doc(animesCollection); 
     
-    // Type assertion for the data being written to Firestore.
-    // createdAt and updatedAt will be handled by serverTimestamp().
     const newAnimeDataForDb: Omit<Anime, 'id' | 'createdAt' | 'updatedAt'> & { createdAt: any, updatedAt?: any } = { 
       ...animeData,
       episodes: animeData.episodes || [], 
       tmdbId: animeData.tmdbId,
       isFeatured: animeData.isFeatured || false, 
       trailerUrl: (animeData.trailerUrl === '' || animeData.trailerUrl === undefined || animeData.trailerUrl === null) ? undefined : animeData.trailerUrl,
-      createdAt: serverTimestamp(), // Firestore will set this
+      createdAt: serverTimestamp(),
     };
 
     const cleanedAnimeData: { [key: string]: any } = { ...newAnimeDataForDb };
@@ -74,7 +87,7 @@ export const addAnimeToFirestore = async (animeData: Omit<Anime, 'id' | 'created
       }
     });
     
-    await setDoc(animeDocRef, { ...cleanedAnimeData, id: animeDocRef.id }); // Add id explicitly
+    await setDoc(animeDocRef, { ...cleanedAnimeData, id: animeDocRef.id });
     return animeDocRef.id;
   } catch (error) {
     throw handleFirestoreError(error, 'addAnimeToFirestore');
@@ -97,37 +110,34 @@ export const getAnimeById = async (id: string): Promise<Anime | undefined> => {
 
 export const getAllAnimes = async (
   count: number = 20,
-  filters?: {
+  filters: { // Made filters non-optional and defaulted to {}
     type?: Anime['type'];
     genre?: string;
     sortBy?: 'averageRating' | 'year' | 'title' | 'createdAt';
     sortOrder?: 'asc' | 'desc';
     featured?: boolean;
-  }
+  } = {} // Default to an empty object
 ): Promise<Anime[]> => {
   try {
     const queryConstraints: QueryConstraint[] = [];
 
-    if (filters?.type) {
+    if (filters.type) {
       queryConstraints.push(where('type', '==', filters.type));
     }
-    if (filters?.genre) {
+    if (filters.genre) {
       queryConstraints.push(where('genre', 'array-contains', filters.genre));
     }
-    if (filters?.featured !== undefined) { 
+    if (filters.featured !== undefined) { 
        queryConstraints.push(where('isFeatured', '==', filters.featured));
     }
     
-    // Default sort by title if no other sort or specific filter (like featured) is applied
-    if (filters?.sortBy) {
+    if (filters.sortBy) {
       queryConstraints.push(orderBy(filters.sortBy, filters.sortOrder || 'desc'));
-    } else if (filters?.featured === true && !filters.sortBy) {
-      // If filtering by featured, and no other sort is specified, Firebase default order (by document ID) is fine.
-      // A specific composite index like (isFeatured ASC, title ASC) would be needed for title sorting on featured.
-      // If that index is not present, ordering by title here can cause an error.
-      // queryConstraints.push(orderBy('title', 'asc')); // Commented out to avoid mandatory index error
-    } else if (!filters?.type && !filters?.genre && filters?.featured === undefined && !filters.sortBy) {
-      // Only apply default sort if no other significant filters are present
+    } else if (filters.featured === true) {
+      // If filtering by featured and no specific sort, order by title if index exists.
+      // If isFeatured=true, title ASC index is available.
+      queryConstraints.push(orderBy('title', 'asc'));
+    } else if (!filters.type && !filters.genre && filters.featured === undefined) {
        queryConstraints.push(orderBy('createdAt', 'desc')); 
        queryConstraints.push(orderBy('title', 'asc'));
     }
@@ -153,8 +163,6 @@ export const searchAnimes = async (searchTerm: string): Promise<Anime[]> => {
   if (!searchTerm.trim()) return [];
   try {
     const searchTermLower = searchTerm.toLowerCase();
-    
-    // getAllAnimes now returns serialized data
     const allAnime = await getAllAnimes(200, { sortBy: 'title', sortOrder: 'asc'}); 
     
     return allAnime.filter(anime => 
@@ -183,6 +191,9 @@ export const getAnimesByGenre = async (genre: string, count: number = 20): Promi
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => convertAnimeTimestamps({ id: doc.id, ...doc.data() }));
   } catch (error) {
+    if (error instanceof FirestoreError && error.code === 'failed-precondition') {
+      console.warn(`Missing Firestore index for getAnimesByGenre (genre: ${genre}). The query likely requires a composite index on 'genre' (array-contains) and 'title' (asc). Please create it in Firebase console.`);
+    }
     throw handleFirestoreError(error, `getAnimesByGenre (genre: ${genre})`);
   }
 };
@@ -191,11 +202,10 @@ export const getAnimesByGenre = async (genre: string, count: number = 20): Promi
 export const updateAnimeInFirestore = async (id: string, dataToUpdate: Partial<Omit<Anime, 'id' | 'createdAt' | 'updatedAt'>>): Promise<void> => {
   try {
     const docRef = doc(animesCollection, id);
-    // Create a payload that Firestore understands, including serverTimestamp for updatedAt
     const updatePayload: { [key: string]: any } = { ...dataToUpdate, updatedAt: serverTimestamp() };
 
     if (updatePayload.hasOwnProperty('trailerUrl')) {
-      updatePayload.trailerUrl = updatePayload.trailerUrl || null; 
+      updatePayload.trailerUrl = updatePayload.trailerUrl === '' ? null : updatePayload.trailerUrl; 
     }
     
     if (!updatePayload.hasOwnProperty('isFeatured') || updatePayload.isFeatured === undefined) {
@@ -223,7 +233,7 @@ export const updateAnimeEpisode = async (animeId: string, episodeId: string, upd
       throw new Error(`Anime with ID ${animeId} not found.`);
     }
 
-    const animeData = animeSnap.data() as Anime; // Firestore data, Timestamps are not yet strings here
+    const animeData = animeSnap.data() as Anime; 
     const episodes = animeData.episodes || [];
     
     const episodeIndex = episodes.findIndex(ep => ep.id === episodeId);
@@ -267,7 +277,7 @@ export const addEpisodeToSeason = async (animeId: string, episodeData: Episode):
         if (!animeSnap.exists()) {
             throw new Error(`Anime with ID ${animeId} not found.`);
         }
-        const anime = animeSnap.data() as Anime; // Timestamps are not yet strings here
+        const anime = animeSnap.data() as Anime;
         
         const newEpisodeId = episodeData.id || 
                              `${animeId}-s${episodeData.seasonNumber || 1}e${episodeData.episodeNumber}-${Date.now()}`.toLowerCase().replace(/\s+/g, '-');
@@ -291,7 +301,7 @@ export const getUniqueGenres = async (): Promise<string[]> => {
     const snapshot = await getDocs(query(animesCollection, limit(500))); 
     const allGenres = new Set<string>();
     snapshot.docs.forEach(doc => {
-      const anime = doc.data() as Anime; // Timestamps not yet strings here
+      const anime = doc.data() as Anime;
       if (anime.genre) {
         anime.genre.forEach(g => allGenres.add(g));
       }
@@ -318,7 +328,7 @@ export const getAnimesByIds = async (ids: string[]): Promise<Anime[]> => {
     return [];
   }
   try {
-    const MAX_IDS_PER_QUERY = 30; // Firestore 'in' query limit
+    const MAX_IDS_PER_QUERY = 30; 
     const animePromises: Promise<Anime[]>[] = [];
 
     for (let i = 0; i < ids.length; i += MAX_IDS_PER_QUERY) {
@@ -336,33 +346,7 @@ export const getAnimesByIds = async (ids: string[]): Promise<Anime[]> => {
   }
 };
 
-export const getFeaturedAnimes = async (count: number = 5): Promise<Anime[]> => {
-  try {
-    const queryConstraints: QueryConstraint[] = [
-      where('isFeatured', '==', true),
-      limit(count)
-    ];
-    // Optional: Add orderBy('title', 'asc') if the composite index (isFeatured ASC, title ASC) is created.
-    // This is commented out by default to prevent errors if the index is missing.
-    // queryConstraints.push(orderBy('title', 'asc'));
-
-    const q = query(animesCollection, ...queryConstraints);
-    const querySnapshot = await getDocs(q);
-    const animes = querySnapshot.docs.map(doc => convertAnimeTimestamps({ id: doc.id, ...doc.data() }));
-    
-    // If you added orderBy('title', 'asc') above and the index exists, this client-side sort is not needed.
-    // If not, and you need a specific order for featured items (e.g., by title or creation date if 'title' order is problematic due to missing index):
-    // return animes.sort((a, b) => a.title.localeCompare(b.title)); // Example client-side sort
-    // Or sort by createdAt if available (assuming it's an ISO string now)
-    // return animes.sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-
-
-    return animes;
-  } catch (error) {
-    if (error instanceof FirestoreError && error.code === 'failed-precondition') {
-       console.warn(`Firestore query for featured animes might be more performant or allow specific sorting (e.g., by title) with an index on (isFeatured ASC, title ASC). Please consider creating this index in your Firebase console. Original error: ${error.message}`);
-    }
-    throw handleFirestoreError(error, `getFeaturedAnimes`);
-  }
+export const getFeaturedAnimes = async (count: number = 5, otherFilters: Pick<Parameters<typeof getAllAnimes>[1], 'sortBy' | 'sortOrder'> = {}): Promise<Anime[]> => {
+  // Pass through sortBy and sortOrder if provided, otherwise default behavior of getAllAnimes for featured items.
+  return getAllAnimes(count, { featured: true, ...otherFilters });
 };
-
