@@ -25,7 +25,7 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
   const checkScrollPosition = useCallback(() => {
     if (scrollContainerRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      const tolerance = 5; // Small tolerance for floating point inaccuracies
+      const tolerance = 5; 
       setIsAtStart(scrollLeft <= tolerance);
       setIsAtEnd(scrollLeft + clientWidth >= scrollWidth - tolerance);
     }
@@ -34,7 +34,7 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
 
   useEffect(() => {
     const currentRef = scrollContainerRef.current;
-    if (currentRef && isClient) { // Ensure this runs only on the client
+    if (currentRef && isClient) {
       if (animeList && animeList.length > 0) {
         currentRef.scrollLeft = 0; 
       }
@@ -43,7 +43,6 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
       currentRef.addEventListener('scroll', checkScrollPosition, { passive: true });
       window.addEventListener('resize', checkScrollPosition);
       
-      // Use ResizeObserver for more reliable updates on content/size changes
       const observer = new ResizeObserver(checkScrollPosition);
       observer.observe(currentRef);
 
@@ -84,7 +83,7 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
       </div>
       
       <div className="relative">
-        {/* Desktop Scroll Buttons - positioned over the carousel */}
+        {/* Desktop Scroll Buttons */}
         {showScrollButtons && (
             <>
             <Button
@@ -93,13 +92,13 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
                 onClick={() => scroll('left')}
                 disabled={isAtStart}
                 className={cn(
-                    "absolute left-0 top-1/2 -translate-y-1/2 z-20",
+                    "absolute left-2 top-1/2 -translate-y-1/2 z-20", // Adjusted left offset
                     "rounded-full w-10 h-10 md:w-12 md:h-12",
-                    "bg-black/40 hover:bg-black/70 text-white",
-                    "opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-300",
-                    "disabled:opacity-20 disabled:cursor-not-allowed",
-                    "shadow-lg hover:shadow-xl",
-                    "hidden md:flex items-center justify-center -ml-3 md:-ml-5" 
+                    "bg-black/50 hover:bg-black/80 text-white",
+                    "opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 ease-in-out",
+                    "disabled:opacity-30 disabled:cursor-not-allowed",
+                    "shadow-lg hover:shadow-xl focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background", // Added shadow and focus
+                    "hidden md:flex items-center justify-center"
                 )}
                 aria-label="Scroll left"
             >
@@ -111,13 +110,13 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
                 onClick={() => scroll('right')}
                 disabled={isAtEnd}
                  className={cn(
-                    "absolute right-0 top-1/2 -translate-y-1/2 z-20",
+                    "absolute right-2 top-1/2 -translate-y-1/2 z-20", // Adjusted right offset
                     "rounded-full w-10 h-10 md:w-12 md:h-12",
-                    "bg-black/40 hover:bg-black/70 text-white",
-                    "opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-300",
-                    "disabled:opacity-20 disabled:cursor-not-allowed",
-                    "shadow-lg hover:shadow-xl",
-                    "hidden md:flex items-center justify-center -mr-3 md:-mr-5"
+                    "bg-black/50 hover:bg-black/80 text-white",
+                    "opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 ease-in-out",
+                    "disabled:opacity-30 disabled:cursor-not-allowed",
+                    "shadow-lg hover:shadow-xl focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background", // Added shadow and focus
+                    "hidden md:flex items-center justify-center"
                 )}
                 aria-label="Scroll right"
             >
@@ -171,4 +170,3 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
     </section>
   );
 }
-
