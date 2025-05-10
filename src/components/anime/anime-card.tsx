@@ -43,8 +43,8 @@ export default function AnimeCard({ anime }: AnimeCardProps) {
       aria-label={`View details for ${anime.title}`}
     >
       <Card
-        tabIndex={-1} // Makes the Card itself not focusable, the outer div is.
-        className="w-full h-full overflow-hidden bg-card border-border shadow-lg group-hover:shadow-primary/40 transition-all duration-300 flex flex-col rounded-lg pointer-events-none" // Added pointer-events-none here
+        tabIndex={-1} 
+        className="w-full h-full overflow-hidden bg-card border-border shadow-lg group-hover:shadow-primary/40 transition-all duration-300 flex flex-col rounded-lg pointer-events-none"
         data-ai-hint={`${anime.genre[0] || 'anime'} cover`}
       >
         <div className="relative flex-grow w-full">
@@ -54,11 +54,11 @@ export default function AnimeCard({ anime }: AnimeCardProps) {
             fill
             sizes="(max-width: 640px) 45vw, (max-width: 768px) 30vw, (max-width: 1024px) 20vw, 180px"
             className="object-cover transition-transform duration-300 group-hover:scale-105"
-            priority={false}
+            priority={false} // Generally false for carousel items
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent group-hover:via-black/40 transition-all duration-300" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent group-hover:from-black/80 group-hover:via-black/50 transition-all duration-300" />
         </div>
-        <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-2.5 text-white z-[5]">
+        <div className="absolute bottom-0 left-0 right-0 p-2.5 sm:p-3 text-white z-[5] w-full">
           <h3
             className="text-sm sm:text-base font-semibold leading-tight line-clamp-2 text-foreground group-hover:text-primary transition-colors duration-200"
             title={anime.title}
@@ -87,7 +87,7 @@ export default function AnimeCard({ anime }: AnimeCardProps) {
               href={`/play/${anime.id}${firstEpisodeId ? `?episode=${firstEpisodeId}` : ''}`}
               aria-label={`Play ${anime.title}`}
               className="p-2 rounded-full hover:bg-black/50 focus:bg-black/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
-              onClick={handlePlayClick} // Use the specific handler for play click
+              onClick={handlePlayClick} 
           >
               <PlayCircle className="w-12 h-12 sm:w-14 sm:h-14 text-primary filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] group-hover:scale-110 transition-transform duration-300" />
           </Link>
