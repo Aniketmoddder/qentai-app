@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -11,20 +12,20 @@ import { updateProfile as updateFirebaseAuthProfile } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label } from '@/components/ui/label'; // Label is not used directly here, but kept if needed
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Loader2, Save } from 'lucide-react';
 
 const profileDetailsSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters.').max(50, 'Full name must be at most 50 characters.'),
   username: z.string().min(3, 'Username must be at least 3 characters.').max(20, 'Username must be at most 20 characters.').regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores.'),
-  // photoURL: z.string().url('Must be a valid URL.').optional().or(z.literal('')), // If you add photoURL editing
+  // photoURL: z.string().url('Must be a valid URL.').optional().or(z.literal('')), // Example if adding photoURL
 });
 
 type ProfileDetailsFormValues = z.infer<typeof profileDetailsSchema>;
 
 export default function ProfileDetailsForm() {
-  const { user, appUser, setLoading: setAuthLoading } = useAuth(); // Assuming appUser is available and up-to-date
+  const { user, appUser, refreshAppUser } = useAuth(); 
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -59,21 +60,18 @@ export default function ProfileDetailsForm() {
       await updateAppUserProfile(user.uid, {
         fullName: data.fullName,
         username: data.username,
-        // photoURL: data.photoURL,
+        // photoURL: data.photoURL, // If photoURL editing is added
       });
 
-      // Update Firebase Auth profile (displayName and photoURL)
-      if (auth.currentUser) { // Ensure currentUser is available
+      // Update Firebase Auth profile (displayName)
+      if (auth.currentUser && auth.currentUser.displayName !== data.fullName) {
         await updateFirebaseAuthProfile(auth.currentUser, {
           displayName: data.fullName,
-          // photoURL: data.photoURL,
+          // photoURL: data.photoURL, // If photoURL editing is added
         });
       }
       
-      // Manually trigger AuthContext loading to re-fetch appUser with updated details
-      setAuthLoading(true);
-      setTimeout(() => setAuthLoading(false), 1000); // Give some time for potential propagation
-
+      await refreshAppUser(); // Refresh appUser in context to reflect changes
 
       toast({ title: 'Profile Updated', description: 'Your profile details have been saved.' });
     } catch (error: any) {
@@ -84,8 +82,8 @@ export default function ProfileDetailsForm() {
     }
   };
 
-  if (!appUser) {
-    return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (!appUser) { // Show loader if appUser (and thus default form values) is not yet available
+    return <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   return (
@@ -125,7 +123,7 @@ export default function ProfileDetailsForm() {
             <FormItem>
               <FormLabel>Photo URL (Optional)</FormLabel>
               <FormControl>
-                <Input placeholder="https://example.com/your-avatar.png" {...field} />
+                <Input placeholder="https://example.com/your-avatar.png" {...field} className="bg-input border-border/70 focus:border-primary" />
               </FormControl>
               <FormMessage />
             </FormItem>

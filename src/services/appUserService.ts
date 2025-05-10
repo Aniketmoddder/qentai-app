@@ -1,3 +1,4 @@
+
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -48,19 +49,20 @@ export const upsertAppUserInFirestore = async (
       role = existingData.role;
       finalStatus = existingData.status;
 
-      if (userData.email === ADMIN_EMAIL && existingData.role !== 'owner') { // Only upgrade to owner if not already owner
+      if (userData.email === ADMIN_EMAIL && existingData.role !== 'owner') {
         role = 'owner';
       } else if (userData.email === ADMIN_EMAIL && existingData.role === 'owner') {
-        role = 'owner'; // Maintain owner role
+        role = 'owner';
       }
-
 
       finalUserDataForDb = {
         email: userData.email || existingData.email,
-        displayName: userData.displayName || existingData.displayName,
+        displayName: userData.displayName || existingData.displayName, // Firebase Auth displayName
         photoURL: userData.photoURL || existingData.photoURL,
-        username: userData.username || existingData.username || userData.email?.split('@')[0] || `user_${userData.uid.substring(0,5)}`,
-        fullName: userData.fullName || existingData.fullName || userData.displayName,
+        // Prioritize incoming userData.username (e.g., from form) over existing, then default
+        username: userData.username || existingData.username || (userData.email ? userData.email.split('@')[0] : `user_${userData.uid.substring(0,5)}`),
+        // Prioritize incoming userData.fullName (e.g., from form) over existing, then fallback to displayName (Firebase Auth)
+        fullName: userData.fullName || existingData.fullName || userData.displayName || null,
         role,
         status: finalStatus,
         lastLoginAt: serverTimestamp(),
@@ -73,7 +75,6 @@ export const upsertAppUserInFirestore = async (
         ...existingData, 
         ...finalUserDataForDb, 
         uid: userData.uid,
-        // Simulate serverTimestamp resolution for client:
         lastLoginAt: new Date().toISOString(), 
         updatedAt: new Date().toISOString() 
       };
@@ -87,9 +88,11 @@ export const upsertAppUserInFirestore = async (
       finalUserDataForDb = {
         uid: userData.uid,
         email: userData.email || null,
-        displayName: userData.displayName || null,
+        displayName: userData.displayName || null, // Firebase Auth displayName
         photoURL: userData.photoURL || null,
-        username: userData.username || userData.email?.split('@')[0] || `user_${userData.uid.substring(0,5)}`,
+        // Prioritize userData.username (from form); if not, default from email
+        username: userData.username || (userData.email ? userData.email.split('@')[0] : `user_${userData.uid.substring(0,5)}`),
+        // Prioritize userData.fullName (from form); if not, use displayName from Auth, then null
         fullName: userData.fullName || userData.displayName || null,
         role: role,
         status: finalStatus,
@@ -100,7 +103,6 @@ export const upsertAppUserInFirestore = async (
       await setDoc(userRef, finalUserDataForDb);
       const newUserDataForClient = {
         ...finalUserDataForDb,
-        // Simulate serverTimestamp resolution for client:
         createdAt: new Date().toISOString(),
         lastLoginAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -119,9 +121,26 @@ export const updateAppUserProfile = async (
   const userRef = doc(usersCollection, uid);
   try {
     const dataToUpdate: { [key: string]: any } = { ...profileData, updatedAt: serverTimestamp() };
-    Object.keys(dataToUpdate).forEach(key => dataToUpdate[key] === undefined && delete dataToUpdate[key]);
+    
+    // Ensure that if a field is an empty string, it's treated as wanting to set it to empty,
+    // not as `undefined` which would cause it to be deleted by the Object.keys loop below.
+    // However, for username and fullName, we usually want them to be set if provided.
+    // photoURL could be explicitly set to null or an empty string to remove it.
+    if (profileData.photoURL === '') {
+        dataToUpdate.photoURL = null; // Or handle as per your preference for empty photoURL
+    }
 
-    if (Object.keys(dataToUpdate).length > 1) {
+    Object.keys(dataToUpdate).forEach(key => {
+        // Keep username and fullName even if they are empty strings, if explicitly passed.
+        // For other fields that might be optional, delete if undefined.
+        // This logic might need refinement based on how you want to handle empty strings vs. undefined.
+        if (key !== 'username' && key !== 'fullName' && dataToUpdate[key] === undefined) {
+             delete dataToUpdate[key]; 
+        }
+    });
+
+
+    if (Object.keys(dataToUpdate).length > 1) { // At least one field other than updatedAt
         await updateDoc(userRef, dataToUpdate);
     }
   } catch (error) {
@@ -132,6 +151,7 @@ export const updateAppUserProfile = async (
 
 export const getAllAppUsers = async (count: number = 50): Promise<AppUser[]> => {
   try {
+    // Ensure users are ordered, e.g., by creation date, for consistent listing
     const q = query(usersCollection, orderBy('createdAt', 'desc'), limit(count > 0 ? count : 500));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => convertUserTimestampsForClient(doc.data() as AppUser));
@@ -166,8 +186,6 @@ export const updateUserRoleInFirestore = async (uid: string, newRole: AppUserRol
         if (currentUserData.email === ADMIN_EMAIL && currentUserData.role === 'owner' && newRole !== 'owner') {
           throw new Error("The primary owner's role cannot be changed from 'owner'.");
         }
-        // Allow any owner to change roles of others, but only primary admin can be 'owner'
-        // Non-owners cannot make someone else an owner.
         if (newRole === 'owner' && currentUserData.email !== ADMIN_EMAIL) {
              throw new Error("Cannot assign 'owner' role to a non-primary owner account.");
         }

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -34,7 +35,7 @@ export type RegisterFormValues = z.infer<typeof registerSchema>;
 export default function RegisterPage() {
   const router = useRouter();
   const searchParams = useNextSearchParams(); // Renamed
-  const { user, loading: authLoading, setLoading: setAuthContextLoading } = useAuth();
+  const { user, loading: authLoading, setLoading: setAuthContextLoading, refreshAppUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,24 +51,28 @@ export default function RegisterPage() {
   const handleRegister = async (values: RegisterFormValues) => {
     setIsLoading(true);
     setError(null);
+    setAuthContextLoading(true); // Indicate global loading start
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const firebaseUser = userCredential.user;
 
       // Update Firebase Auth profile
       await updateProfile(firebaseUser, {
-        displayName: values.fullName, // Using fullName for Firebase Auth displayName
+        displayName: values.fullName, 
       });
       
       // Upsert user data in Firestore, including new fields
+      // This call is crucial for setting the initial username and fullName
       await upsertAppUserInFirestore({
         uid: firebaseUser.uid,
         email: firebaseUser.email,
-        displayName: values.fullName, // Consistent with Auth profile
+        displayName: values.fullName, // Passed as displayName to upsert
         photoURL: firebaseUser.photoURL,
-        username: values.username,
-        fullName: values.fullName,
+        username: values.username,     // Explicitly pass username
+        fullName: values.fullName,     // Explicitly pass fullName
       });
+
+      await refreshAppUser(); // Refresh appUser in context
 
       toast({
         title: "Account Created",
@@ -85,6 +90,7 @@ export default function RegisterPage() {
       });
     } finally {
       setIsLoading(false);
+      setAuthContextLoading(false); // Indicate global loading end
     }
   };
 
@@ -96,17 +102,16 @@ export default function RegisterPage() {
       const userCredential = await signInWithPopup(auth, googleProvider);
       const firebaseUser = userCredential.user;
 
-      // For Google Sign-Up, username and potentially fullName might not be directly available.
-      // upsertAppUserInFirestore will handle this by using displayName from Google as fullName if not present.
-      // Username could be prompted later or auto-generated. For now, we pass what we have.
       await upsertAppUserInFirestore({
         uid: firebaseUser.uid,
         email: firebaseUser.email,
-        displayName: firebaseUser.displayName,
+        displayName: firebaseUser.displayName, // Firebase Auth displayName
         photoURL: firebaseUser.photoURL,
-        // username: undefined, // Will be handled by upsert logic or remain undefined
-        // fullName: firebaseUser.displayName, // Pass displayName as fullName
+        // username and fullName will be defaulted by upsertAppUserInFirestore
+        // as they are not provided directly from Google Sign-Up form.
       });
+      
+      await refreshAppUser(); // Refresh appUser in context
 
       toast({
         title: "Sign Up Successful",
