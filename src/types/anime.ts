@@ -13,6 +13,7 @@ export interface Anime {
   episodes?: Episode[]; // Optional, especially for movies or if episodes are added later
   type?: 'TV' | 'Movie' | 'OVA' | 'Special' | 'Unknown';
   sourceAdmin?: 'tmdb' | 'manual'; // To track how it was added
+  isFeatured?: boolean; // To mark anime as featured
 }
 
 export interface Episode {
