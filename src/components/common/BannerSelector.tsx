@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import { CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -45,14 +44,13 @@ export default function BannerSelector({
                 )}
                 aria-label={altText}
               >
-                <Image
+                {/* Using standard img tag */}
+                <img
                   src={url}
                   alt={altText}
-                  fill
-                  sizes="(max-width: 640px) 40vw, 200px"
-                  className="object-cover"
+                  className="absolute inset-0 w-full h-full object-cover"
                   data-ai-hint="anime landscape banner"
-                  priority={bannerUrls.indexOf(url) < 3} // Prioritize loading first few images
+                  loading={bannerUrls.indexOf(url) < 3 ? "eager" : "lazy"} // Basic loading optimization
                 />
                 {currentBannerUrl === url && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">

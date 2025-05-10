@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import { CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -43,14 +42,13 @@ export default function AvatarSelector({
               )}
               aria-label={altText}
             >
-              <Image
+              {/* Using standard img tag */}
+              <img
                 src={url}
                 alt={altText}
-                fill
-                sizes="(max-width: 640px) 20vw, 100px"
-                className="object-cover"
+                className="absolute inset-0 w-full h-full object-cover"
                 data-ai-hint="anime character avatar"
-                priority={avatarUrls.indexOf(url) < 4} // Prioritize loading first few images
+                loading={avatarUrls.indexOf(url) < 4 ? "eager" : "lazy"} // Basic loading optimization
               />
               {currentAvatarUrl === url && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
