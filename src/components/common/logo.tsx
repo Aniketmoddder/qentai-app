@@ -9,15 +9,15 @@ interface LogoProps extends HTMLAttributes<HTMLAnchorElement> {
 
 export default function Logo({ className, iconSize = 16, ...props }: LogoProps) { 
   // iconSize now directly influences the dimensions.
-  // The new image is square (presumably, after cropping to center).
+  // The image is square.
   // Let iconSize control both width and height for a square logo.
-  const imageDimension = iconSize * 3; // e.g. 16 * 3 = 48px height and width
+  const imageDimension = iconSize * 3; // e.g. iconSize 27 * 3 = 81px height and width
 
   return (
     <Link href="/" className={`flex items-center justify-center ${className}`} {...props}>
       <div style={{ height: `${imageDimension}px`, width: `${imageDimension}px` }} className="relative">
         <Image
-          src="https://i.ibb.co/0VpP5jzr/Chat-GPT-Image-May-10-2025-10-50-07-AM.png"
+          src="https://i.ibb.co/0VpP5jzr/Chat-GPT-Image-May-10-2025-10-50-07-AM.png" 
           alt="Qentai Logo"
           fill
           style={{ objectFit: 'contain' }} 

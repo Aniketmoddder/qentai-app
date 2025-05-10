@@ -125,7 +125,7 @@ export default function RegisterPage() {
       <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-sm">
          <CardHeader className="text-center">
           <div className="mx-auto mb-6">
-            <Logo iconSize={14} /> {/* Adjusted: removed textSize, iconSize for larger logo */}
+            <Logo iconSize={18} /> {/* Increased iconSize from 14 to 18 */}
           </div>
           <CardTitle className="text-3xl font-bold">Create an Account</CardTitle>
           <CardDescription>Join Qentai to discover and watch your favorite anime.</CardDescription>
@@ -158,3 +158,4 @@ export default function RegisterPage() {
     </Container>
   );
 }
+
