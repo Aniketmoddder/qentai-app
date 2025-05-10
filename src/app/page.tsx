@@ -1,18 +1,20 @@
 
+'use client';
+import React, { useState, useEffect, useCallback } from 'react';
 import Container from '@/components/layout/container';
 import AnimeCarousel from '@/components/anime/anime-carousel';
-import RecommendationsSection from '@/components/anime/recommendations-section';
+// import RecommendationsSection from '@/components/anime/recommendations-section';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronRight, AlertTriangle, Play, Plus, Tv, Calendar, ListVideo, Filter, Tags, Star as StarIcon } from 'lucide-react';
+import { ChevronRight, AlertTriangle, Play, Plus, Tv, Calendar, ListVideo, Star as StarIcon, Volume2, VolumeX } from 'lucide-react';
 import { getAllAnimes } from '@/services/animeService';
 import type { Anime } from '@/types/anime';
 import FeaturedAnimeCard from '@/components/anime/FeaturedAnimeCard';
 import TopAnimeListItem from '@/components/anime/TopAnimeListItem';
 import { Badge } from '@/components/ui/badge';
 import GenreList from '@/components/anime/genre-list';
-
+import { Skeleton } from '@/components/ui/skeleton';
 
 const shuffleArray = <T,>(array: T[]): T[] => {
   if (!array || array.length === 0) return [];
@@ -24,57 +26,172 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return newArray;
 };
 
-export default async function Home() {
-  let allAnime: Anime[] = [];
-  let featuredAnimesList: Anime[] = [];
-  let fetchError: string | null = null;
-
+const getYouTubeVideoId = (url?: string): string | null => {
+  if (!url) return null;
   try {
-    // Fetch a general list of animes for various carousels
-    allAnime = await getAllAnimes(50); 
-    // Fetch specifically featured animes (e.g., up to 5)
-    // Removed sortBy: 'title' to avoid needing a composite index (isFeatured ASC, title ASC)
-    // If this index exists, sortBy: 'title', sortOrder: 'asc' can be re-added.
-    featuredAnimesList = await getAllAnimes(5, { featured: true });
-  } catch (error) {
-    console.error("Failed to fetch animes for homepage:", error);
-    if (error instanceof Error && error.message.includes("index")) {
-        fetchError = `Could not load some anime data. A required Firestore index might be missing. Please check Firebase console or server logs for index creation links. Original: ${error.message}`;
-    } else {
-        fetchError = "Could not load anime data. Please try again later.";
+    const urlObj = new URL(url);
+    if (urlObj.hostname === 'youtu.be') {
+      return urlObj.pathname.slice(1);
     }
+    if (urlObj.hostname === 'www.youtube.com' || urlObj.hostname === 'youtube.com') {
+      if (urlObj.pathname === '/watch') {
+        return urlObj.searchParams.get('v');
+      }
+      if (urlObj.pathname.startsWith('/embed/')) {
+        return urlObj.pathname.split('/embed/')[1].split('?')[0];
+      }
+    }
+  } catch (e) {
+    console.error("Error parsing YouTube URL:", e);
+    return null;
   }
+  return null;
+};
+
+
+export default function Home() {
+  const [allAnime, setAllAnime] = useState<Anime[]>([]);
+  const [featuredAnimesList, setFeaturedAnimesList] = useState<Anime[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [playTrailer, setPlayTrailer] = useState(false);
+  const [isTrailerMuted, setIsTrailerMuted] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setFetchError(null);
+    try {
+      const [generalAnimes, featured] = await Promise.all([
+        getAllAnimes(50),
+        getAllAnimes(5, { featured: true, sortBy: 'title', sortOrder: 'asc' })
+      ]);
+      setAllAnime(generalAnimes);
+      setFeaturedAnimesList(featured);
+    } catch (error) {
+      console.error("Failed to fetch animes for homepage:", error);
+      if (error instanceof Error && error.message.includes("index")) {
+        setFetchError(`Could not load some anime data. A required Firestore index might be missing. Please check Firebase console or server logs for index creation links. Original: ${error.message}`);
+      } else {
+        setFetchError("Could not load anime data. Please try again later.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
   
+  const heroAnime = featuredAnimesList[0] || (allAnime.length > 0 ? shuffleArray([...allAnime])[0] : undefined);
+  const youtubeVideoId = heroAnime?.trailerUrl ? getYouTubeVideoId(heroAnime.trailerUrl) : null;
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (heroAnime && youtubeVideoId) {
+      timer = setTimeout(() => {
+        setPlayTrailer(true);
+      }, 3000); // 3 seconds delay
+    }
+    return () => clearTimeout(timer);
+  }, [heroAnime, youtubeVideoId]);
+
+
   const trendingAnime = shuffleArray([...allAnime]).slice(0, 10); 
   const popularAnime = shuffleArray([...allAnime]).filter(a => a.averageRating && a.averageRating >= 7.5).slice(0,10);
-  const recentlyAddedAnime = [...allAnime].sort((a,b) => (b.year || 0) - (a.year || 0)).slice(0,10); // Assuming recently added based on year for now
+  const recentlyAddedAnime = [...allAnime].sort((a,b) => (b.year || 0) - (a.year || 0)).slice(0,10); 
   const movies = allAnime.filter(a => a.type === 'Movie').slice(0,10);
   const tvSeries = allAnime.filter(a => a.type === 'TV').slice(0,10);
   const nextSeasonAnime = shuffleArray([...allAnime].filter(a => a.status === 'Upcoming')).slice(0,10);
-
-  // Hero anime: prioritize first featured, then first trending, then first overall
-  const heroAnime = featuredAnimesList[0] || trendingAnime[0] || allAnime[0];
   
   const topAnimeList = [...allAnime]
     .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
     .slice(0, 10);
 
+  if (isLoading) {
+    return (
+      <>
+        {/* Hero Skeleton */}
+        <section className="relative h-[70vh] md:h-[85vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] bg-muted/30">
+          <div className="absolute inset-0">
+             <Skeleton className="w-full h-full opacity-40" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent"></div>
+          </div>
+           <Container className="relative z-10 pb-12 md:pb-20 text-foreground">
+            <div className="max-w-2xl">
+              <Skeleton className="h-6 w-24 mb-3 rounded-md" />
+              <Skeleton className="h-12 md:h-16 w-3/4 mb-3 rounded-md" />
+              <Skeleton className="h-4 w-1/2 mb-5 rounded-md" />
+              <Skeleton className="h-5 w-full mb-1.5 rounded-md" />
+              <Skeleton className="h-5 w-5/6 mb-6 rounded-md" />
+              <div className="flex flex-wrap gap-3 sm:gap-4">
+                <Skeleton className="h-12 w-36 rounded-full" />
+                <Skeleton className="h-12 w-36 rounded-full" />
+              </div>
+            </div>
+          </Container>
+        </section>
+        <Container className="py-8">
+          <Skeleton className="h-8 w-48 mb-4 rounded-md" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[300px] w-full rounded-lg" />)}
+          </div>
+        </Container>
+      </>
+    );
+  }
+
+
   return (
     <>
       {heroAnime && !fetchError && (
-        <section className="relative h-[70vh] md:h-[85vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)]">
+        <section className="relative h-[70vh] md:h-[85vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] overflow-hidden">
           <div className="absolute inset-0">
-            <Image
-              src={heroAnime.bannerImage || `https://picsum.photos/seed/${heroAnime.id}-hero/1600/900`}
-              alt={`${heroAnime.title} banner`}
-              fill
-              style={{ objectFit: 'cover' }}
-              className="opacity-40"
-              priority
-              data-ai-hint="anime landscape epic"
-            />
+            {playTrailer && youtubeVideoId ? (
+              <div className="absolute inset-0 w-full h-full">
+                <iframe
+                  src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&mute=${isTrailerMuted ? 1 : 0}&controls=0&showinfo=0&loop=1&playlist=${youtubeVideoId}&modestbranding=1&iv_load_policy=3&fs=0&disablekb=1`}
+                  title="YouTube video player"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full scale-[1.4]" // Scale to ensure it covers, might need adjustment
+                  style={{ pointerEvents: 'none' }} // Make iframe unclickable directly
+                ></iframe>
+              </div>
+            ) : (
+              <Image
+                src={heroAnime.bannerImage || `https://picsum.photos/seed/${heroAnime.id}-hero/1600/900`}
+                alt={`${heroAnime.title} banner`}
+                fill
+                style={{ objectFit: 'cover' }}
+                className="opacity-40"
+                priority
+                data-ai-hint="anime landscape epic"
+              />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent"></div>
           </div>
+
+          {/* Mute/Unmute button for trailer */}
+          {playTrailer && youtubeVideoId && (
+            <div className="absolute top-4 right-4 z-20">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsTrailerMuted(!isTrailerMuted);
+                }}
+                className="text-white/70 hover:text-white hover:bg-black/30 rounded-full"
+                aria-label={isTrailerMuted ? "Unmute trailer" : "Mute trailer"}
+              >
+                {isTrailerMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+              </Button>
+            </div>
+          )}
+
           <Container className="relative z-10 pb-12 md:pb-20 text-foreground">
             <div className="max-w-2xl">
               {heroAnime.isFeatured ? (
@@ -86,7 +203,7 @@ export default async function Home() {
                     #1 Trending
                 </Badge>
               )}
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-3 leading-tight">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-3 leading-tight font-zen-dots">
                 {heroAnime.title}
               </h1>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-5">
@@ -126,24 +243,22 @@ export default async function Home() {
             </div>
           </div>
         )}
-        {!fetchError && allAnime.length === 0 && (
+        {!fetchError && allAnime.length === 0 && !isLoading && (
            <div className="my-8 p-6 bg-card border border-border rounded-lg text-center">
             <h3 className="font-semibold text-xl">No Anime Found</h3>
             <p className="text-muted-foreground">It looks like there's no anime in the database yet. An admin can add some via the admin panel.</p>
           </div>
         )}
 
-        {/* Display this section only if there are featured animes and no fetch error */}
         {featuredAnimesList.length > 0 && !fetchError && (
           <section className="py-6 md:py-8">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar">Featured Anime</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar font-orbitron">Featured Anime</h2>
               <Button variant="link" asChild className="text-primary hover:text-primary/80">
                 <Link href="/browse?filter=featured">View More <ChevronRight className="w-4 h-4 ml-1"/></Link>
               </Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              {/* Show up to 2 featured animes */}
               {featuredAnimesList.slice(0, 2).map(anime => (
                 <FeaturedAnimeCard key={anime.id} anime={anime} />
               ))}
@@ -163,7 +278,7 @@ export default async function Home() {
         {topAnimeList.length > 0 && (
           <section className="py-6 md:py-8">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar">Top Anime</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar font-orbitron">Top Anime</h2>
               <div className="flex items-center gap-2">
                 <Button variant="link" asChild className="text-primary hover:text-primary/80">
                   <Link href="/browse?sort=top">View More <ChevronRight className="w-4 h-4 ml-1"/></Link>
@@ -185,4 +300,3 @@ export default async function Home() {
     </>
   );
 }
-

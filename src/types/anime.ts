@@ -14,6 +14,7 @@ export interface Anime {
   type?: 'TV' | 'Movie' | 'OVA' | 'Special' | 'Unknown';
   sourceAdmin?: 'tmdb' | 'manual'; // To track how it was added
   isFeatured?: boolean; // To mark anime as featured
+  trailerUrl?: string; // Optional YouTube video URL for trailer
 }
 
 export interface Episode {

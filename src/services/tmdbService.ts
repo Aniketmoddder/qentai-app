@@ -1,3 +1,4 @@
+
 'use server';
 import type { Anime, Episode, Season } from '@/types/anime';
 import type { TMDBMovie, TMDBTVShow, TMDBTVSeasonResponse, TMDBEpisode } from '@/types/tmdb';
@@ -21,7 +22,7 @@ const fetchFromTMDB = async <T>(endpoint: string, params: Record<string, string 
   });
   const url = `${TMDB_BASE_URL}/${endpoint}?${urlParams.toString()}`;
   
-  console.log(`Fetching from TMDB URL: ${url}`); // Added for debugging
+  console.log(`Fetching from TMDB URL: ${url}`); 
 
   try {
     const response = await fetch(url);
@@ -44,10 +45,10 @@ const getTMDBStatus = (tmdbStatus: string, type: 'movie' | 'tv'): Anime['status'
     if (tmdbStatus === 'Post Production' || tmdbStatus === 'In Production' || tmdbStatus === 'Planned') return 'Upcoming';
   } else if (type === 'tv') {
     if (tmdbStatus === 'Ended' || tmdbStatus === 'Canceled') return 'Completed';
-    if (tmdbStatus === 'Returning Series' || tmdbStatus === 'In Production' || tmdbStatus === 'Pilot') return 'Ongoing'; // Pilot can be considered ongoing
+    if (tmdbStatus === 'Returning Series' || tmdbStatus === 'In Production' || tmdbStatus === 'Pilot') return 'Ongoing'; 
     if (tmdbStatus === 'Planned') return 'Upcoming';
   }
-  return 'Unknown'; // Default or if status doesn't match
+  return 'Unknown'; 
 };
 
 
@@ -69,14 +70,14 @@ export const fetchAnimeDetailsFromTMDB = async (tmdbId: string, type: 'movie' | 
       averageRating: movieData.vote_average ? parseFloat(movieData.vote_average.toFixed(1)) : undefined,
       status: getTMDBStatus(movieData.status, 'movie'),
       type: 'Movie',
-      episodes: [{ // For movies, create a single "episode"
+      episodes: [{ 
           id: `${movieData.id}-movie`,
           title: 'Full Movie',
           episodeNumber: 1,
           seasonNumber: 1,
-          // URL needs to be added by admin
       }],
       sourceAdmin: 'tmdb',
+      trailerUrl: undefined, // Trailer URL is for manual YouTube links
     };
   } else if (type === 'tv') {
     const tvData = await fetchFromTMDB<TMDBTVShow>(`tv/${tmdbId}`);
@@ -84,7 +85,7 @@ export const fetchAnimeDetailsFromTMDB = async (tmdbId: string, type: 'movie' | 
 
     const animeEpisodes: Episode[] = [];
     if (tvData.seasons && tvData.seasons.length > 0) {
-      for (const seasonBrief of tvData.seasons.filter(s => s.season_number > 0)) { // Skip "Specials" season (season_number 0) for now
+      for (const seasonBrief of tvData.seasons.filter(s => s.season_number > 0)) { 
         const seasonDetails = await fetchFromTMDB<TMDBTVSeasonResponse>(`tv/${tmdbId}/season/${seasonBrief.season_number}`);
         if (seasonDetails && seasonDetails.episodes) {
           seasonDetails.episodes.forEach((ep: TMDBEpisode) => {
@@ -98,7 +99,6 @@ export const fetchAnimeDetailsFromTMDB = async (tmdbId: string, type: 'movie' | 
               duration: ep.runtime ? `${ep.runtime}min` : undefined,
               airDate: ep.air_date || undefined,
               overview: ep.overview,
-              // URL needs to be added by admin
             });
           });
         }
@@ -118,6 +118,7 @@ export const fetchAnimeDetailsFromTMDB = async (tmdbId: string, type: 'movie' | 
       type: 'TV',
       episodes: animeEpisodes.length > 0 ? animeEpisodes : undefined,
       sourceAdmin: 'tmdb',
+      trailerUrl: undefined, // Trailer URL is for manual YouTube links
     };
   }
   return details;
@@ -129,4 +130,3 @@ export const searchTMDB = async (query: string, type: 'movie' | 'tv' | 'multi' =
   const endpoint = type === 'multi' ? `search/multi` : `search/${type}`;
   return fetchFromTMDB(endpoint, { query });
 };
-

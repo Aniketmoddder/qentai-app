@@ -2,22 +2,20 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import type { HTMLAttributes } from 'react';
+import { cn } from '@/lib/utils';
 
 interface LogoProps extends HTMLAttributes<HTMLAnchorElement> {
   iconSize?: number; 
 }
 
-export default function Logo({ className, iconSize = 16, ...props }: LogoProps) { 
-  // iconSize now directly influences the dimensions.
-  // The image is square.
-  // Let iconSize control both width and height for a square logo.
-  const imageDimension = iconSize * 3; // e.g. iconSize 27 * 3 = 81px height and width
+export default function Logo({ className, iconSize = 27, ...props }: LogoProps) { 
+  const imageDimension = iconSize * 2.5; // Adjust multiplier for desired visual size
 
   return (
-    <Link href="/" className={`flex items-center justify-center ${className}`} {...props}>
+    <Link href="/" className={cn("flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm", className)} {...props}>
       <div style={{ height: `${imageDimension}px`, width: `${imageDimension}px` }} className="relative">
         <Image
-          src="https://i.ibb.co/0VpP5jzr/Chat-GPT-Image-May-10-2025-10-50-07-AM.png" 
+          src="https://i.ibb.co/hR11k6Kw/Picsart-25-05-10-11-50-50-504.png" 
           alt="Qentai Logo"
           fill
           style={{ objectFit: 'contain' }} 
@@ -27,4 +25,3 @@ export default function Logo({ className, iconSize = 16, ...props }: LogoProps) 
     </Link>
   );
 }
-

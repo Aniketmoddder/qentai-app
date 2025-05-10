@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { getAnimeById, updateAnimeInFirestore, getAllAnimes } from '@/services/animeService';
 import type { Anime } from '@/types/anime';
-import { Loader2, Save, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Loader2, Save, ArrowLeft, AlertCircle, Youtube } from 'lucide-react';
 import Container from '@/components/layout/container';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
@@ -32,6 +32,7 @@ const animeSchema = z.object({
   status: z.enum(['Ongoing', 'Completed', 'Upcoming', 'Unknown']),
   synopsis: z.string().min(10, 'Synopsis must be at least 10 characters'),
   type: z.enum(['TV', 'Movie', 'OVA', 'Special', 'Unknown']),
+  trailerUrl: z.string().url('Must be a valid YouTube URL').optional().or(z.literal('')),
   isFeatured: z.boolean().optional(),
   averageRating: z.coerce.number().min(0).max(10).optional(),
   // episodes are no longer edited here
@@ -69,6 +70,7 @@ export default function EditAnimePage() {
       status: 'Unknown',
       synopsis: '',
       type: 'TV',
+      trailerUrl: '',
       isFeatured: false,
       averageRating: 0,
     },
@@ -110,6 +112,7 @@ export default function EditAnimePage() {
           status: animeData.status || 'Unknown',
           synopsis: animeData.synopsis || '',
           type: animeData.type || 'TV',
+          trailerUrl: animeData.trailerUrl || '',
           isFeatured: animeData.isFeatured || false,
           averageRating: animeData.averageRating || 0,
         });
@@ -163,8 +166,9 @@ export default function EditAnimePage() {
   const onSubmit = async (data: AnimeFormData) => {
     setIsSubmitting(true);
     try {
-      const updateData: Partial<Omit<Anime, 'episodes'>> = { // Exclude episodes from update data
+      const updateData: Partial<Omit<Anime, 'episodes'>> = { 
         ...data,
+        trailerUrl: data.trailerUrl || undefined, // Ensure empty string becomes undefined
       };
       await updateAnimeInFirestore(animeId, updateData);
       toast({ title: 'Content Updated', description: `${data.title} has been successfully updated.` });
@@ -249,6 +253,7 @@ export default function EditAnimePage() {
               <FormSelectItem name="type" label="Type" items={['TV', 'Movie', 'OVA', 'Special', 'Unknown']} form={form} />
               <FormSelectItem name="status" label="Status" items={['Ongoing', 'Completed', 'Upcoming', 'Unknown']} form={form} />
             </div>
+             <FormFieldItem name="trailerUrl" label="YouTube Trailer URL (Optional)" placeholder="https://www.youtube.com/watch?v=..." form={form} Icon={Youtube} />
 
             <FormFieldItem name="averageRating" label="Average Rating (0-10)" type="number" placeholder="e.g., 7.5" form={form} />
             
@@ -312,15 +317,19 @@ interface FormFieldItemProps {
   type?: string;
   form: ReturnType<typeof useForm<AnimeFormData>>;
   isTextarea?: boolean;
+  Icon?: React.ElementType;
 }
 
-function FormFieldItem({ name, label, placeholder, type = "text", form, isTextarea = false }: FormFieldItemProps) {
+function FormFieldItem({ name, label, placeholder, type = "text", form, isTextarea = false, Icon }: FormFieldItemProps) {
   const { register, formState: { errors } } = form;
   const error = errors[name];
 
   return (
     <div className="space-y-1">
-      <Label htmlFor={name} className="text-xs font-medium">{label}</Label>
+      <Label htmlFor={name} className="text-xs font-medium flex items-center">
+        {Icon && <Icon className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />}
+        {label}
+      </Label>
       {isTextarea ? (
         <Textarea id={name} placeholder={placeholder} {...register(name)} className="bg-input border-border/70 focus:border-primary text-sm" rows={3} />
       ) : (
