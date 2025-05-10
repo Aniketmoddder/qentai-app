@@ -1,6 +1,9 @@
 // src/components/anime/anime-card.tsx
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { Anime } from '@/types/anime';
 import { Card } from '@/components/ui/card';
 import { PlayCircle, Star } from 'lucide-react';
@@ -11,16 +14,37 @@ interface AnimeCardProps {
 }
 
 export default function AnimeCard({ anime }: AnimeCardProps) {
+  const router = useRouter();
   const firstEpisodeId = anime.episodes?.[0]?.id || '';
 
+  const handleCardClick = () => {
+    router.push(`/anime/${anime.id}`);
+  };
+
+  const handlePlayClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.stopPropagation(); // Prevent card click event from firing
+    // Navigation is handled by the Link component's href
+  };
+  
+  const handleCardKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      router.push(`/anime/${anime.id}`);
+    }
+  };
+
   return (
-    <div 
-      className="group relative w-[45vw] max-w-[180px] h-[270px] rounded-lg" // cursor-pointer removed as Links handle it
+    <div
+      className="group relative w-[45vw] max-w-[180px] h-[270px] rounded-lg cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      tabIndex={0}
+      role="link"
+      aria-label={`View details for ${anime.title}`}
     >
-      {/* Card visuals (Image and Text) - acts as background for links */}
       <Card
-        tabIndex={-1} // Not focusable itself, Links will be
-        className="w-full h-full overflow-hidden bg-card border-border shadow-lg group-hover:shadow-primary/40 transition-all duration-300 flex flex-col rounded-lg"
+        tabIndex={-1} // Makes the Card itself not focusable, the outer div is.
+        className="w-full h-full overflow-hidden bg-card border-border shadow-lg group-hover:shadow-primary/40 transition-all duration-300 flex flex-col rounded-lg pointer-events-none" // Added pointer-events-none here
         data-ai-hint={`${anime.genre[0] || 'anime'} cover`}
       >
         <div className="relative flex-grow w-full">
@@ -34,7 +58,7 @@ export default function AnimeCard({ anime }: AnimeCardProps) {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent group-hover:via-black/40 transition-all duration-300" />
         </div>
-        <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-2.5 text-white z-[5]"> {/* z-index to ensure text is above image gradient */}
+        <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-2.5 text-white z-[5]">
           <h3
             className="text-sm sm:text-base font-semibold leading-tight line-clamp-2 text-foreground group-hover:text-primary transition-colors duration-200"
             title={anime.title}
@@ -54,27 +78,16 @@ export default function AnimeCard({ anime }: AnimeCardProps) {
           </div>
         </div>
       </Card>
-
-      {/* Clickable overlay Link for details page (covers the entire card, below play button) */}
-      <Link
-        href={`/anime/${anime.id}`} 
-        className="absolute inset-0 z-10 cursor-pointer" 
-        aria-label={`View details for ${anime.title}`}
-      >
-        <span className="sr-only">View details for {anime.title}</span>
-      </Link>
       
-      {/* Play button and its Link - on top of everything else, only interactive on hover */}
-      <div 
+      {/* Play button overlay - positioned on top */}
+      <div
           className="absolute inset-0 flex items-center justify-center opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto transition-opacity duration-300 z-20"
       >
           <Link
               href={`/play/${anime.id}${firstEpisodeId ? `?episode=${firstEpisodeId}` : ''}`}
               aria-label={`Play ${anime.title}`}
               className="p-2 rounded-full hover:bg-black/50 focus:bg-black/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
-              onClick={(e) => {
-                  e.stopPropagation(); // Crucial to prevent the details link from firing
-              }}
+              onClick={handlePlayClick} // Use the specific handler for play click
           >
               <PlayCircle className="w-12 h-12 sm:w-14 sm:h-14 text-primary filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] group-hover:scale-110 transition-transform duration-300" />
           </Link>
