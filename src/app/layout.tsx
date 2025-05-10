@@ -1,6 +1,6 @@
 
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Inter, Roboto_Mono } from 'next/font/google'; // Changed from Geist
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import QueryProvider from '@/components/providers/query-provider';
@@ -10,14 +10,17 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from '@/context/auth-context';
 
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const inter = Inter({ // Changed from geistSans
+  variable: '--font-inter', // Changed variable name
   subsets: ['latin'],
+  display: 'swap', // Added for better font loading
 });
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const robotoMono = Roboto_Mono({ // Changed from geistMono
+  variable: '--font-roboto-mono', // Changed variable name
   subsets: ['latin'],
+  weight: ['400', '500', '700'], // Added common weights
+  display: 'swap', // Added for better font loading
 });
 
 export const metadata: Metadata = {
@@ -33,7 +36,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark h-full overflow-x-hidden">
-      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased flex flex-col min-h-full bg-background text-foreground overflow-x-hidden`}>
+      <body className={`${inter.variable} ${robotoMono.variable} font-sans antialiased flex flex-col min-h-full bg-background text-foreground overflow-x-hidden`}>
         <QueryProvider>
           <AuthProvider>
             <TooltipProvider delayDuration={0}>

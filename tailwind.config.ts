@@ -26,8 +26,8 @@ export default {
     },
   	extend: {
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-geist-mono)", "monospace"],
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"], // Changed from --font-geist-sans
+        mono: ["var(--font-roboto-mono)", "monospace"], // Changed from --font-geist-mono
       },
   		colors: {
   			background: 'hsl(var(--background))',
