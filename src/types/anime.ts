@@ -9,7 +9,7 @@ export interface Anime {
   genre: string[];
   status: 'Ongoing' | 'Completed' | 'Upcoming' | 'Unknown';
   synopsis: string;
-  averageRating?: number; // Optional, 0-10 or 0-5 scale
+  averageRating?: number; // Optional, 0-10 scale
   episodes?: Episode[]; // Optional, especially for movies or if episodes are added later
   type?: 'TV' | 'Movie' | 'OVA' | 'Special' | 'Unknown';
   sourceAdmin?: 'tmdb' | 'manual'; // To track how it was added
