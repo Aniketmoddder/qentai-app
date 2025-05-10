@@ -17,8 +17,8 @@ export interface Anime {
   sourceAdmin?: 'tmdb' | 'manual'; // To track how it was added
   isFeatured?: boolean; // To mark anime as featured
   trailerUrl?: string; // Optional YouTube video URL for trailer
-  createdAt?: Timestamp; // Firestore Timestamp for when the document was created
-  updatedAt?: Timestamp; // Firestore Timestamp for when the document was last updated
+  createdAt?: string; // Firestore Timestamp for when the document was created, converted to ISO string
+  updatedAt?: string; // Firestore Timestamp for when the document was last updated, converted to ISO string
 }
 
 export interface Episode {
@@ -55,3 +55,4 @@ export interface AnimeRecommendation {
   coverImage: string;
   reason?: string; // Optional: Why this is recommended
 }
+
