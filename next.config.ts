@@ -1,19 +1,14 @@
-
+// next.config.ts
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  images: { 
-  
+  images: {
     remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'ik.imagekit.io',
+        pathname: '/aniplay123/**', // Allow all images under your ImageKit account path
+      },
       {
         protocol: 'https',
         hostname: 'picsum.photos',
@@ -32,18 +27,14 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      {
-        protocol: 'https',
-        hostname: 'ik.imagekit.io',
-        port: '',
-        pathname: '/**', // Made pathname more general
-      }
     ],
   },
-  // For Next.js 13+ with App Router, `fill` prop is preferred for Image component.
-  // If using older Next.js or Pages Router, ensure `layout="fill"` with `objectFit` works.
-  // No specific config change needed here for `fill` prop itself, but it's a coding practice update.
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;
-
