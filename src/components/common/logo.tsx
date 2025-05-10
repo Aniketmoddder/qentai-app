@@ -7,11 +7,11 @@ interface LogoProps extends HTMLAttributes<HTMLAnchorElement> {
   iconSize?: number; 
 }
 
-export default function Logo({ className, iconSize = 12, ...props }: LogoProps) {
+export default function Logo({ className, iconSize = 16, ...props }: LogoProps) { // Default iconSize increased
   // iconSize now directly influences the dimensions.
   // The new image is square (presumably, after cropping to center).
   // Let iconSize control both width and height for a square logo.
-  const imageDimension = iconSize * 4; // e.g. 12 * 4 = 48px height and width
+  const imageDimension = iconSize * 3; // e.g. 16 * 3 = 48px height and width
 
   return (
     <Link href="/" className={`flex items-center justify-center ${className}`} {...props}>
