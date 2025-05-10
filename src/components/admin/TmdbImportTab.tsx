@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { fetchAnimeDetailsFromTMDB } from '@/services/tmdbService';
 import { addAnimeToFirestore } from '@/services/animeService';
 import type { Anime } from '@/types/anime';
-import { Loader2, Film, Tv as TvIcon } from 'lucide-react'; // Renamed Tv to TvIcon to avoid conflict
+import { Loader2, Film, Tv as TvIcon, DownloadCloud, AlertTriangle } from 'lucide-react'; 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -39,8 +39,8 @@ export default function TmdbImportTab() {
         setFetchedAnime(details);
         toast({ title: 'Data Fetched', description: `Successfully fetched ${details.title} from TMDB.` });
       } else {
-        setError(`Could not find ${mediaType === 'tv' ? 'TV show' : 'movie'} with ID ${tmdbId} on TMDB.`);
-        toast({ variant: 'destructive', title: 'Fetch Failed', description: `Could not find ${mediaType === 'tv' ? 'TV show' : 'movie'} with ID ${tmdbId} on TMDB.` });
+        setError(`Could not find ${mediaType === 'tv' ? 'TV show' : 'movie'} with ID ${tmdbId} on TMDB, or the API key is invalid/missing.`);
+        toast({ variant: 'destructive', title: 'Fetch Failed', description: `Could not find content or API issue for ID ${tmdbId}.` });
       }
     } catch (err) {
       console.error('Error fetching from TMDB:', err);
@@ -57,18 +57,17 @@ export default function TmdbImportTab() {
     setIsLoading(true);
     setError(null);
     try {
-      // Ensure all required fields for Anime are present, providing defaults if necessary
       const animeDataToAdd: Omit<Anime, 'id'> = {
         tmdbId: fetchedAnime.tmdbId,
         title: fetchedAnime.title,
-        coverImage: fetchedAnime.coverImage || '', // Default to empty string if not present
-        bannerImage: fetchedAnime.bannerImage, // Can be undefined
-        year: fetchedAnime.year || new Date().getFullYear(), // Default to current year
-        genre: fetchedAnime.genre || [], // Default to empty array
-        status: fetchedAnime.status || 'Unknown', // Default status
-        synopsis: fetchedAnime.synopsis || '', // Default to empty string
-        averageRating: fetchedAnime.averageRating, // Can be undefined
-        episodes: fetchedAnime.episodes || [], // Default to empty array
+        coverImage: fetchedAnime.coverImage || `https://picsum.photos/seed/${fetchedAnime.tmdbId || fetchedAnime.title}/300/450`,
+        bannerImage: fetchedAnime.bannerImage, 
+        year: fetchedAnime.year || new Date().getFullYear(), 
+        genre: fetchedAnime.genre || [], 
+        status: fetchedAnime.status || 'Unknown', 
+        synopsis: fetchedAnime.synopsis || 'Synopsis not available.', 
+        averageRating: fetchedAnime.averageRating, 
+        episodes: fetchedAnime.episodes || [], 
         type: fetchedAnime.type || (mediaType === 'tv' ? 'TV' : 'Movie'),
         sourceAdmin: 'tmdb',
       };
@@ -88,29 +87,34 @@ export default function TmdbImportTab() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Import from TMDB</CardTitle>
-        <CardDescription>Fetch anime or movie details from The Movie Database and add to Qentai.</CardDescription>
+    <Card className="shadow-lg border-border/40">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-xl font-semibold text-primary flex items-center">
+          <DownloadCloud className="w-6 h-6 mr-2" /> Import from TMDB
+        </CardTitle>
+        <CardDescription>
+          Fetch anime or movie details from The Movie Database and add them to Qentai.
+          Ensure your TMDB API key is correctly set in the environment variables.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleFetchTMDB} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-            <div className="space-y-1">
-              <Label htmlFor="tmdbId">TMDB ID</Label>
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-4 items-end">
+            <div className="space-y-1.5">
+              <Label htmlFor="tmdbId" className="font-medium">TMDB ID</Label>
               <Input
                 id="tmdbId"
                 type="text"
                 value={tmdbId}
                 onChange={(e) => setTmdbId(e.target.value)}
-                placeholder="e.g., 1396 (TV) or 603 (Movie)"
-                className="bg-input"
+                placeholder="e.g., 1396 (for TV) or 603 (for Movie)"
+                className="bg-input border-border/70 focus:border-primary"
               />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="mediaType">Media Type</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="mediaType" className="font-medium">Media Type</Label>
               <Select value={mediaType} onValueChange={(value) => setMediaType(value as 'movie' | 'tv')}>
-                <SelectTrigger id="mediaType" className="bg-input">
+                <SelectTrigger id="mediaType" className="bg-input border-border/70 focus:border-primary">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -119,49 +123,54 @@ export default function TmdbImportTab() {
                 </SelectContent>
               </Select>
             </div>
-            <Button type="submit" disabled={isLoading} className="w-full md:w-auto">
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Fetch from TMDB'}
+            <Button type="submit" disabled={isLoading} className="w-full md:w-auto btn-primary-gradient text-sm py-2.5">
+              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Fetch Data'}
             </Button>
           </div>
-          {error && <p className="text-sm text-destructive mt-2">{error}</p>}
+          {error && (
+            <div className="mt-3 p-3 bg-destructive/10 border border-destructive/30 rounded-md text-destructive text-sm flex items-start">
+              <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
         </form>
 
         {fetchedAnime && (
-          <div className="mt-8 border-t pt-6">
-            <h3 className="text-xl font-semibold mb-4">Confirm Details: {fetchedAnime.title}</h3>
+          <div className="mt-8 border-t border-border/50 pt-6">
+            <h3 className="text-lg font-semibold mb-4 text-foreground">Confirm Details: {fetchedAnime.title}</h3>
             <div className="md:flex md:space-x-6">
               {fetchedAnime.coverImage && (
-                <div className="w-full md:w-1/4 mb-4 md:mb-0">
+                <div className="w-full md:w-1/3 lg:w-1/4 mb-4 md:mb-0">
                    <Image 
                     src={fetchedAnime.coverImage} 
                     alt={fetchedAnime.title || 'Cover'} 
-                    width={200} 
-                    height={300} 
-                    className="rounded-lg object-cover mx-auto md:mx-0 shadow-md"
+                    width={250} 
+                    height={375} 
+                    className="rounded-lg object-cover mx-auto md:mx-0 shadow-xl border border-border/20"
                     data-ai-hint="anime movie poster" 
                     />
                 </div>
               )}
-              <div className="md:w-3/4 space-y-3">
-                <p><span className="font-semibold">Year:</span> {fetchedAnime.year}</p>
-                <p><span className="font-semibold">Type:</span> {fetchedAnime.type}</p>
-                <p><span className="font-semibold">Status:</span> <Badge>{fetchedAnime.status}</Badge></p>
-                <p><span className="font-semibold">Rating:</span> {fetchedAnime.averageRating || 'N/A'}</p>
-                <div className="space-x-1">
-                  <span className="font-semibold">Genres:</span>
-                  {fetchedAnime.genre?.map(g => <Badge key={g} variant="secondary">{g}</Badge>)}
+              <div className="md:w-2/3 lg:w-3/4 space-y-2 text-sm">
+                <p><span className="font-semibold text-muted-foreground">Year:</span> {fetchedAnime.year}</p>
+                <p><span className="font-semibold text-muted-foreground">Type:</span> {fetchedAnime.type}</p>
+                <p><span className="font-semibold text-muted-foreground">Status:</span> <Badge variant={fetchedAnime.status === 'Completed' ? 'default' : 'secondary'}>{fetchedAnime.status}</Badge></p>
+                <p><span className="font-semibold text-muted-foreground">TMDB Rating:</span> {fetchedAnime.averageRating ? fetchedAnime.averageRating.toFixed(1) : 'N/A'}</p>
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  <span className="font-semibold text-muted-foreground">Genres:</span>
+                  {fetchedAnime.genre?.map(g => <Badge key={g} variant="outline" className="text-xs">{g}</Badge>)}
                 </div>
-                <p className="text-sm text-muted-foreground"><span className="font-semibold text-foreground">Synopsis:</span> {fetchedAnime.synopsis}</p>
+                <p className="text-muted-foreground mt-1"><span className="font-semibold text-foreground">Synopsis:</span> {fetchedAnime.synopsis}</p>
                 {fetchedAnime.type === 'TV' && fetchedAnime.episodes && (
-                  <p><span className="font-semibold">Episodes Found:</span> {fetchedAnime.episodes.length}</p>
+                  <p><span className="font-semibold text-muted-foreground">Episodes Found (TMDB):</span> {fetchedAnime.episodes.length}</p>
                 )}
                  {fetchedAnime.type === 'Movie' && (
-                  <p><span className="font-semibold">Note:</span> This is a movie. Video URL will need to be added if this system supports direct playback for movies.</p>
+                  <p className="text-xs text-muted-foreground italic"><span className="font-semibold text-foreground">Note:</span> This is a movie. A single episode entry will be created; video URL needs to be added by an admin.</p>
                 )}
               </div>
             </div>
-            <Button onClick={handleAddAnimeToDB} disabled={isLoading} className="w-full mt-6 btn-primary-gradient">
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Add "${fetchedAnime.title}" to Qentai DB`}
+            <Button onClick={handleAddAnimeToDB} disabled={isLoading} className="w-full mt-6 btn-primary-gradient text-base py-3">
+              {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : `Add "${fetchedAnime.title}" to Qentai DB`}
             </Button>
           </div>
         )}
