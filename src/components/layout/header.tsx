@@ -2,12 +2,12 @@
 'use client';
 
 import Link from 'next/link';
-import { Search, Menu, LogOut, LogIn, UserPlus, User as UserIcon, LayoutGrid, Tag } from 'lucide-react'; // Added Tag for Genres
+import { Search, Menu, LogOut, LogIn, UserPlus, User as UserIcon, LayoutGrid, Tag, Settings } from 'lucide-react'; 
 import Logo from '@/components/common/logo';
 import Container from '@/components/layout/container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from '@/components/ui/sheet';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useState, useEffect, FormEvent } from 'react';
@@ -28,7 +28,7 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const currentSearchParams = useSearchParams();
-  const { user, appUser, loading: authLoading } = useAuth(); // Added appUser
+  const { user, appUser, loading: authLoading } = useAuth(); 
   const { toast } = useToast();
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export default function Header() {
       setIsSearchDrawerOpen(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, currentSearchParams]); // Close on pathname or searchParams change
+  }, [pathname, currentSearchParams]); 
 
   const navItems = [
     { href: '/', label: 'Home' },
@@ -85,6 +85,7 @@ export default function Header() {
   };
 
   const getAvatarFallback = () => {
+    if (appUser?.fullName) return appUser.fullName.charAt(0).toUpperCase();
     if (appUser?.displayName) return appUser.displayName.charAt(0).toUpperCase();
     if (appUser?.email) return appUser.email.charAt(0).toUpperCase();
     if (user?.displayName) return user.displayName.charAt(0).toUpperCase();
@@ -107,7 +108,6 @@ export default function Header() {
                 allMatch = false;
             }
         });
-         // Ensure no other unexpected query params are present for "Browse All" or "Top Anime"
         if ((itemHref === '/browse' || itemHref === '/browse?sort=top') && currentQueryParams.has('genre') && !itemQueryParams.has('genre')) {
             return false;
         }
@@ -117,13 +117,10 @@ export default function Header() {
         if(itemHref === '/browse' && currentQueryParams.has('sort') && !itemQueryParams.has('sort')) {
             return false;
         }
-
-
         return allMatch;
     }
     return pathname === itemHref;
   };
-
 
   return (
     <header 
@@ -197,7 +194,13 @@ export default function Header() {
                     Profile
                   </Link>
                 </DropdownMenuItem>
-                {(appUser.role === 'owner' || appUser.role === 'admin') && ( // Check appUser role
+                <DropdownMenuItem asChild>
+                  <Link href="/profile/settings" className="flex items-center cursor-pointer text-foreground hover:bg-primary/10">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </Link>
+                </DropdownMenuItem>
+                {(appUser.role === 'owner' || appUser.role === 'admin') && ( 
                    <DropdownMenuItem asChild>
                     <Link href="/admin" className="flex items-center cursor-pointer text-foreground hover:bg-primary/10">
                         <LayoutGrid className="mr-2 h-4 w-4" /> Admin Panel
@@ -234,7 +237,7 @@ export default function Header() {
               </SheetTrigger>
               <SheetContent side="right" className="bg-card p-0 flex flex-col w-[80vw] max-w-xs sm:max-w-sm border-l-border">
                 <SheetHeader className="p-4 pb-2 border-b border-border"> 
-                  <SheetTitle><Logo iconSize={27} /></SheetTitle> {/* Added title here for accessibility */}
+                  <SheetTitle><Logo iconSize={27} /></SheetTitle> 
                 </SheetHeader>
                 <div className="flex-grow overflow-y-auto">
                   <nav className="flex flex-col space-y-1 p-3">
@@ -250,6 +253,7 @@ export default function Header() {
                       </SheetClose>
                     ))}
                      {!authLoading && user && appUser && (
+                       <>
                         <SheetClose asChild>
                            <Link
                             href="/profile"
@@ -258,6 +262,15 @@ export default function Header() {
                              <UserIcon className="mr-2 h-4 w-4" /> Profile
                           </Link>
                         </SheetClose>
+                        <SheetClose asChild>
+                           <Link
+                            href="/profile/settings"
+                            className={`text-base font-medium hover:text-primary transition-colors py-2.5 px-3 rounded-md hover:bg-primary/10 flex items-center ${pathname === "/profile/settings" ? 'text-primary bg-primary/15' : 'text-foreground'}`}
+                          >
+                             <Settings className="mr-2 h-4 w-4" /> Settings
+                          </Link>
+                        </SheetClose>
+                       </>
                      )}
                      {appUser && (appUser.role === 'owner' || appUser.role === 'admin') && (
                         <SheetClose asChild>
@@ -306,7 +319,7 @@ export default function Header() {
       <Sheet open={isSearchDrawerOpen} onOpenChange={setIsSearchDrawerOpen}>
         <SheetContent side="top" className="p-0 bg-background border-b-border">
           <SheetHeader className="p-4 border-b border-border">
-            <SheetTitle className="text-lg text-center sr-only">Search Qentai</SheetTitle> {/* Added accessible title for search drawer */}
+            <SheetTitle className="text-lg text-center sr-only">Search Qentai</SheetTitle> 
           </SheetHeader>
           <Container className="py-4">
             <form onSubmit={(e) => handleSearchSubmit(e, mobileSearchQuery, true)} className="flex items-center gap-2">
@@ -328,3 +341,4 @@ export default function Header() {
     </header>
   );
 }
+

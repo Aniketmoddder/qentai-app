@@ -7,6 +7,7 @@ export interface AppUser {
   email: string | null;
   displayName: string | null; // This can serve as a default if fullName is not set
   photoURL: string | null;
+  bannerImageUrl?: string | null; // Added banner image URL
   username?: string; // Optional username
   fullName?: string; // Optional full name
   role: AppUserRole;

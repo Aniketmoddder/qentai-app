@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -16,8 +15,9 @@ import { Separator } from '@/components/ui/separator';
 import { Chrome, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { upsertAppUserInFirestore } from '@/services/appUserService';
-import AvatarSelector from '@/components/common/AvatarSelector'; // Import AvatarSelector
-import { Controller, useFormContext } from 'react-hook-form'; // Import Controller
+import AvatarSelector from '@/components/common/AvatarSelector'; 
+import BannerSelector from '@/components/common/BannerSelector'; // Import BannerSelector
+import { Controller } from 'react-hook-form'; 
 
 const registerSchema = z
   .object({
@@ -27,6 +27,7 @@ const registerSchema = z
     password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
     confirmPassword: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
     photoURL: z.string().url('Must be a valid URL for photo.').optional().or(z.literal('')),
+    bannerImageUrl: z.string().url('Must be a valid URL for banner.').optional().or(z.literal('')),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match.",
@@ -37,7 +38,7 @@ export type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const router = useRouter();
-  const searchParams = useNextSearchParams(); // Renamed
+  const searchParams = useNextSearchParams(); 
   const { user, loading: authLoading, setLoading: setAuthContextLoading, refreshAppUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -54,12 +55,11 @@ export default function RegisterPage() {
   const handleRegister = async (values: RegisterFormValues) => {
     setIsLoading(true);
     setError(null);
-    setAuthContextLoading(true); // Indicate global loading start
+    setAuthContextLoading(true); 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const firebaseUser = userCredential.user;
 
-      // Update Firebase Auth profile
       await updateProfile(firebaseUser, {
         displayName: values.fullName, 
         photoURL: values.photoURL || null,
@@ -70,6 +70,7 @@ export default function RegisterPage() {
         email: firebaseUser.email,
         displayName: values.fullName, 
         photoURL: values.photoURL || null,
+        bannerImageUrl: values.bannerImageUrl || null,
         username: values.username,     
         fullName: values.fullName,     
       });
@@ -104,11 +105,14 @@ export default function RegisterPage() {
       const userCredential = await signInWithPopup(auth, googleProvider);
       const firebaseUser = userCredential.user;
 
+      // For Google Sign-Up, bannerImageUrl will be null by default or can be set later.
+      // photoURL comes from Google.
       await upsertAppUserInFirestore({
         uid: firebaseUser.uid,
         email: firebaseUser.email,
         displayName: firebaseUser.displayName, 
         photoURL: firebaseUser.photoURL,
+        bannerImageUrl: null, // Default to no banner for Google sign-ups initially
       });
       
       await refreshAppUser(); 
@@ -182,23 +186,37 @@ export default function RegisterPage() {
               email: '',
               password: '',
               confirmPassword: '',
-              photoURL: '', // Default photoURL
+              photoURL: '', 
+              bannerImageUrl: '',
             }}
           >
-            {/* AvatarSelector integrated into AuthForm via children prop */}
             {(form) => (
-              <Controller
-                control={form.control}
-                name="photoURL"
-                render={({ field }) => (
-                  <AvatarSelector
-                    currentAvatarUrl={field.value}
-                    onAvatarSelect={(url) => field.onChange(url)}
-                    title="Choose your Avatar"
-                    sectionTitle="Characters"
-                  />
-                )}
-              />
+              <>
+                <Controller
+                  control={form.control}
+                  name="photoURL"
+                  render={({ field }) => (
+                    <AvatarSelector
+                      currentAvatarUrl={field.value}
+                      onAvatarSelect={(url) => field.onChange(url)}
+                      title="Choose your Avatar"
+                      sectionTitle="Characters"
+                    />
+                  )}
+                />
+                <Controller
+                  control={form.control}
+                  name="bannerImageUrl"
+                  render={({ field }) => (
+                    <BannerSelector
+                      currentBannerUrl={field.value}
+                      onBannerSelect={(url) => field.onChange(url)}
+                      title="Choose your Banner"
+                      sectionTitle="Profile Banners"
+                    />
+                  )}
+                />
+              </>
             )}
           </AuthForm>
         </CardContent>
@@ -220,4 +238,3 @@ export default function RegisterPage() {
     </Container>
   );
 }
-
