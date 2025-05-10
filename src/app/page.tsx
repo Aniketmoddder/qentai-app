@@ -5,7 +5,7 @@ import RecommendationsSection from '@/components/anime/recommendations-section';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronRight, AlertTriangle, Play, Plus, Tv, Calendar, ListVideo, Filter, Tags } from 'lucide-react';
+import { ChevronRight, AlertTriangle, Play, Plus, Tv, Calendar, ListVideo, Filter, Tags, Star as StarIcon } from 'lucide-react';
 import { getAllAnimes } from '@/services/animeService';
 import type { Anime } from '@/types/anime';
 import FeaturedAnimeCard from '@/components/anime/FeaturedAnimeCard';
@@ -32,12 +32,17 @@ export default async function Home() {
   try {
     // Fetch a general list of animes for various carousels
     allAnime = await getAllAnimes(50); 
-    // Fetch specifically featured animes (e.g., up to 5, sorted by title for consistency)
-    // This requires the (isFeatured ASC, title ASC) index in Firestore
-    featuredAnimesList = await getAllAnimes(5, { featured: true, sortBy: 'title', sortOrder: 'asc' });
+    // Fetch specifically featured animes (e.g., up to 5)
+    // Removed sortBy: 'title' to avoid needing a composite index (isFeatured ASC, title ASC)
+    // If this index exists, sortBy: 'title', sortOrder: 'asc' can be re-added.
+    featuredAnimesList = await getAllAnimes(5, { featured: true });
   } catch (error) {
     console.error("Failed to fetch animes for homepage:", error);
-    fetchError = "Could not load anime data. Please try again later.";
+    if (error instanceof Error && error.message.includes("index")) {
+        fetchError = `Could not load some anime data. A required Firestore index might be missing. Please check Firebase console or server logs for index creation links. Original: ${error.message}`;
+    } else {
+        fetchError = "Could not load anime data. Please try again later.";
+    }
   }
   
   const trendingAnime = shuffleArray([...allAnime]).slice(0, 10); 
@@ -74,7 +79,7 @@ export default async function Home() {
             <div className="max-w-2xl">
               {heroAnime.isFeatured ? (
                 <Badge className="bg-yellow-500/90 text-background text-xs font-semibold px-2.5 py-1 rounded-md mb-3">
-                  <Star className="w-3 h-3 mr-1.5 fill-current"/> Featured Pick
+                  <StarIcon className="w-3 h-3 mr-1.5 fill-current"/> Featured Pick
                 </Badge>
               ) : (
                  <Badge className="bg-[hsl(var(--secondary-accent-pink))] text-white text-xs font-semibold px-2.5 py-1 rounded-md mb-3">
