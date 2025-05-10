@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import Container from '@/components/layout/container';
@@ -47,7 +46,7 @@ const getYouTubeVideoId = (url?: string): string | null => {
   return null;
 };
 
-const promiseWithTimeout = <T>(promise: Promise<T>, ms: number, timeoutError = new Error('Promise timed out')) => {
+const promiseWithTimeout = <T,>(promise: Promise<T>, ms: number, timeoutError = new Error('Promise timed out')) => {
   const timeout = new Promise<never>((_, reject) => {
     const id = setTimeout(() => {
       clearTimeout(id);
@@ -82,8 +81,8 @@ export default function Home() {
         new Error('Failed to load homepage data in time. The server might be experiencing issues.')
       );
 
-      setAllAnime(generalAnimes || []); // Ensure it's an array
-      setFeaturedAnimesList(featured || []); // Ensure it's an array
+      setAllAnime(generalAnimes || []); 
+      setFeaturedAnimesList(featured || []); 
     } catch (error) {
       console.error("Failed to fetch animes for homepage:", error);
       let message = "Could not load anime data. Please try again later.";
@@ -222,7 +221,7 @@ export default function Home() {
                     #1 Trending
                 </Badge>
               )}
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-3 leading-tight font-zen-dots">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-3 leading-tight">
                 {heroAnime.title}
               </h1>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-5">
@@ -275,7 +274,7 @@ export default function Home() {
         {featuredAnimesList.length > 0 && !fetchError && (
           <section className="py-6 md:py-8">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar font-orbitron">Featured Anime</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar">Featured Anime</h2>
               <Button variant="link" asChild className="text-primary hover:text-primary/80">
                 <Link href="/browse?filter=featured">View More <ChevronRight className="w-4 h-4 ml-1"/></Link>
               </Button>
@@ -300,7 +299,7 @@ export default function Home() {
         {topAnimeList.length > 0 && (
           <section className="py-6 md:py-8">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar font-orbitron">Top Anime</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar">Top Anime</h2>
               <div className="flex items-center gap-2">
                 <Button variant="link" asChild className="text-primary hover:text-primary/80">
                   <Link href="/browse?sort=top">View More <ChevronRight className="w-4 h-4 ml-1"/></Link>
@@ -322,4 +321,3 @@ export default function Home() {
     </>
   );
 }
-
