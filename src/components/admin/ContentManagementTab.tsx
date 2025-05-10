@@ -1,12 +1,12 @@
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { getAllAnimes, deleteAnimeFromFirestore } from '@/services/animeService';
+import { useRouter } from 'next/navigation';
+import { getAllAnimes, deleteAnimeFromFirestore, updateAnimeIsFeatured } from '@/services/animeService';
 import type { Anime } from '@/types/anime';
 import { Button } from '@/components/ui/button';
-import { Loader2, Edit, Trash2, Search, AlertCircle, RefreshCw } from 'lucide-react';
+import { Loader2, Edit, Trash2, Search, AlertCircle, RefreshCw, Star, StarOff } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -22,19 +22,23 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 export default function ContentManagementTab() {
   const [animes, setAnimes] = useState<Anime[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [togglingFeaturedId, setTogglingFeaturedId] = useState<string | null>(null);
   const { toast } = useToast();
+  const router = useRouter();
 
   const fetchAnimes = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const fetchedAnimes = await getAllAnimes(200); // Fetch a good number for filtering
+      const fetchedAnimes = await getAllAnimes(200); 
       setAnimes(fetchedAnimes);
     } catch (err) {
       console.error('Failed to fetch anime list:', err);
@@ -61,6 +65,28 @@ export default function ContentManagementTab() {
     }
   };
 
+  const handleToggleFeatured = async (anime: Anime) => {
+    setTogglingFeaturedId(anime.id);
+    try {
+      const newFeaturedStatus = !anime.isFeatured;
+      await updateAnimeIsFeatured(anime.id, newFeaturedStatus);
+      setAnimes(prevAnimes =>
+        prevAnimes.map(a =>
+          a.id === anime.id ? { ...a, isFeatured: newFeaturedStatus } : a
+        )
+      );
+      toast({
+        title: `Feature Status Updated`,
+        description: `${anime.title} is now ${newFeaturedStatus ? 'featured' : 'not featured'}.`,
+      });
+    } catch (err) {
+      console.error('Failed to toggle featured status:', err);
+      toast({ variant: 'destructive', title: 'Update Error', description: `Could not update featured status for ${anime.title}.` });
+    } finally {
+      setTogglingFeaturedId(null);
+    }
+  };
+
   const filteredAnimes = animes.filter(anime =>
     anime.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     anime.genre.some(g => g.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -68,15 +94,14 @@ export default function ContentManagementTab() {
   );
 
   const handleEdit = (animeId: string) => {
-    toast({ title: 'Edit Action', description: `Edit functionality for anime ID ${animeId} is planned.` });
-    // Future: router.push(`/admin/edit-content/${animeId}`); or open a modal
+    router.push(`/admin/edit-anime/${animeId}`);
   };
 
   return (
     <Card className="shadow-lg border-border/40">
       <CardHeader className="pb-4">
         <CardTitle className="text-xl font-semibold text-primary">Content Library</CardTitle>
-        <CardDescription>View, edit, or delete existing anime and movies in the database.</CardDescription>
+        <CardDescription>View, edit, feature, or delete existing anime and movies in the database.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="mb-6 flex flex-col sm:flex-row items-center gap-3">
@@ -126,7 +151,10 @@ export default function ContentManagementTab() {
                      />
                 </div>
                 <div className="flex-grow">
-                  <h4 className="font-semibold text-lg text-foreground">{anime.title} <span className="text-sm text-muted-foreground">({anime.year})</span></h4>
+                  <h4 className="font-semibold text-lg text-foreground flex items-center">
+                    {anime.title} <span className="text-sm text-muted-foreground ml-1">({anime.year})</span>
+                    {anime.isFeatured && <Badge variant="default" className="ml-2 text-xs bg-yellow-500/20 text-yellow-700 border-yellow-500/30"><Star className="w-3 h-3 mr-1"/>Featured</Badge>}
+                  </h4>
                   <div className="text-xs text-muted-foreground mt-1">
                     <span>ID: {anime.id}</span> | <span>Type: <Badge variant="secondary" className="text-xs">{anime.type}</Badge></span> | <span>Status: <Badge variant={anime.status === 'Completed' ? 'default' : 'outline'} className={`text-xs ${anime.status === 'Completed' ? 'bg-green-500/20 text-green-700' : anime.status === 'Ongoing' ? 'bg-sky-500/20 text-sky-700' : '' }`}>{anime.status}</Badge></span>
                   </div>
@@ -135,7 +163,20 @@ export default function ContentManagementTab() {
                     {anime.genre.length > 4 && <Badge variant="outline" className="text-xs">+{anime.genre.length - 4} more</Badge>}
                   </div>
                 </div>
-                <div className="flex-shrink-0 flex flex-col sm:flex-row gap-2 mt-3 sm:mt-0 w-full sm:w-auto">
+                <div className="flex-shrink-0 flex flex-col sm:flex-row items-center gap-2 mt-3 sm:mt-0 w-full sm:w-auto">
+                  <div className="flex items-center space-x-2">
+                    <Label htmlFor={`featured-switch-${anime.id}`} className="text-xs cursor-pointer flex items-center">
+                        {togglingFeaturedId === anime.id ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : anime.isFeatured ? <StarOff className="h-3.5 w-3.5 mr-1.5 text-yellow-600" /> : <Star className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />}
+                        {anime.isFeatured ? 'Unfeature' : 'Feature'}
+                    </Label>
+                    <Switch
+                        id={`featured-switch-${anime.id}`}
+                        checked={anime.isFeatured || false}
+                        onCheckedChange={() => handleToggleFeatured(anime)}
+                        disabled={togglingFeaturedId === anime.id}
+                        className="data-[state=checked]:bg-yellow-500 data-[state=unchecked]:bg-input"
+                    />
+                  </div>
                   <Button variant="outline" size="sm" onClick={() => handleEdit(anime.id)} className="w-full sm:w-auto hover:bg-primary/10 hover:border-primary">
                     <Edit className="mr-1.5 h-3.5 w-3.5" /> Edit
                   </Button>

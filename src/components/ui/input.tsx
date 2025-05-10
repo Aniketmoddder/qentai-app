@@ -2,8 +2,29 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-  ({ className, type, ...props }, ref) => {
+export interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {
+  onCheckedChange?: (checked: boolean) => void; // For checkbox type
+}
+
+
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, checked, onCheckedChange, ...props }, ref) => {
+    if (type === "checkbox" && onCheckedChange) {
+      return (
+        <input
+          type="checkbox"
+          className={cn( // Basic styling for checkbox, can be enhanced
+            "h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary",
+            className
+          )}
+          ref={ref}
+          checked={checked}
+          onChange={(e) => onCheckedChange(e.target.checked)}
+          {...props}
+        />
+      )
+    }
     return (
       <input
         type={type}
