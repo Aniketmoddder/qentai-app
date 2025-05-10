@@ -98,7 +98,7 @@ export default function Header() {
     >
       <Container className="flex items-center justify-between py-3">
         <div className="flex items-center gap-4">
-          <Logo iconSize={16} /> {/* Increased iconSize for a larger logo */}
+          <Logo iconSize={20} /> {/* Changed iconSize from 16 to 20 for a larger logo */}
           <nav className="hidden lg:flex items-center space-x-5">
             {navItems.map((item) => (
               <Link
@@ -203,7 +203,7 @@ export default function Header() {
               <SheetContent side="right" className="bg-card p-0 flex flex-col w-[80vw] max-w-xs sm:max-w-sm border-l-border">
                 <SheetHeader className="p-4 pb-2 border-b border-border"> 
                   <SheetTitle>
-                    <Logo iconSize={14} /> {/* Adjusted iconSize for mobile menu */}
+                    <Logo iconSize={14} />
                   </SheetTitle>
                 </SheetHeader>
                 <div className="flex-grow overflow-y-auto">
