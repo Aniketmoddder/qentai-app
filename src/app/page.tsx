@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Container from '@/components/layout/container';
 import AnimeCarousel from '@/components/anime/anime-carousel';
-// import RecommendationsSection from '@/components/anime/recommendations-section';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -48,6 +47,16 @@ const getYouTubeVideoId = (url?: string): string | null => {
   return null;
 };
 
+const promiseWithTimeout = <T>(promise: Promise<T>, ms: number, timeoutError = new Error('Promise timed out')) => {
+  const timeout = new Promise<never>((_, reject) => {
+    const id = setTimeout(() => {
+      clearTimeout(id);
+      reject(timeoutError);
+    }, ms);
+  });
+  return Promise.race<T | never>([promise, timeout]);
+};
+
 
 export default function Home() {
   const [allAnime, setAllAnime] = useState<Anime[]>([]);
@@ -62,19 +71,30 @@ export default function Home() {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const [generalAnimes, featured] = await Promise.all([
+      const fetchDataPromises = [
         getAllAnimes(50),
         getAllAnimes(5, { featured: true, sortBy: 'title', sortOrder: 'asc' })
-      ]);
-      setAllAnime(generalAnimes);
-      setFeaturedAnimesList(featured);
+      ];
+      
+      const [generalAnimes, featured] = await promiseWithTimeout(
+        Promise.all(fetchDataPromises), 
+        20000, // 20 seconds timeout
+        new Error('Failed to load homepage data in time. The server might be experiencing issues.')
+      );
+
+      setAllAnime(generalAnimes || []); // Ensure it's an array
+      setFeaturedAnimesList(featured || []); // Ensure it's an array
     } catch (error) {
       console.error("Failed to fetch animes for homepage:", error);
-      if (error instanceof Error && error.message.includes("index")) {
-        setFetchError(`Could not load some anime data. A required Firestore index might be missing. Please check Firebase console or server logs for index creation links. Original: ${error.message}`);
-      } else {
-        setFetchError("Could not load anime data. Please try again later.");
+      let message = "Could not load anime data. Please try again later.";
+      if (error instanceof Error) {
+        message = error.message.includes("index") 
+          ? `A required database index might be missing. Please check Firebase console or server logs. Original: ${error.message}`
+          : error.message;
       }
+      setFetchError(message);
+      setAllAnime([]); 
+      setFeaturedAnimesList([]);
     } finally {
       setIsLoading(false);
     }
@@ -98,16 +118,16 @@ export default function Home() {
   }, [heroAnime, youtubeVideoId]);
 
 
-  const trendingAnime = shuffleArray([...allAnime]).slice(0, 10); 
-  const popularAnime = shuffleArray([...allAnime]).filter(a => a.averageRating && a.averageRating >= 7.5).slice(0,10);
-  const recentlyAddedAnime = [...allAnime].sort((a,b) => (b.year || 0) - (a.year || 0)).slice(0,10); 
-  const movies = allAnime.filter(a => a.type === 'Movie').slice(0,10);
-  const tvSeries = allAnime.filter(a => a.type === 'TV').slice(0,10);
-  const nextSeasonAnime = shuffleArray([...allAnime].filter(a => a.status === 'Upcoming')).slice(0,10);
+  const trendingAnime = allAnime.length > 0 ? shuffleArray([...allAnime]).slice(0, 10) : []; 
+  const popularAnime = allAnime.length > 0 ? shuffleArray([...allAnime]).filter(a => a.averageRating && a.averageRating >= 7.5).slice(0,10) : [];
+  const recentlyAddedAnime = allAnime.length > 0 ? [...allAnime].sort((a,b) => (b.year || 0) - (a.year || 0)).slice(0,10) : []; 
+  const movies = allAnime.length > 0 ? allAnime.filter(a => a.type === 'Movie').slice(0,10) : [];
+  const tvSeries = allAnime.length > 0 ? allAnime.filter(a => a.type === 'TV').slice(0,10) : [];
+  const nextSeasonAnime = allAnime.length > 0 ? shuffleArray([...allAnime].filter(a => a.status === 'Upcoming')).slice(0,10) : [];
   
-  const topAnimeList = [...allAnime]
+  const topAnimeList = allAnime.length > 0 ? [...allAnime]
     .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
-    .slice(0, 10);
+    .slice(0, 10) : [];
 
   if (isLoading) {
     return (
@@ -156,8 +176,8 @@ export default function Home() {
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
-                  className="w-full h-full scale-[1.4]" // Scale to ensure it covers, might need adjustment
-                  style={{ pointerEvents: 'none' }} // Make iframe unclickable directly
+                  className="w-full h-full scale-[1.4]" 
+                  style={{ pointerEvents: 'none' }} 
                 ></iframe>
               </div>
             ) : (
@@ -174,7 +194,6 @@ export default function Home() {
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent"></div>
           </div>
 
-          {/* Mute/Unmute button for trailer */}
           {playTrailer && youtubeVideoId && (
             <div className="absolute top-4 right-4 z-20">
               <Button
@@ -240,6 +259,9 @@ export default function Home() {
             <div>
               <h3 className="font-semibold">Error Loading Content</h3>
               <p className="text-sm">{fetchError}</p>
+              <Button variant="link" size="sm" onClick={fetchData} className="mt-2 px-0 text-destructive hover:text-destructive/80">
+                Try reloading
+              </Button>
             </div>
           </div>
         )}
@@ -300,3 +322,4 @@ export default function Home() {
     </>
   );
 }
+
