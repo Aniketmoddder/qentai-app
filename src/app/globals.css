@@ -144,11 +144,18 @@
   }
 
   .section-title-bar {
-    @apply relative pl-3; /* Space for the bar */
+    @apply relative pl-4; /* Increased space for the bar */
   }
   .section-title-bar::before {
     content: '';
-    @apply absolute left-0 top-1/2 -translate-y-1/2 h-4/5 w-1 bg-primary rounded-full;
+    @apply absolute left-0 top-1/2 -translate-y-1/2 h-3/5 w-[3px] bg-primary rounded-full; /* Adjusted height and width */
+  }
+
+  .card-shadow {
+    box-shadow: 0 4px 6px -1px hsl(var(--primary) / 0.1), 0 2px 4px -2px hsl(var(--primary) / 0.1);
+  }
+  .card-shadow:hover {
+    box-shadow: 0 10px 15px -3px hsl(var(--primary) / 0.15), 0 4px 6px -4px hsl(var(--primary) / 0.15);
   }
 }
 
@@ -157,4 +164,3 @@
     @apply border-border;
   }
 }
-
