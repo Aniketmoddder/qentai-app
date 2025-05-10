@@ -1,7 +1,9 @@
+
 'use client';
 
 import { CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 interface AvatarSelectorProps {
   currentAvatarUrl?: string | null;
@@ -11,9 +13,10 @@ interface AvatarSelectorProps {
 }
 
 const AVATAR_BASE_URL = 'https://ik.imagekit.io/aniplay123/profile/';
-const AVATAR_COUNT = 12; // m1.png to m12.png
+const AVATAR_COUNT = 12; // m1 to m12
 
-const avatarUrls = Array.from({ length: AVATAR_COUNT }, (_, i) => `${AVATAR_BASE_URL}m${i + 1}.png`);
+// Generates URLs like https://ik.imagekit.io/aniplay123/profile/m1, .../m2, etc.
+const avatarUrls = Array.from({ length: AVATAR_COUNT }, (_, i) => `${AVATAR_BASE_URL}m${i + 1}`);
 
 export default function AvatarSelector({
   currentAvatarUrl,
@@ -26,9 +29,8 @@ export default function AvatarSelector({
       {title && <h3 className="text-lg font-medium text-foreground">{title}</h3>}
       {sectionTitle && <p className="text-sm text-muted-foreground -mt-2 mb-3">{sectionTitle}</p>}
       <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3 sm:gap-4">
-        {avatarUrls.map((url) => {
-          const fileNameWithExtension = url.split('/').pop() || '';
-          const fileName = fileNameWithExtension.split('.')[0] || fileNameWithExtension;
+        {avatarUrls.map((url, index) => {
+          const fileName = `m${index + 1}`;
           const altText = `Avatar option ${fileName}`;
 
           return (
@@ -42,13 +44,15 @@ export default function AvatarSelector({
               )}
               aria-label={altText}
             >
-              {/* Using standard img tag */}
-              <img
-                src={url}
+              <Image
+                src={url} // Direct URL without .png
                 alt={altText}
-                className="absolute inset-0 w-full h-full object-cover"
+                fill
+                sizes="(max-width: 768px) 20vw, 100px" // Adjusted sizes prop
+                style={{ objectFit: 'cover' }}
                 data-ai-hint="anime character avatar"
-                loading={avatarUrls.indexOf(url) < 4 ? "eager" : "lazy"} // Basic loading optimization
+                priority={index < 4} // Eager load first few images
+                unoptimized // Use this if Next.js optimizer still causes issues with extensionless URLs
               />
               {currentAvatarUrl === url && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -62,3 +66,4 @@ export default function AvatarSelector({
     </div>
   );
 }
+

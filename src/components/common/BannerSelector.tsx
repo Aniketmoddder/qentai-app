@@ -1,8 +1,10 @@
+
 'use client';
 
 import { CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import Image from 'next/image';
 
 interface BannerSelectorProps {
   currentBannerUrl?: string | null;
@@ -12,9 +14,10 @@ interface BannerSelectorProps {
 }
 
 const BANNER_BASE_URL = 'https://ik.imagekit.io/aniplay123/banner/';
-const BANNER_COUNT = 13; // b1.png to b13.png
+const BANNER_COUNT = 13; // b1 to b13
 
-const bannerUrls = Array.from({ length: BANNER_COUNT }, (_, i) => `${BANNER_BASE_URL}b${i + 1}.png`);
+// Generates URLs like https://ik.imagekit.io/aniplay123/banner/b1, .../b2, etc.
+const bannerUrls = Array.from({ length: BANNER_COUNT }, (_, i) => `${BANNER_BASE_URL}b${i + 1}`);
 
 export default function BannerSelector({
   currentBannerUrl,
@@ -28,9 +31,8 @@ export default function BannerSelector({
       {sectionTitle && <p className="text-sm text-muted-foreground -mt-2 mb-3">{sectionTitle}</p>}
       <ScrollArea className="w-full whitespace-nowrap rounded-md border border-border/30 bg-background/30">
         <div className="flex space-x-3 p-3">
-          {bannerUrls.map((url) => {
-            const fileNameWithExtension = url.split('/').pop() || '';
-            const fileName = fileNameWithExtension.split('.')[0] || fileNameWithExtension;
+          {bannerUrls.map((url, index) => {
+            const fileName = `b${index + 1}`;
             const altText = `Banner option ${fileName}`;
             
             return (
@@ -44,13 +46,15 @@ export default function BannerSelector({
                 )}
                 aria-label={altText}
               >
-                {/* Using standard img tag */}
-                <img
-                  src={url}
+                <Image
+                  src={url} // Direct URL without .png
                   alt={altText}
-                  className="absolute inset-0 w-full h-full object-cover"
+                  fill
+                  sizes="(max-width: 768px) 50vw, 200px" // Adjusted sizes prop
+                  style={{ objectFit: 'cover' }}
                   data-ai-hint="anime landscape banner"
-                  loading={bannerUrls.indexOf(url) < 3 ? "eager" : "lazy"} // Basic loading optimization
+                  priority={index < 3} // Eager load first few images
+                  unoptimized // Use this if Next.js optimizer still causes issues with extensionless URLs
                 />
                 {currentBannerUrl === url && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -66,3 +70,4 @@ export default function BannerSelector({
     </div>
   );
 }
+
