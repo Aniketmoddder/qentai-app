@@ -27,7 +27,7 @@ export default {
     },
   	extend: {
       fontFamily: {
-        sans: ["var(--font-zen-dots)", "system-ui", "-apple-system", "BlinkMacSystemFont", "\"Segoe UI\"", "Roboto", "\"Helvetica Neue\"", "Arial", "\"Noto Sans\"", "sans-serif", "\"Apple Color Emoji\"", "\"Segoe UI Emoji\"", "\"Segoe UI Symbol\"", "\"Noto Color Emoji\""], 
+        sans: ["Zen Dots", "system-ui", "-apple-system", "BlinkMacSystemFont", "\"Segoe UI\"", "Roboto", "\"Helvetica Neue\"", "Arial", "\"Noto Sans\"", "sans-serif", "\"Apple Color Emoji\"", "\"Segoe UI Emoji\"", "\"Segoe UI Symbol\"", "\"Noto Color Emoji\""],
         mono: ["var(--font-roboto-mono)", "monospace"],
       },
   		colors: {
@@ -132,4 +132,3 @@ export default {
     })
   ],
 } satisfies Config;
-

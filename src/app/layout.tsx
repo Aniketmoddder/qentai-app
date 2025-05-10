@@ -1,6 +1,6 @@
 
 import type { Metadata } from 'next';
-import { Zen_Dots, Roboto_Mono } from 'next/font/google'; // Changed Montserrat to Zen_Dots
+import { Roboto_Mono } from 'next/font/google'; // Zen_Dots import removed
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import QueryProvider from '@/components/providers/query-provider';
@@ -9,13 +9,7 @@ import Footer from '@/components/layout/footer';
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from '@/context/auth-context';
 
-
-const zenDots = Zen_Dots({ 
-  variable: '--font-zen-dots',
-  subsets: ['latin'],
-  weight: ['400'], 
-  display: 'swap',
-});
+// Zen_Dots constant definition using next/font removed
 
 const robotoMono = Roboto_Mono({
   variable: '--font-roboto-mono',
@@ -37,7 +31,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark h-full overflow-x-hidden">
-      <body className={`${zenDots.variable} ${robotoMono.variable} font-sans antialiased flex flex-col min-h-full bg-background text-foreground overflow-x-hidden`}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Zen+Dots&display=swap" rel="stylesheet" />
+      </head>
+      {/* Removed zenDots.variable from body className, ensure font-sans in tailwind.config.ts uses "Zen Dots" directly */}
+      <body className={`${robotoMono.variable} font-sans antialiased flex flex-col min-h-full bg-background text-foreground overflow-x-hidden`}>
         <QueryProvider>
           <AuthProvider>
             <TooltipProvider delayDuration={0}>
@@ -52,4 +52,3 @@ export default function RootLayout({
     </html>
   );
 }
-
