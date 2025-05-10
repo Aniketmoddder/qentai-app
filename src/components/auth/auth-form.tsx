@@ -20,7 +20,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
-import type { RegisterFormValues } from '@/app/register/page'; // Import type for defaultValues
 
 interface AuthFormProps<T extends z.ZodType<any, any>> {
   formSchema: T;
@@ -29,7 +28,8 @@ interface AuthFormProps<T extends z.ZodType<any, any>> {
   isLoading: boolean;
   error: string | null;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
-  defaultValues?: Partial<z.infer<T>>; // Make defaultValues prop optional
+  defaultValues?: Partial<z.infer<T>>;
+  children?: (form: UseFormReturn<z.infer<T>>) => React.ReactNode; // Added children prop
 }
 
 export function AuthForm<T extends z.ZodType<any, any>>({
@@ -40,10 +40,11 @@ export function AuthForm<T extends z.ZodType<any, any>>({
   error,
   setError,
   defaultValues,
+  children, // Destructure children
 }: AuthFormProps<T>) {
   const form = useForm<z.infer<T>>({
     resolver: zodResolver(formSchema),
-    defaultValues: defaultValues || (isRegister ? { fullName: '', username: '', email: '', password: '', confirmPassword: '' } : { identifier: '', password: '' }) as z.infer<T>,
+    defaultValues: defaultValues || (isRegister ? { fullName: '', username: '', email: '', password: '', confirmPassword: '', photoURL: '' } : { identifier: '', password: '' }) as z.infer<T>,
   });
 
   const handleFormChange = () => {
@@ -108,7 +109,7 @@ export function AuthForm<T extends z.ZodType<any, any>>({
         {!isRegister && (
             <FormField
             control={form.control}
-            name="identifier" // Changed from 'email'
+            name="identifier" 
             render={({ field }) => (
                 <FormItem>
                 <FormLabel>Email or Username</FormLabel> 
@@ -148,6 +149,9 @@ export function AuthForm<T extends z.ZodType<any, any>>({
             )}
           />
         )}
+        {/* Render custom children if provided, passing the form instance */}
+        {children && children(form)}
+
         <Button type="submit" className="w-full btn-primary-gradient" disabled={isLoading}>
           {isLoading ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

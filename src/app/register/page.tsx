@@ -16,6 +16,8 @@ import { Separator } from '@/components/ui/separator';
 import { Chrome, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { upsertAppUserInFirestore } from '@/services/appUserService';
+import AvatarSelector from '@/components/common/AvatarSelector'; // Import AvatarSelector
+import { Controller, useFormContext } from 'react-hook-form'; // Import Controller
 
 const registerSchema = z
   .object({
@@ -24,6 +26,7 @@ const registerSchema = z
     email: z.string().email({ message: 'Invalid email address.' }),
     password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
     confirmPassword: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+    photoURL: z.string().url('Must be a valid URL for photo.').optional().or(z.literal('')),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match.",
@@ -59,20 +62,19 @@ export default function RegisterPage() {
       // Update Firebase Auth profile
       await updateProfile(firebaseUser, {
         displayName: values.fullName, 
+        photoURL: values.photoURL || null,
       });
       
-      // Upsert user data in Firestore, including new fields
-      // This call is crucial for setting the initial username and fullName
       await upsertAppUserInFirestore({
         uid: firebaseUser.uid,
         email: firebaseUser.email,
-        displayName: values.fullName, // Passed as displayName to upsert
-        photoURL: firebaseUser.photoURL,
-        username: values.username,     // Explicitly pass username
-        fullName: values.fullName,     // Explicitly pass fullName
+        displayName: values.fullName, 
+        photoURL: values.photoURL || null,
+        username: values.username,     
+        fullName: values.fullName,     
       });
 
-      await refreshAppUser(); // Refresh appUser in context
+      await refreshAppUser(); 
 
       toast({
         title: "Account Created",
@@ -90,7 +92,7 @@ export default function RegisterPage() {
       });
     } finally {
       setIsLoading(false);
-      setAuthContextLoading(false); // Indicate global loading end
+      setAuthContextLoading(false); 
     }
   };
 
@@ -105,13 +107,11 @@ export default function RegisterPage() {
       await upsertAppUserInFirestore({
         uid: firebaseUser.uid,
         email: firebaseUser.email,
-        displayName: firebaseUser.displayName, // Firebase Auth displayName
+        displayName: firebaseUser.displayName, 
         photoURL: firebaseUser.photoURL,
-        // username and fullName will be defaulted by upsertAppUserInFirestore
-        // as they are not provided directly from Google Sign-Up form.
       });
       
-      await refreshAppUser(); // Refresh appUser in context
+      await refreshAppUser(); 
 
       toast({
         title: "Sign Up Successful",
@@ -160,7 +160,7 @@ export default function RegisterPage() {
 
   return (
     <Container className="flex items-center justify-center min-h-[calc(100vh-var(--header-height)-1px)] py-12">
-      <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-sm">
+      <Card className="w-full max-w-lg shadow-2xl bg-card/80 backdrop-blur-sm">
          <CardHeader className="text-center">
           <div className="mx-auto mb-6">
             <Logo iconSize={27} /> 
@@ -182,8 +182,25 @@ export default function RegisterPage() {
               email: '',
               password: '',
               confirmPassword: '',
+              photoURL: '', // Default photoURL
             }}
-          />
+          >
+            {/* AvatarSelector integrated into AuthForm via children prop */}
+            {(form) => (
+              <Controller
+                control={form.control}
+                name="photoURL"
+                render={({ field }) => (
+                  <AvatarSelector
+                    currentAvatarUrl={field.value}
+                    onAvatarSelect={(url) => field.onChange(url)}
+                    title="Choose your Avatar"
+                    sectionTitle="Characters"
+                  />
+                )}
+              />
+            )}
+          </AuthForm>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
             <div className="relative w-full">
@@ -203,3 +220,4 @@ export default function RegisterPage() {
     </Container>
   );
 }
+

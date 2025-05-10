@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form'; // Import Controller
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/hooks/use-auth';
@@ -12,14 +12,14 @@ import { updateProfile as updateFirebaseAuthProfile } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label'; // Label is not used directly here, but kept if needed
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Loader2, Save } from 'lucide-react';
+import AvatarSelector from '@/components/common/AvatarSelector'; // Import AvatarSelector
 
 const profileDetailsSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters.').max(50, 'Full name must be at most 50 characters.'),
   username: z.string().min(3, 'Username must be at least 3 characters.').max(20, 'Username must be at most 20 characters.').regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores.'),
-  // photoURL: z.string().url('Must be a valid URL.').optional().or(z.literal('')), // Example if adding photoURL
+  photoURL: z.string().url('Must be a valid URL.').optional().or(z.literal('')),
 });
 
 type ProfileDetailsFormValues = z.infer<typeof profileDetailsSchema>;
@@ -34,7 +34,7 @@ export default function ProfileDetailsForm() {
     defaultValues: {
       fullName: '',
       username: '',
-      // photoURL: '',
+      photoURL: '',
     },
   });
 
@@ -43,7 +43,7 @@ export default function ProfileDetailsForm() {
       form.reset({
         fullName: appUser.fullName || appUser.displayName || '',
         username: appUser.username || '',
-        // photoURL: appUser.photoURL || '',
+        photoURL: appUser.photoURL || '',
       });
     }
   }, [appUser, form]);
@@ -56,22 +56,20 @@ export default function ProfileDetailsForm() {
 
     setIsSubmitting(true);
     try {
-      // Update Firestore appUser document
       await updateAppUserProfile(user.uid, {
         fullName: data.fullName,
         username: data.username,
-        // photoURL: data.photoURL, // If photoURL editing is added
+        photoURL: data.photoURL || null,
       });
 
-      // Update Firebase Auth profile (displayName)
-      if (auth.currentUser && auth.currentUser.displayName !== data.fullName) {
+      if (auth.currentUser && (auth.currentUser.displayName !== data.fullName || auth.currentUser.photoURL !== (data.photoURL || null))) {
         await updateFirebaseAuthProfile(auth.currentUser, {
           displayName: data.fullName,
-          // photoURL: data.photoURL, // If photoURL editing is added
+          photoURL: data.photoURL || null, 
         });
       }
       
-      await refreshAppUser(); // Refresh appUser in context to reflect changes
+      await refreshAppUser();
 
       toast({ title: 'Profile Updated', description: 'Your profile details have been saved.' });
     } catch (error: any) {
@@ -82,7 +80,7 @@ export default function ProfileDetailsForm() {
     }
   };
 
-  if (!appUser) { // Show loader if appUser (and thus default form values) is not yet available
+  if (!appUser) {
     return <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
@@ -115,21 +113,21 @@ export default function ProfileDetailsForm() {
             </FormItem>
           )}
         />
-        {/* 
-        <FormField
+        
+        <Controller
           control={form.control}
           name="photoURL"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Photo URL (Optional)</FormLabel>
-              <FormControl>
-                <Input placeholder="https://example.com/your-avatar.png" {...field} className="bg-input border-border/70 focus:border-primary" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+            <AvatarSelector
+              currentAvatarUrl={field.value}
+              onAvatarSelect={(url) => field.onChange(url)}
+              title="Change Avatar"
+              sectionTitle="Characters"
+            />
           )}
         />
-        */}
+         {form.formState.errors.photoURL && <FormMessage>{form.formState.errors.photoURL.message}</FormMessage>}
+        
         <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto btn-primary-gradient">
           {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
           Save Changes
@@ -138,3 +136,4 @@ export default function ProfileDetailsForm() {
     </Form>
   );
 }
+
