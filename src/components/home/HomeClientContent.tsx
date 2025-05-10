@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight, AlertTriangle, Play, Plus, Tv, Calendar, ListVideo, Star as StarIcon, Volume2, VolumeX } from 'lucide-react';
-import { getAllAnimes, getFeaturedAnimes } from '@/services/animeService'; // Import getFeaturedAnimes
+import { getAllAnimes, getFeaturedAnimes } from '@/services/animeService';
 import type { Anime } from '@/types/anime';
 import FeaturedAnimeCard from '@/components/anime/FeaturedAnimeCard';
 import TopAnimeListItem from '@/components/anime/TopAnimeListItem';
@@ -75,8 +75,8 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
     setFetchError(null);
     try {
       const fetchDataPromises = [
-        getAllAnimes(50), 
-        getFeaturedAnimes(5) // Use the new dedicated function for featured animes
+        getAllAnimes(50, { sortBy: 'title', sortOrder: 'asc' }), 
+        getFeaturedAnimes(5)
       ];
       
       const [generalAnimes, featured] = await promiseWithTimeout(
@@ -91,8 +91,8 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
       console.error("Failed to fetch animes for homepage:", error);
       let message = "Could not load anime data. Please try again later.";
       if (error instanceof Error) {
-        message = error.message.includes("index") 
-          ? `A required database index might be missing. Please check Firebase console or server logs. Original: ${error.message}`
+        message = error.message.includes("index") || error.message.includes("composite")
+          ? `A required database index might be missing. Please check Firebase console (Firestore -> Indexes) or server logs. Firestore often provides a link to create the missing index. Original error: ${error.message}`
           : error.message;
       }
       setFetchError(message);
@@ -132,11 +132,11 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
     .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
     .slice(0, 10) : [];
 
-  if (isLoading) {
+  if (isLoading && !heroAnime && fetchError === null) { // Show skeleton only if truly loading and no error yet
     return (
       <>
         {/* Hero Skeleton */}
-        <section className="relative h-[70vh] md:h-[85vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] bg-muted/30">
+        <section className="relative h-[75vh] md:h-[90vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] bg-muted/30">
           <div className="absolute inset-0">
              <Skeleton className="w-full h-full opacity-40" />
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent"></div>
@@ -169,18 +169,17 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
   return (
     <>
       {heroAnime && !fetchError && (
-        <section className="relative h-[70vh] md:h-[85vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] overflow-hidden">
+        <section className="relative h-[75vh] md:h-[90vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] overflow-hidden">
           <div className="absolute inset-0">
             {playTrailer && youtubeVideoId ? (
-              <div className="absolute inset-0 w-full h-full">
+              <div className="absolute inset-0 w-full h-full pointer-events-none"> {/* Added pointer-events-none here */}
                 <iframe
-                  src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&mute=${isTrailerMuted ? 1 : 0}&controls=0&showinfo=0&loop=1&playlist=${youtubeVideoId}&modestbranding=1&iv_load_policy=3&fs=0&disablekb=1`}
+                  src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&mute=${isTrailerMuted ? 1 : 0}&controls=0&showinfo=0&loop=1&playlist=${youtubeVideoId}&modestbranding=1&iv_load_policy=3&fs=0&disablekb=1&vq=hd1080`}
                   title="YouTube video player"
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
-                  className="w-full h-full scale-[1.4]" 
-                  style={{ pointerEvents: 'none' }} 
+                  className="w-full h-full object-cover scale-[1.6] sm:scale-[1.4]" // Adjusted scale
                 ></iframe>
               </div>
             ) : (
@@ -196,23 +195,6 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent"></div>
           </div>
-
-          {playTrailer && youtubeVideoId && (
-            <div className="absolute top-4 right-4 z-20">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsTrailerMuted(!isTrailerMuted);
-                }}
-                className="text-white/70 hover:text-white hover:bg-black/30 rounded-full"
-                aria-label={isTrailerMuted ? "Unmute trailer" : "Mute trailer"}
-              >
-                {isTrailerMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-              </Button>
-            </div>
-          )}
 
           <Container className="relative z-10 pb-12 md:pb-20 text-foreground">
             <div className="max-w-2xl">
@@ -238,7 +220,7 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
               <p className="text-base md:text-lg text-muted-foreground mb-6 line-clamp-3">
                 {heroAnime.synopsis}
               </p>
-              <div className="flex flex-wrap gap-3 sm:gap-4">
+              <div className="flex flex-wrap gap-3 sm:gap-4 items-center"> {/* Added items-center */}
                 <Button asChild size="lg" className="btn-primary-gradient rounded-full px-8 py-3 text-base">
                   <Link href={`/play/${heroAnime.id}${heroAnime.episodes && heroAnime.episodes.length > 0 ? `?episode=${heroAnime.episodes[0].id}` : ''}`}>
                     <Play className="mr-2 h-5 w-5 fill-current" /> Watch Now
@@ -249,6 +231,20 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
                     <Plus className="mr-2 h-5 w-5" /> More Info
                   </Link>
                 </Button>
+                {playTrailer && youtubeVideoId && (
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                    e.stopPropagation();
+                    setIsTrailerMuted(!isTrailerMuted);
+                    }}
+                    className="text-white/70 hover:text-white hover:bg-black/30 rounded-full ml-auto sm:ml-3" // Added ml-auto for right align on small screens
+                    aria-label={isTrailerMuted ? "Unmute trailer" : "Mute trailer"}
+                >
+                    {isTrailerMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                </Button>
+                )}
               </div>
             </div>
           </Container>
@@ -278,7 +274,7 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
         {featuredAnimesList.length > 0 && !fetchError && (
           <section className="py-6 md:py-8">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar font-orbitron">Featured Anime</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar">Featured Anime</h2>
               <Button variant="link" asChild className="text-primary hover:text-primary/80">
                 <Link href="/browse?filter=featured">View More <ChevronRight className="w-4 h-4 ml-1"/></Link>
               </Button>
@@ -303,7 +299,7 @@ export default function HomeClientContent({ genreListComponent, recommendationsS
         {topAnimeList.length > 0 && (
           <section className="py-6 md:py-8">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar font-orbitron">Top Anime</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar">Top Anime</h2>
               <div className="flex items-center gap-2">
                 <Button variant="link" asChild className="text-primary hover:text-primary/80">
                   <Link href="/browse?sort=top">View More <ChevronRight className="w-4 h-4 ml-1"/></Link>
