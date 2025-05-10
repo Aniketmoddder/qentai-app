@@ -1,4 +1,3 @@
-
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -66,7 +65,10 @@ export const upsertAppUserInFirestore = async (userData: Partial<AppUser> & { ui
 
 export const getAllAppUsers = async (count: number = 50): Promise<AppUser[]> => {
   try {
-    const q = query(usersCollection, orderBy('email', 'asc'), orderBy('createdAt', 'desc')); // Sort by email, then by creation date
+    // Simplified sort to reduce likelihood of missing index errors.
+    // For sorting by email then createdAt, a composite index (email ASC, createdAt DESC) is needed.
+    // The original query was: query(usersCollection, orderBy('email', 'asc'), orderBy('createdAt', 'desc'))
+    const q = query(usersCollection, orderBy('email', 'asc')); 
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => convertUserTimestampsForClient(doc.data() as AppUser));
   } catch (error) {
@@ -118,3 +120,4 @@ export const enableUserAccount = async (uid: string): Promise<void> => {
   }
 };
 */
+
