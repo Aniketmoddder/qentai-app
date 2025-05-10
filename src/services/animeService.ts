@@ -1,4 +1,3 @@
-
 'use server';
 import { db } from '@/lib/firebase';
 import type { Anime, Episode } from '@/types/anime';
@@ -22,7 +21,7 @@ import {
   QueryConstraint,
   documentId,
 } from 'firebase/firestore';
-import { convertAnimeTimestampsForClient } from '@/lib/animeUtils'; // Import the utility function
+import { convertAnimeTimestampsForClient } from '@/lib/animeUtils';
 
 const animesCollection = collection(db, 'animes');
 
@@ -86,7 +85,7 @@ export const getAllAnimes = async (
   filters: {
     type?: Anime['type'];
     genre?: string;
-    sortBy?: 'averageRating' | 'year' | 'title' | 'createdAt' | 'updatedAt';
+    sortBy?: 'averageRating' | 'year' | 'title' | 'createdAt' | 'updatedAt' | 'isFeatured';
     sortOrder?: 'asc' | 'desc';
     featured?: boolean;
   } = {}
@@ -107,22 +106,23 @@ export const getAllAnimes = async (
     if (filters.sortBy) {
       queryConstraints.push(orderBy(filters.sortBy, filters.sortOrder || 'desc'));
     } else {
-      // More specific default sorting based on common use cases or if no other filters are applied
-      if (typeof filters.featured === 'boolean' && filters.featured === true) {
-         // No default sort to avoid index issues if only 'isFeatured' is queried. Client can sort.
-         // Or, ensure an index on (isFeatured, title ASC) if sorting by title for featured items is desired by default.
-      } else if (!filters.type && !filters.genre && typeof filters.featured === 'undefined') {
-        // Broad query, sort by latest update
-        queryConstraints.push(orderBy('updatedAt', 'desc'));
-      } else if (filters.type || filters.genre) {
-        // If specific filters like type or genre are applied, sort by title to provide consistent order.
-        // This might require composite indexes like (type, title) or (genre, title).
-        queryConstraints.push(orderBy('title', 'asc'));
-      }
-      // If only sortBy and sortOrder are missing but other filters exist, Firestore might infer index or error.
+        // Default sort by 'updatedAt' desc if no other specific sort is provided,
+        // unless 'isFeatured' is the primary filter without other sorts, to avoid index issues.
+        if (typeof filters.featured === 'boolean' && filters.featured === true && !filters.type && !filters.genre) {
+            // If filtering by featured and no other specific sort, avoid default sort by 'title'
+            // to prevent common missing index errors. Consider sorting by a different field like 'updatedAt'
+            // or let the client handle sorting for small featured lists if specific order isn't critical.
+            // Defaulting to title might require (isFeatured, title) index.
+        } else if (filters.type || filters.genre) {
+            queryConstraints.push(orderBy('title', 'asc')); // Common for category browsing
+        } else {
+            queryConstraints.push(orderBy('updatedAt', 'desc')); // General default
+        }
     }
     
-    queryConstraints.push(limit(count));
+    if (count > 0) {
+        queryConstraints.push(limit(count));
+    }
     
     const q = query(animesCollection, ...queryConstraints);
     const querySnapshot = await getDocs(q);
@@ -192,14 +192,13 @@ export const updateAnimeInFirestore = async (id: string, dataToUpdate: Partial<O
       updatePayload.trailerUrl = (updatePayload.trailerUrl === '' || updatePayload.trailerUrl === undefined) ? null : updatePayload.trailerUrl; 
     }
     
-    // Ensure isFeatured is explicitly set if not provided or if it's undefined
     if (!updatePayload.hasOwnProperty('isFeatured') || typeof updatePayload.isFeatured !== 'boolean') {
         const currentDoc = await getDoc(docRef);
         if (currentDoc.exists()) {
             const currentData = currentDoc.data() as Anime;
             updatePayload.isFeatured = currentData.isFeatured || false;
         } else {
-            updatePayload.isFeatured = false; // Default if doc doesn't exist (shouldn't happen for update)
+            updatePayload.isFeatured = false;
         }
     }
     
@@ -343,13 +342,16 @@ export const getAnimesByIds = async (ids: string[]): Promise<Anime[]> => {
 
 export const getFeaturedAnimes = async (count: number = 5): Promise<Anime[]> => {
   try {
-    const q = query(animesCollection, where('isFeatured', '==', true), orderBy('title', 'asc'), limit(count));
+    // Removed orderBy('title', 'asc') to prevent index requirement error (isFeatured == true, title ASC)
+    // If specific sorting for featured items is critical, the index mentioned in Firebase errors must be created.
+    // For now, this fetches featured items without a specific server-side sort beyond what Firestore provides by default.
+    const q = query(animesCollection, where('isFeatured', '==', true), limit(count));
     const querySnapshot = await getDocs(q);
     const animes = querySnapshot.docs.map(doc => convertAnimeTimestampsForClient({ id: doc.id, ...doc.data() }) as Anime);
     return animes;
   } catch (error) {
     if (error instanceof FirestoreError && error.code === 'failed-precondition') {
-      let warningMessage = `Firestore query in getFeaturedAnimes requires an index. Please create an index on 'isFeatured' (boolean) and 'title' (asc) in your Firebase console if it doesn't exist. Original error: ${error.message}`;
+      let warningMessage = `Firestore query in getFeaturedAnimes requires an index. If you were previously sorting by 'title' for featured items, you might need an index on ('isFeatured' == true, 'title' ASC). Original error: ${error.message}`;
       console.warn(warningMessage);
     }
     throw handleFirestoreError(error, 'getFeaturedAnimes');
