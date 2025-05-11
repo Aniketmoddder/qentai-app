@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import React, { Suspense } from 'react';
 import Logo from '@/components/common/logo';
+import ReadMoreSynopsis from '@/components/anime/ReadMoreSynopsis'; // Import the new client component
 
 interface AnimeDetailsPageProps {
   params: {
@@ -33,26 +34,6 @@ const DetailItem: React.FC<{ label: string; value?: string | number | null; icon
     </div>
   );
 };
-
-const ReadMoreSynopsis: React.FC<{ text: string; maxLength?: number }> = ({ text, maxLength = 250 }) => {
-  const [isExpanded, setIsExpanded] = React.useState(false);
-
-  if (text.length <= maxLength) {
-    return <p className="text-base leading-relaxed text-muted-foreground whitespace-pre-line selection:bg-primary/20 selection:text-primary">{text}</p>;
-  }
-
-  return (
-    <div>
-      <p className="text-base leading-relaxed text-muted-foreground whitespace-pre-line selection:bg-primary/20 selection:text-primary">
-        {isExpanded ? text : `${text.substring(0, maxLength)}...`}
-      </p>
-      <Button variant="link" onClick={() => setIsExpanded(!isExpanded)} className="px-0 text-primary hover:text-primary/80 text-sm mt-1">
-        {isExpanded ? 'Read Less' : 'Read More'}
-      </Button>
-    </div>
-  );
-};
-
 
 export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps) {
   let anime: Anime | undefined;
@@ -101,7 +82,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     OVA: <ListVideo className="w-4 h-4 mr-1.5" />,
     Special: <ListVideo className="w-4 h-4 mr-1.5" />,
     ONA: <ListVideo className="w-4 h-4 mr-1.5" />,
-    Music: <Film className="w-4 h-4 mr-1.5" />, // Placeholder, use Music icon if available
+    Music: <Film className="w-4 h-4 mr-1.5" />, 
     Unknown: <Info className="w-4 h-4 mr-1.5" />, 
   };
   
@@ -214,13 +195,11 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
               
               <TabsContent value="overview" className="bg-transparent p-0">
                 <div className="mb-8">
-                <div className="flex items-center gap-x-3 mb-3"> {/* Changed from justify-between */}
+                <div className="flex items-center gap-x-3 mb-3"> 
                     <h3 className="text-xl font-semibold text-foreground font-orbitron flex items-center">
                       <Logo iconSize={20} className="mr-2 opacity-80 filter grayscale contrast-200 brightness-200"/>
                        Description
                     </h3>
-                    {/* Placeholder for potential AniList Icon if trailer comes from there */}
-                    {/* {anime.trailerUrl && anime.sourceAdmin?.includes('anilist') && <AnilistIcon className="w-5 h-5 text-blue-400" />} */}
                     {anime.trailerUrl && (
                         <Button variant="outline" size="sm" asChild className="border-border/50 hover:border-primary hover:text-primary">
                             <Link href={anime.trailerUrl} target="_blank" rel="noopener noreferrer" className="flex items-center">
@@ -284,4 +263,3 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     </div>
   );
 }
-
