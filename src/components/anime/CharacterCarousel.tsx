@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Character } from '@/types/anime';
@@ -15,11 +16,21 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isAtStart, setIsAtStart] = useState(true);
   const [isAtEnd, setIsAtEnd] = useState(false);
+  const [canScroll, setCanScroll] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  const checkScrollability = useCallback(() => {
+    if (scrollContainerRef.current) {
+      const { scrollWidth, clientWidth } = scrollContainerRef.current;
+      setCanScroll(scrollWidth > clientWidth);
+      checkScrollPosition();
+    }
+  }, []);
+
 
   const checkScrollPosition = useCallback(() => {
     if (scrollContainerRef.current) {
@@ -33,20 +44,21 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
   useEffect(() => {
     const currentRef = scrollContainerRef.current;
     if (currentRef && isClient) {
-      checkScrollPosition(); // Initial check
-      currentRef.addEventListener('scroll', checkScrollPosition, { passive: true });
-      window.addEventListener('resize', checkScrollPosition);
+      checkScrollability();
       
-      const observer = new ResizeObserver(checkScrollPosition); // Observe for content changes
+      currentRef.addEventListener('scroll', checkScrollPosition, { passive: true });
+      window.addEventListener('resize', checkScrollability); // Check scrollability on resize
+      
+      const observer = new ResizeObserver(checkScrollability); // Observe for content changes
       observer.observe(currentRef);
 
       return () => {
         currentRef.removeEventListener('scroll', checkScrollPosition);
-        window.removeEventListener('resize', checkScrollPosition);
+        window.removeEventListener('resize', checkScrollability);
         observer.disconnect();
       };
     }
-  }, [checkScrollPosition, characters, isClient]); // Rerun if characters change
+  }, [checkScrollPosition, characters, isClient, checkScrollability]);
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
@@ -56,11 +68,11 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth',
       });
-      setTimeout(checkScrollPosition, 350); // Check after scroll animation
+      setTimeout(checkScrollPosition, 350); 
     }
   };
 
-  if (!isClient) { // Render nothing or a placeholder SSR
+  if (!isClient) { 
     return (
         <div className="py-6 text-center text-muted-foreground">
             <Users size={32} className="mx-auto mb-2 opacity-50 animate-pulse" />
@@ -78,11 +90,10 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
     );
   }
 
-  const showScrollButtons = scrollContainerRef.current ? scrollContainerRef.current.scrollWidth > scrollContainerRef.current.clientWidth : false;
 
   return (
     <div className="relative group/carousel py-4">
-      {showScrollButtons && (
+      {canScroll && (
         <>
           <Button
             variant="default"
@@ -138,12 +149,13 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
       </div>
 
       {/* Mobile scroll buttons */}
-      {showScrollButtons && (
+      {canScroll && (
         <div className="md:hidden flex justify-center mt-4 space-x-3">
-          <Button variant="outline" size="icon" onClick={() => scroll('left')} disabled={isAtStart} className="rounded-full w-9 h-9 shadow-md"><ChevronLeft className="h-5 w-5" /></Button>
-          <Button variant="outline" size="icon" onClick={() => scroll('right')} disabled={isAtEnd} className="rounded-full w-9 h-9 shadow-md"><ChevronRight className="h-5 w-5" /></Button>
+          <Button variant="outline" size="icon" onClick={() => scroll('left')} disabled={isAtStart} className="rounded-full w-9 h-9 shadow-md bg-card/80 border-border/50 hover:bg-primary/20 hover:text-primary disabled:opacity-40"><ChevronLeft className="h-5 w-5" /></Button>
+          <Button variant="outline" size="icon" onClick={() => scroll('right')} disabled={isAtEnd} className="rounded-full w-9 h-9 shadow-md bg-card/80 border-border/50 hover:bg-primary/20 hover:text-primary disabled:opacity-40"><ChevronRight className="h-5 w-5" /></Button>
         </div>
       )}
     </div>
   );
 }
+

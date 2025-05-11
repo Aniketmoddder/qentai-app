@@ -81,7 +81,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
     try {
       const fetchDataPromises = [
         getAllAnimes({ count: 50, filters: { sortBy: 'updatedAt', sortOrder: 'desc' } }),
-        getFeaturedAnimes({ count: 5, sortByTitle: false }) // Explicitly set sortByTitle to false
+        getFeaturedAnimes({ count: 5, sortByTitle: false }) 
       ];
       
       const settledResults = await promiseWithTimeout(
@@ -178,7 +178,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
   if (isLoading && !heroAnime && !fetchError) {
     return (
       <div>
-        <section className="relative h-[70vh] md:h-[85vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] bg-muted/30">
+        <section className="relative h-[65vh] md:h-[80vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] bg-muted/30">
           <div className="absolute inset-0">
              <Skeleton className="w-full h-full opacity-40" />
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent"></div>
@@ -225,9 +225,9 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
   const noContentAvailable = !isLoading && !fetchError && allAnime.length === 0 && featuredAnimesList.length === 0 && !heroAnime;
 
   return (
-    <div>
+    <> {/* Use React Fragment */}
       {heroAnime && (
-        <section className="relative h-[70vh] md:h-[85vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] overflow-hidden">
+        <section className="relative h-[65vh] md:h-[80vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] overflow-hidden">
           <div className="absolute inset-0">
             {playTrailer && youtubeVideoId ? (
               <div className="absolute inset-0 w-full h-full pointer-events-none">
@@ -236,8 +236,8 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
                   title="YouTube video player"
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen // allowFullScreen without value is treated as true
-                  className="w-full h-full scale-[1.8] sm:scale-[1.5] md:scale-[1.4] object-cover"
+                  allowFullScreen 
+                  className="w-full h-full scale-[2] sm:scale-[1.8] md:scale-[1.5] object-cover" // Adjusted scale for better full coverage
                 ></iframe>
               </div>
             ) : (
@@ -245,8 +245,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
                 src={heroAnime.bannerImage || `https://picsum.photos/seed/${heroAnime.id}-hero/1600/900`}
                 alt={`${heroAnime.title} banner`}
                 fill
-                style={{ objectFit: 'cover' }}
-                className="opacity-40"
+                className="object-cover opacity-40"
                 priority
                 data-ai-hint="anime landscape epic"
               />
@@ -311,7 +310,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
         </section>
       )}
 
-      <Container className="overflow-x-clip py-8"> {/* Changed to overflow-x-clip for better layout on small screens */}
+      <Container className="overflow-x-clip py-8">
         {fetchError && (
           <div className="my-8 p-6 bg-destructive/10 border border-destructive/30 rounded-lg flex items-start text-destructive">
             <AlertTriangle className="h-6 w-6 mr-3 flex-shrink-0 mt-0.5" />
@@ -378,8 +377,6 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
 
         {recommendationsSectionComponent}
       </Container>
-    </div>
+    </> 
   );
 }
-
-    
