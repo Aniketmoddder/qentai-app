@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Container from '@/components/layout/container';
 import { getUniqueGenres } from '@/services/animeService';
 import { Card, CardContent } from '@/components/ui/card';
-import { Tag, Zap, Film, Ghost, Compass, Drama, Rocket, Palette, AlertCircle, Loader2, Heart as HeartIconLucide, School, Users, Swords, Brain, VenetianMask, History, Music, CookingPot } from 'lucide-react'; // Added more icons
+import { Tag, Zap, Film, Ghost, Compass, Drama, Rocket, Palette, AlertCircle, Loader2, Heart as HeartIconLucide, School, Users, Swords, Brain, VenetianMask, History, Music, CookingPot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -22,36 +22,45 @@ const genreIcons: Record<string, React.ElementType> = {
   'Drama': Drama,
   'Fantasy': Palette,
   'Sci-Fi': Rocket,
-  'Romance': HeartIconLucide, // Using Lucide Heart
-  'Horror': VenetianMask, // Using VenetianMask for Horror
+  'Romance': HeartIconLucide,
+  'Horror': VenetianMask,
   'Mystery': Compass,
   'Thriller': Zap,
   'Sports': Rocket,
-  'Supernatural': Ghost, // Re-using Ghost for supernatural
-  'Mecha': Rocket, // Re-using Rocket for Mecha
+  'Supernatural': Ghost,
+  'Mecha': Rocket,
   'Historical': History,
   'Music': Music,
   'School': School,
-  'Shounen': Users, // Users for Shounen (target audience)
-  'Shoujo': Users, // Users for Shoujo
-  'Seinen': Users, // Users for Seinen
-  'Josei': Users, // Users for Josei
-  'Isekai': Compass, // Compass for "another world"
+  'Shounen': Users,
+  'Shoujo': Users,
+  'Seinen': Users,
+  'Josei': Users,
+  'Isekai': Compass,
   'Psychological': Brain,
-  'Ecchi': HeartIconLucide, // Re-using Heart for Ecchi
+  'Ecchi': HeartIconLucide,
   'Harem': Users,
-  'Demons': VenetianMask, // Re-using VenetianMask
-  'Magic': Palette, // Re-using Palette
+  'Demons': VenetianMask,
+  'Magic': Palette,
   'Martial Arts': Swords,
-  'Military': Zap, // Re-using Zap
-  'Parody': Ghost, // Re-using Ghost
-  'Police': Zap, // Re-using Zap
+  'Military': Zap,
+  'Parody': Ghost,
+  'Police': Zap,
   'Samurai': Swords,
   'Space': Rocket,
   'Super Power': Zap,
   'Vampire': VenetianMask,
   'Game': Rocket,
-  'Slice of Life': CookingPot, // CookingPot for slice of life
+  'Slice of Life': CookingPot,
+  'Animation': Film, // Added specific icon for Animation if it appears as a genre
+  'Crime': Zap, // Re-using for crime
+  'Family': Users, // Re-using for family
+  'Kids': Users, // Re-using for kids
+  'Reality': Tv, // Assuming Tv icon from lucide-react
+  'Soap': Drama, // Re-using for Soap
+  'Talk': Users, // Re-using for Talk
+  'War & Politics': Swords, // Re-using for War & Politics
+  'Western': Compass, // Re-using for Western
   'Default': Tag,
 };
 
@@ -61,9 +70,9 @@ async function GenresDisplay() {
   let error: string | null = null;
 
   try {
-    genres = await getUniqueGenres(); // This should fetch all unique genres
+    genres = await getUniqueGenres(); // This fetches all unique genres from the database
     if (genres.length === 0) {
-      error = "No genres are currently available. Please check back later.";
+      error = "No genres are currently available. Please check back later or ensure anime data is populated.";
     }
   } catch (e) {
     console.error("Failed to load genres for /genres page:", e);
@@ -131,3 +140,6 @@ export default function GenresPage() {
   );
 }
 
+// Adding Tv icon for completeness if not already imported, assuming it's from lucide-react
+import { Tv } from 'lucide-react';
+```

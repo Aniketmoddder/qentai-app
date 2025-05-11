@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ChevronRight, Tag, Zap, Compass, Ghost, Palette, Rocket, Drama, Heart as HeartIconLucide, School, Users, Swords, Brain, VenetianMask, History, Music, CookingPot } from 'lucide-react'; // Added more icons
+import { ChevronRight, Tag, Zap, Compass, Ghost, Palette, Rocket, Drama, Heart as HeartIconLucide, School, Users, Swords, Brain, VenetianMask, History, Music, CookingPot, Film, Tv } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import { getUniqueGenres } from '@/services/animeService';
@@ -51,6 +51,15 @@ const commonGenreIcons: Record<string, React.ElementType> = {
   'Vampire': VenetianMask,
   'Game': Rocket,
   'Slice of Life': CookingPot,
+  'Animation': Film,
+  'Crime': Zap,
+  'Family': Users,
+  'Kids': Users,
+  'Reality': Tv,
+  'Soap': Drama,
+  'Talk': Users,
+  'War & Politics': Swords,
+  'Western': Compass,
   'Default': Tag,
 };
 
@@ -63,30 +72,31 @@ export default function HomePageGenreSection() {
     async function fetchAndSetGenres() {
       setIsLoading(true);
       try {
-        const allGenres = await getUniqueGenres();
-        // Prioritize common/popular genres if they exist in fetched list
+        const allGenres = await getUniqueGenres(); 
+        
+        // Define a list of prominent genres you want to prioritize for the homepage
         const prominentGenreNames = ['Action', 'Comedy', 'Fantasy', 'Sci-Fi', 'Romance', 'Adventure', 'Drama', 'Horror'];
         const selected: GenreItem[] = [];
         
+        // Add prominent genres first if they exist in the fetched list
         for (const name of prominentGenreNames) {
-          if (allGenres.includes(name) && selected.length < 8) { // Increased to show up to 8
+          if (allGenres.includes(name) && selected.length < 6) { 
             selected.push({ name, icon: commonGenreIcons[name] || commonGenreIcons['Default'] });
           }
         }
         
         // If not enough prominent genres found, fill with others from allGenres
         let i = 0;
-        while(selected.length < 8 && i < allGenres.length) { // Show up to 8
+        while(selected.length < 6 && i < allGenres.length) { 
             const genreName = allGenres[i];
             if(!selected.find(g => g.name === genreName)) {
                  selected.push({ name: genreName, icon: commonGenreIcons[genreName] || commonGenreIcons['Default'] });
             }
             i++;
         }
-        setDisplayGenres(selected.slice(0,8)); // Ensure max 8 genres displayed
+        setDisplayGenres(selected); 
       } catch (error) {
         console.error("Failed to load genres for home page section:", error);
-        // Fallback to a default set if fetch fails
         setDisplayGenres([
           { name: 'Action', icon: Zap },
           { name: 'Comedy', icon: Ghost },
@@ -112,7 +122,7 @@ export default function HomePageGenreSection() {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
           {[...Array(6)].map((_, index) => (
-            <Card key={index} className="animate-pulse bg-muted/50 h-[100px] md:h-[120px]"></Card>
+            <Card key={index} className="animate-pulse bg-muted/50 h-[100px] md:h-[120px] rounded-lg shadow-sm border border-border/30"></Card>
           ))}
         </div>
       </section>
@@ -120,7 +130,7 @@ export default function HomePageGenreSection() {
   }
 
   if (displayGenres.length === 0) {
-    return null; // Don't render if no genres to display
+    return null; 
   }
 
   return (
@@ -138,7 +148,7 @@ export default function HomePageGenreSection() {
           const isRomance = genre.name.toLowerCase() === 'romance' || genre.name.toLowerCase() === 'ecchi';
           return (
             <Link key={genre.name} href={`/browse?genre=${encodeURIComponent(genre.name)}`} passHref legacyBehavior={false}>
-              <Card className="group bg-card hover:bg-primary/10 border-border/40 shadow-sm hover:shadow-primary/20 transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 cursor-pointer h-[100px] md:h-[120px]">
+              <Card className="group bg-card hover:bg-primary/10 border-border/40 shadow-sm hover:shadow-primary/20 transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 cursor-pointer h-[100px] md:h-[120px] rounded-lg">
                 <CardContent className="p-3 md:p-4 flex flex-col items-center justify-center text-center h-full">
                   <genre.icon className={cn("w-7 h-7 md:w-8 md:h-8 mb-1.5 text-primary group-hover:text-primary transition-colors", isRomance ? 'fill-primary' : '')} />
                   <p className="text-xs md:text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate w-full">
