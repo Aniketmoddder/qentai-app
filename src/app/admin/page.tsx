@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -8,8 +7,10 @@ import { useAuth } from '@/hooks/use-auth';
 import Container from '@/components/layout/container';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, AlertCircle, GaugeCircle, Wrench, LibraryBig, ListVideo, FilePlus2, UsersRound } from 'lucide-react';
+import { Loader2, AlertCircle, GaugeCircle, Wrench, LibraryBig, ListVideo, FilePlus2, UsersRound, Palette } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 import AdminDashboardTab from '@/components/admin/AdminDashboardTab';
 import TmdbImportTab from '@/components/admin/TmdbImportTab';
@@ -17,6 +18,7 @@ import ContentManagementTab from '@/components/admin/ContentManagementTab';
 import EpisodeEditorTab from '@/components/admin/EpisodeEditorTab';
 import ManualAddTab from '@/components/admin/ManualAddTab';
 import UserManagementTab from '@/components/admin/UserManagementTab';
+import ThemeSettingsTab from '@/components/admin/ThemeSettingsTab'; // New Import
 
 import type { AppUser, AppUserRole } from '@/types/appUser';
 
@@ -62,7 +64,13 @@ export default function AdminPage() {
       } else if (appUser === undefined) { 
         setEffectiveAuthStatus('loading'); 
       } else if (appUser === null) { 
+        // This case means appUser data couldn't be fetched from Firestore for the authenticated user.
+        // The original code checked against NEXT_PUBLIC_ADMIN_EMAIL, which is a fallback.
+        // For a robust system, ensure appUser is always created/synced.
+        // If relying on email, ensure it's always available in `user` object.
         if (user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
+          // Fallback for primary admin if appUser somehow failed to load but Firebase user matches admin email.
+          // This is less ideal than having a fully populated appUser.
           setEffectiveAuthStatus('authorized'); 
         } else {
           toast({ variant: 'destructive', title: 'Profile Error', description: 'User profile not found or not fully loaded. Please try again or contact support.' });
@@ -70,6 +78,7 @@ export default function AdminPage() {
           setEffectiveAuthStatus('unauthorized');
         }
       } else { 
+        // appUser is loaded
         if (appUser.role === 'owner' || appUser.role === 'admin') {
           setEffectiveAuthStatus('authorized');
         } else {
@@ -92,6 +101,7 @@ export default function AdminPage() {
   const currentUserAppRole = appUser?.role;
   const canViewUserManagement = currentUserAppRole === 'owner';
   const canViewStandardAdminTabs = currentUserAppRole === 'owner' || currentUserAppRole === 'admin';
+  const canViewThemeSettings = currentUserAppRole === 'owner';
 
 
   return (
@@ -102,38 +112,40 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue={defaultTabFromUrl} className="w-full">
-        {/* Wrapper for horizontal scrolling on mobile */}
-        <div className="overflow-x-auto scrollbar-hide mb-8">
-          <TabsList className="inline-flex items-center justify-start gap-2 p-1 bg-card rounded-lg shadow-md md:grid md:grid-cols-3 lg:grid-cols-6">
-            {/* Note: Removed flex, flex-nowrap, overflow-x-auto, scrollbar-hide from TabsList itself.
-                It now defaults to inline-flex which is fine for the scroll wrapper.
-                The md:grid and lg:grid-cols-6 will override display for larger screens. */}
+        <ScrollArea className="w-full whitespace-nowrap sm:whitespace-normal mb-8 pb-2">
+            <TabsList className="inline-flex sm:flex items-center justify-start gap-2 p-1 bg-card rounded-lg shadow-md">
             {canViewStandardAdminTabs && (
               <>
                 <TabsTrigger value="dashboard" className="admin-tab-trigger">
-                  <GaugeCircle className="w-5 h-5 mr-2" /> Dashboard
+                  <GaugeCircle className="w-5 h-5 mr-1.5 sm:mr-2" /> Dashboard
                 </TabsTrigger>
                 <TabsTrigger value="tools" className="admin-tab-trigger">
-                  <Wrench className="w-5 h-5 mr-2" /> Tools
+                  <Wrench className="w-5 h-5 mr-1.5 sm:mr-2" /> Tools
                 </TabsTrigger>
                 <TabsTrigger value="content-management" className="admin-tab-trigger">
-                  <LibraryBig className="w-5 h-5 mr-2" /> Content
+                  <LibraryBig className="w-5 h-5 mr-1.5 sm:mr-2" /> Content
                 </TabsTrigger>
                 <TabsTrigger value="episode-editor" className="admin-tab-trigger">
-                  <ListVideo className="w-5 h-5 mr-2" /> Episodes
+                  <ListVideo className="w-5 h-5 mr-1.5 sm:mr-2" /> Episodes
                 </TabsTrigger>
                 <TabsTrigger value="manual-add" className="admin-tab-trigger">
-                  <FilePlus2 className="w-5 h-5 mr-2" /> Manual Add
+                  <FilePlus2 className="w-5 h-5 mr-1.5 sm:mr-2" /> Manual Add
                 </TabsTrigger>
               </>
             )}
             {canViewUserManagement && (
               <TabsTrigger value="user-management" className="admin-tab-trigger">
-                <UsersRound className="w-5 h-5 mr-2" /> Users
+                <UsersRound className="w-5 h-5 mr-1.5 sm:mr-2" /> Users
+              </TabsTrigger>
+            )}
+             {canViewThemeSettings && (
+              <TabsTrigger value="theme-settings" className="admin-tab-trigger">
+                <Palette className="w-5 h-5 mr-1.5 sm:mr-2" /> Theme
               </TabsTrigger>
             )}
           </TabsList>
-        </div>
+          <ScrollBar orientation="horizontal" className="sm:hidden h-1.5" />
+        </ScrollArea>
 
         {canViewStandardAdminTabs && (
           <>
@@ -159,28 +171,45 @@ export default function AdminPage() {
             <UserManagementTab />
           </TabsContent>
         )}
+        {canViewThemeSettings && (
+          <TabsContent value="theme-settings">
+            <ThemeSettingsTab />
+          </TabsContent>
+        )}
       </Tabs>
       <style jsx global>{`
         .admin-tab-trigger {
-          padding: 0.75rem 1rem;
+          padding: 0.65rem 0.9rem; /* Slightly adjusted padding */
+          sm:padding: 0.75rem 1rem;
           border-radius: 0.375rem; /* rounded-md */
           font-weight: 500; /* medium */
-          font-size: 0.875rem; /* text-sm */
+          font-size: 0.8rem; /* text-xs */
+          sm:font-size: 0.875rem; /* sm:text-sm */
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 0.5rem; /* gap-2 */
+          gap: 0.375rem; /* gap-1.5 */
+          sm:gap: 0.5rem; /* sm:gap-2 */
           transition: all 0.2s ease-in-out;
           white-space: nowrap;
           flex-shrink: 0; /* Prevent shrinking in flex container */
+          border: 1px solid transparent;
         }
         .admin-tab-trigger[data-state='active'] {
           background-color: hsl(var(--primary));
           color: hsl(var(--primary-foreground));
           box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          border-color: hsl(var(--primary) / 0.5);
         }
         .admin-tab-trigger[data-state='inactive']:hover {
-          background-color: hsl(var(--muted) / 0.5);
+          background-color: hsl(var(--muted) / 0.6);
+          color: hsl(var(--muted-foreground) / 0.9);
+          border-color: hsl(var(--border) / 0.3);
+        }
+         .admin-tab-trigger[data-state='inactive'] {
+          color: hsl(var(--muted-foreground));
+          background-color: hsl(var(--card));
+          border-color: hsl(var(--border) / 0.2);
         }
       `}</style>
     </Container>

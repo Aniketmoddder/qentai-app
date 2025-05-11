@@ -2,6 +2,7 @@
 
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { getDefaultSiteTheme } from '@/services/siteSettingsService'; // New Import
 
 export type Theme = 'dark-purple-premium' | 'light-pale-purple' | 'kawaii-pink-vibe' | 'futuristic-cyberpunk';
 
@@ -18,12 +19,12 @@ export const themes: ThemeOption[] = [
   { 
     value: 'dark-purple-premium', 
     label: 'Premium Anime Dark',
-    colors: { primary: '#8B5CF6', background: '#0A0A13'}
+    colors: { primary: '#8B5CF6', background: '#0A0A13'} // Original Default
   },
   { 
     value: 'light-pale-purple', 
     label: 'Elegant Light', 
-    colors: { primary: '#7C3AED', background: '#F9FAFB'}
+    colors: { primary: '#6366F1', background: '#F9FAFB'} // Updated primary
   },
   {
     value: 'kawaii-pink-vibe',
@@ -37,7 +38,7 @@ export const themes: ThemeOption[] = [
   },
 ];
 
-const DEFAULT_THEME: Theme = 'dark-purple-premium';
+const FALLBACK_DEFAULT_THEME: Theme = 'dark-purple-premium'; // Used if Firestore fetch fails or no default is set
 
 interface ThemeContextType {
   theme: Theme;
@@ -48,20 +49,47 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window !== 'undefined') {
-      const storedTheme = localStorage.getItem('qentai-theme') as Theme | null;
-      return storedTheme && themes.some(t => t.value === storedTheme) ? storedTheme : DEFAULT_THEME;
-    }
-    return DEFAULT_THEME;
-  });
+  const [theme, setThemeState] = useState<Theme>(FALLBACK_DEFAULT_THEME);
+  const [isInitialThemeLoaded, setIsInitialThemeLoaded] = useState(false);
 
   useEffect(() => {
+    // This effect runs once on mount to determine the initial theme
+    const determineInitialTheme = async () => {
+      let initialTheme = FALLBACK_DEFAULT_THEME;
+      if (typeof window !== 'undefined') {
+        const storedUserTheme = localStorage.getItem('qentai-theme') as Theme | null;
+        
+        if (storedUserTheme && themes.some(t => t.value === storedUserTheme)) {
+          initialTheme = storedUserTheme;
+        } else {
+          // No user preference, fetch site default
+          const siteDefaultTheme = await getDefaultSiteTheme();
+          if (siteDefaultTheme && themes.some(t => t.value === siteDefaultTheme)) {
+            initialTheme = siteDefaultTheme;
+          }
+        }
+      }
+      setThemeState(initialTheme);
+      setIsInitialThemeLoaded(true);
+    };
+
+    determineInitialTheme();
+  }, []);
+
+
+  useEffect(() => {
+    // This effect applies the theme once it's determined (either initially or by user change)
+    if (!isInitialThemeLoaded) return; // Don't run if initial theme isn't set yet
+
     const root = window.document.documentElement;
     root.setAttribute('data-theme', theme);
-    localStorage.setItem('qentai-theme', theme);
+    
+    // Update user's local preference if they changed it (not just applying fetched default)
+    const storedUserTheme = localStorage.getItem('qentai-theme') as Theme | null;
+    if (storedUserTheme !== theme) {
+      localStorage.setItem('qentai-theme', theme);
+    }
 
-    // Update meta theme-color for browser UI
     const currentThemeDetails = themes.find(t => t.value === theme);
     if (currentThemeDetails) {
         let metaThemeColor = document.querySelector('meta[name="theme-color"]');
@@ -73,16 +101,29 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
         metaThemeColor.setAttribute('content', currentThemeDetails.colors.background);
     }
 
-  }, [theme]);
+  }, [theme, isInitialThemeLoaded]);
 
   const setTheme = useCallback((newTheme: Theme) => {
     if (themes.some(t => t.value === newTheme)) {
       setThemeState(newTheme);
+      // User explicitly sets theme, so store it as their preference
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('qentai-theme', newTheme);
+      }
     } else {
       console.warn(`Attempted to set invalid theme: ${newTheme}`);
-      setThemeState(DEFAULT_THEME);
+      // Potentially revert to a known default or the current theme if invalid
+      // For simplicity, we'll just log and not change if invalid.
     }
   }, []);
+
+  if (!isInitialThemeLoaded) {
+    // You can return a loading state here if the theme switch causes a flash
+    // For example: return <div style={{ visibility: 'hidden' }}>{children}</div>;
+    // Or a full-page loader if preferred. However, usually the FALLBACK_DEFAULT_THEME
+    // provides a decent enough initial render.
+    return null; 
+  }
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, availableThemes: themes }}>
