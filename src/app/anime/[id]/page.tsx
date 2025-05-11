@@ -5,7 +5,7 @@ import Container from '@/components/layout/container';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Star, PlayCircle, CalendarDays, Tv, Film, ListVideo, List, ChevronRight, AlertTriangle, Users, ShieldCheck, Info, ExternalLink, Tag as GenreIcon, Clapperboard, UserSquare2, TowerPylon, History as HistoryIcon, Globe2 } from 'lucide-react';
+import { Star, PlayCircle, CalendarDays, Tv, Film, ListVideo, List, ChevronRight, AlertTriangle, Users, ShieldCheck, Info, ExternalLink, Tag as GenreIcon, Clapperboard, UserSquare2, BookOpen, History as HistoryIcon, Globe2 } from 'lucide-react';
 import Link from 'next/link';
 import AnimeInteractionControls from '@/components/anime/anime-interaction-controls';
 import CharacterCarousel from '@/components/anime/CharacterCarousel'; 
@@ -254,7 +254,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                           {(!anime.studios || anime.studios.length === 0) && 'N/A'}
                         </div>
                     </DetailItem>
-                    <DetailItem label="Source" value={anime.source} icon={TowerPylon} />
+                    <DetailItem label="Source" value={anime.source} icon={BookOpen} />
                     <DetailItem label="Duration" value={anime.duration ? `${anime.duration} min/ep` : 'N/A'} icon={HistoryIcon} />
                     <DetailItem label="Popularity" value={anime.popularity?.toLocaleString()} icon={Users} />
                   </div>
