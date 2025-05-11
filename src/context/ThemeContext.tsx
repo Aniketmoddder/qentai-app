@@ -1,10 +1,9 @@
-
 'use client';
 
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
-export type Theme = 'dark-purple-premium' | 'light-pale-purple' | 'kawaii-pink-vibe' | 'vibrant-cyberpunk' | 'anime-pastel';
+export type Theme = 'dark-purple-premium' | 'light-pale-purple' | 'kawaii-pink-vibe' | 'futuristic-cyberpunk';
 
 export interface ThemeOption {
   value: Theme;
@@ -24,7 +23,7 @@ export const themes: ThemeOption[] = [
   { 
     value: 'light-pale-purple', 
     label: 'Elegant Light', 
-    colors: { primary: '#6366F1', background: '#F9FAFB'}
+    colors: { primary: '#7C3AED', background: '#F9FAFB'}
   },
   {
     value: 'kawaii-pink-vibe',
@@ -32,14 +31,9 @@ export const themes: ThemeOption[] = [
     colors: { primary: '#EC4899', background: '#1A0A1E'}
   },
   { 
-    value: 'vibrant-cyberpunk', 
-    label: 'Cyberpunk', /* Keeping old theme for now */
-    colors: { primary: '#FF4DB8', background: '#0A0A0A'}
-  },
-  { 
-    value: 'anime-pastel', 
-    label: 'Anime Pastel', /* Keeping old theme for now */
-    colors: { primary: '#FB7185', background: '#FFF1F5'}
+    value: 'futuristic-cyberpunk', 
+    label: 'Futuristic Cyberpunk',
+    colors: { primary: '#00FFFF', background: '#0F0F1A'}
   },
 ];
 
@@ -104,4 +98,3 @@ export const useTheme = (): ThemeContextType => {
   }
   return context;
 };
-
