@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -81,7 +80,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
     try {
       const fetchDataPromises = [
         getAllAnimes({ count: 50, filters: { sortBy: 'updatedAt', sortOrder: 'desc' } }),
-        getFeaturedAnimes({ count: 5 }) // No default sort, relies on Firestore's order or explicit sort param
+        getFeaturedAnimes({ count: 5, filters: { sortBy: 'popularity', sortOrder: 'desc' } }) 
       ];
       
       const settledResults = await promiseWithTimeout(
@@ -114,7 +113,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
         console.error("HomeClient: Error fetching featured animes:", featuredResult.reason);
         let errorMsg = featuredResult.reason?.message || "Failed to load featured animes.";
          if (featuredResult.reason instanceof FirestoreError && featuredResult.reason.code === 'failed-precondition') {
-           errorMsg += ` Featured animes query failed. This usually means an index on 'isFeatured' (boolean) and potentially another field like 'updatedAt' (desc) or 'popularity' (desc) is missing, or Firestore requires a more specific composite index. Check the Firebase console for index suggestions. The app currently attempts to fetch featured items without a specific sort order to minimize default index requirements; if sorted featured items are needed, the index must exist.`;
+           errorMsg += ` Featured animes query failed. This usually means an index on 'isFeatured' (boolean) and 'popularity' (desc) is missing. Check the Firebase console for index suggestions.`;
         }
         errors.push(errorMsg);
       }
@@ -222,7 +221,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
   const noContentAvailable = !isLoading && !fetchError && allAnime.length === 0 && featuredAnimesList.length === 0 && !heroAnime;
 
   return (
-    <> {/* Use React Fragment */}
+    <> 
       {heroAnime && (
         <section className="relative h-[65vh] md:h-[80vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] overflow-hidden">
           <div className="absolute inset-0">
@@ -372,4 +371,3 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
     </> 
   );
 }
-
