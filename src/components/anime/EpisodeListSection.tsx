@@ -107,47 +107,49 @@ interface EpisodeItemProps {
 const DetailedEpisodeItem: React.FC<EpisodeItemProps> = ({ episode, animeId }) => {
   const placeholderThumbnail = `https://picsum.photos/seed/${animeId}-${episode.id}/320/180`;
   return (
-    <Link href={`/play/${animeId}?episode=${episode.id}`} passHref legacyBehavior={false}>
-      <a className="group flex items-center p-2.5 bg-card hover:bg-primary/10 rounded-lg shadow-sm transition-all duration-200 ease-in-out border border-transparent hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-background">
-        <div className="relative w-28 h-16 sm:w-32 sm:h-[72px] rounded-md overflow-hidden flex-shrink-0 border border-border/20">
-          <Image
-            src={episode.thumbnail || placeholderThumbnail}
-            alt={`Episode ${episode.episodeNumber}: ${episode.title}`}
-            fill
-            sizes="(max-width: 640px) 112px, 128px"
-            className="object-cover"
-            data-ai-hint="anime episode thumbnail"
-          />
-          <Badge className="absolute bottom-1 left-1 bg-black/70 text-white text-[0.65rem] px-1.5 py-0.5 pointer-events-none">
-            EP {episode.episodeNumber}
-          </Badge>
-          <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <PlayCircle className="w-8 h-8 text-white/90" />
-          </div>
+    <Link
+      href={`/play/${animeId}?episode=${episode.id}`}
+      className="group flex items-center p-2.5 bg-card hover:bg-primary/10 rounded-lg shadow-sm transition-all duration-200 ease-in-out border border-transparent hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-background"
+    >
+      <div className="relative w-28 h-16 sm:w-32 sm:h-[72px] rounded-md overflow-hidden flex-shrink-0 border border-border/20">
+        <Image
+          src={episode.thumbnail || placeholderThumbnail}
+          alt={`Episode ${episode.episodeNumber}: ${episode.title}`}
+          fill
+          sizes="(max-width: 640px) 112px, 128px"
+          className="object-cover"
+          data-ai-hint="anime episode thumbnail"
+        />
+        <Badge className="absolute bottom-1 left-1 bg-black/70 text-white text-[0.65rem] px-1.5 py-0.5 pointer-events-none">
+          EP {episode.episodeNumber}
+        </Badge>
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <PlayCircle className="w-8 h-8 text-white/90" />
         </div>
-        <div className="ml-3 sm:ml-4 flex-grow min-w-0">
-          <h4 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate" title={episode.title}>
-            {episode.episodeNumber}. {episode.title}
-          </h4>
-          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5" title={episode.overview}>
-            {episode.overview || 'No overview available.'}
-          </p>
-        </div>
-      </a>
+      </div>
+      <div className="ml-3 sm:ml-4 flex-grow min-w-0">
+        <h4 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate" title={episode.title}>
+          {episode.episodeNumber}. {episode.title}
+        </h4>
+        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5" title={episode.overview}>
+          {episode.overview || 'No overview available.'}
+        </p>
+      </div>
     </Link>
   );
 };
 
 const SimpleEpisodeItem: React.FC<EpisodeItemProps> = ({ episode, animeId }) => {
   return (
-    <Link href={`/play/${animeId}?episode=${episode.id}`} passHref legacyBehavior={false}>
-      <a className="group flex items-center p-2.5 bg-card hover:bg-primary/10 rounded-md shadow-sm transition-all duration-200 ease-in-out border border-transparent hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-background">
-        <GripVertical className="w-4 h-4 mr-2 text-muted-foreground group-hover:text-primary flex-shrink-0" />
-        <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate flex-grow" title={episode.title}>
-          Ep {episode.episodeNumber}: {episode.title}
-        </span>
-        <PlayCircle className="w-5 h-5 ml-2 text-muted-foreground group-hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-      </a>
+    <Link
+      href={`/play/${animeId}?episode=${episode.id}`}
+      className="group flex items-center p-2.5 bg-card hover:bg-primary/10 rounded-md shadow-sm transition-all duration-200 ease-in-out border border-transparent hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-background"
+    >
+      <GripVertical className="w-4 h-4 mr-2 text-muted-foreground group-hover:text-primary flex-shrink-0" />
+      <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate flex-grow" title={episode.title}>
+        Ep {episode.episodeNumber}: {episode.title}
+      </span>
+      <PlayCircle className="w-5 h-5 ml-2 text-muted-foreground group-hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
     </Link>
   );
 };
