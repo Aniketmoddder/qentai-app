@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
@@ -9,39 +8,81 @@ import AnimeCardSkeleton from './AnimeCardSkeleton';
 import { Button } from '@/components/ui/button';
 import { Loader2, Wand2, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { getAllAnimes as fetchAllAnimesFromDB, getUniqueGenres } from '@/services/animeService'; // Import getUniqueGenres
 
-// Simulate user watch history - replace with actual user data in a real app
-const mockWatchHistoryTitles = ['Attack on Titan', 'Solo Leveling', 'One Punch Man']; // Titles the user has watched
+// Placeholder for actual user watch history - will be replaced with real user data.
+let dynamicMockWatchHistoryTitles: string[] = []; 
 
 interface RecommendationsSectionProps {
-  allAnimesCache: Anime[]; 
+  allAnimesCache: Anime[]; // This prop will now be primarily for matching titles, not initial catalog load
 }
 
-export default function RecommendationsSection({ allAnimesCache }: RecommendationsSectionProps) {
+export default function RecommendationsSection({ allAnimesCache: initialAllAnimesCache }: RecommendationsSectionProps) {
   const [recommendations, setRecommendations] = useState<Anime[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [internalAnimeCatalog, setInternalAnimeCatalog] = useState<Anime[]>(initialAllAnimesCache || []);
+
+  // Fetch all animes for the catalog if not already provided or to ensure freshness
+  const ensureAnimeCatalog = useCallback(async () => {
+    if (internalAnimeCatalog.length === 0) {
+      try {
+        const animes = await fetchAllAnimesFromDB({ count: -1 }); // Fetch all
+        setInternalAnimeCatalog(animes);
+        return animes;
+      } catch (e) {
+        console.error("Failed to fetch internal anime catalog:", e);
+        setError("Could not load anime catalog for recommendations.");
+        return [];
+      }
+    }
+    return internalAnimeCatalog;
+  }, [internalAnimeCatalog]);
+
+  const prepareWatchHistory = useCallback(async () => {
+    if (dynamicMockWatchHistoryTitles.length === 0) {
+        try {
+            const uniqueGenres = await getUniqueGenres();
+            if (uniqueGenres.length > 0) {
+                // Use a few genres as mock "watched" anime titles for demo if history is empty
+                // This is a placeholder for actual user history integration
+                dynamicMockWatchHistoryTitles = uniqueGenres.slice(0, 3).map(genre => `Anime with ${genre} genre`);
+            } else {
+                dynamicMockWatchHistoryTitles = ['Attack on Titan', 'Solo Leveling', 'One Punch Man']; // Fallback
+            }
+        } catch (genreError) {
+            console.warn("Could not fetch genres for mock history, using default:", genreError);
+            dynamicMockWatchHistoryTitles = ['Attack on Titan', 'Solo Leveling', 'One Punch Man'];
+        }
+    }
+    return dynamicMockWatchHistoryTitles;
+  }, []);
+
 
   const fetchRecommendations = useCallback(async () => {
-    if (!allAnimesCache || allAnimesCache.length === 0) {
-      if (!isLoading) setError("Anime catalog is not available to generate recommendations.");
-      setIsLoading(false); 
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
+
+    const catalog = await ensureAnimeCatalog();
+    if (catalog.length === 0) {
+      setError("Anime catalog is not available to generate recommendations.");
+      setIsLoading(false);
+      return;
+    }
+    
+    const watchHistory = await prepareWatchHistory();
+
     try {
-      const availableAnimeTitles = allAnimesCache.map(anime => anime.title);
+      const availableAnimeTitles = catalog.map(anime => anime.title);
       const result = await generateAnimeRecommendations({ 
-        watchHistory: mockWatchHistoryTitles,
+        watchHistory: watchHistory,
         availableAnimeTitles 
       });
       
       const detailedRecommendations = result.recommendations
         .map(title => {
           const normalizedRecTitle = title.toLowerCase().trim();
-          return allAnimesCache.find(anime => 
+          return catalog.find(anime => 
             anime.title.toLowerCase().trim() === normalizedRecTitle
           );
         })
@@ -66,16 +107,15 @@ export default function RecommendationsSection({ allAnimesCache }: Recommendatio
     } finally {
       setIsLoading(false);
     }
-  }, [allAnimesCache, isLoading]); 
+  }, [ensureAnimeCatalog, prepareWatchHistory]); 
 
   useEffect(() => {
-    // Fetch recommendations if cache is available, and they haven't been fetched yet,
-    // and no error is present, and not currently loading.
-    if (allAnimesCache && allAnimesCache.length > 0 && recommendations.length === 0 && !error && !isLoading) { 
+    if (recommendations.length === 0 && !error && !isLoading) { 
       fetchRecommendations();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allAnimesCache, recommendations.length, error]); // Dependencies that trigger re-evaluation
+  }, []); // Fetch on initial mount if conditions are met
+
 
   return (
     <section className="py-6 md:py-8">
@@ -87,7 +127,7 @@ export default function RecommendationsSection({ allAnimesCache }: Recommendatio
         <Button 
           variant="ghost" 
           onClick={fetchRecommendations} 
-          disabled={isLoading || !allAnimesCache || allAnimesCache.length === 0}
+          disabled={isLoading}
         >
           {isLoading && recommendations.length === 0 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} 
           Refresh
@@ -110,14 +150,14 @@ export default function RecommendationsSection({ allAnimesCache }: Recommendatio
         </div>
       )}
 
-      {!isLoading && recommendations.length === 0 && !error && allAnimesCache && allAnimesCache.length > 0 && (
+      {!isLoading && recommendations.length === 0 && !error && internalAnimeCatalog.length > 0 && (
          <div className="text-center py-8 text-muted-foreground">
-          <p>No recommendations available right now. Watch some anime to get personalized suggestions!</p>
+          <p>No recommendations available right now. Explore more anime to get personalized suggestions!</p>
           <p className="text-xs mt-1">(Or ensure the recommendation AI is working correctly and the anime catalog is loaded.)</p>
         </div>
       )}
       
-      {!isLoading && !allAnimesCache && !error && (
+      {!isLoading && internalAnimeCatalog.length === 0 && !error && (
          <div className="text-center py-8 text-muted-foreground">
           <p>Loading anime catalog to generate recommendations...</p>
         </div>
@@ -134,5 +174,3 @@ export default function RecommendationsSection({ allAnimesCache }: Recommendatio
     </section>
   );
 }
-
-    

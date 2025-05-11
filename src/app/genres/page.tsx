@@ -5,43 +5,53 @@ import Link from 'next/link';
 import Container from '@/components/layout/container';
 import { getUniqueGenres } from '@/services/animeService';
 import { Card, CardContent } from '@/components/ui/card';
-import { Tag, Zap, Film, Ghost, Compass, Drama, Rocket, Palette, AlertCircle, Loader2 } from 'lucide-react';
+import { Tag, Zap, Film, Ghost, Compass, Drama, Rocket, Palette, AlertCircle, Loader2, Heart as HeartIconLucide, School, Users, Swords, Brain, VenetianMask, History, Music, CookingPot } from 'lucide-react'; // Added more icons
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button'; // Added Button import
+import { Button } from '@/components/ui/button';
 
 export const metadata: Metadata = {
   title: 'Explore All Genres - Qentai',
   description: 'Discover anime by browsing through a comprehensive list of genres.',
 };
 
-// Simple Heart icon for Romance
-const HeartIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="currentColor"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-  </svg>
-);
-
+// Expanded genre to icon mapping
 const genreIcons: Record<string, React.ElementType> = {
   'Action': Zap,
   'Adventure': Compass,
-  'Comedy': Ghost, // Using Ghost for a playful take on comedy
+  'Comedy': Ghost,
   'Drama': Drama,
-  'Fantasy': Palette, // Using Palette for creative fantasy worlds
+  'Fantasy': Palette,
   'Sci-Fi': Rocket,
-  'Romance': HeartIcon, 
-  'Horror': Ghost,
-  'Mystery': Compass, // Re-using Compass for mystery/exploration
-  'Thriller': Zap, // Re-using Zap for intensity
-  'Sports': Rocket, // Re-using Rocket for dynamic sports
+  'Romance': HeartIconLucide, // Using Lucide Heart
+  'Horror': VenetianMask, // Using VenetianMask for Horror
+  'Mystery': Compass,
+  'Thriller': Zap,
+  'Sports': Rocket,
+  'Supernatural': Ghost, // Re-using Ghost for supernatural
+  'Mecha': Rocket, // Re-using Rocket for Mecha
+  'Historical': History,
+  'Music': Music,
+  'School': School,
+  'Shounen': Users, // Users for Shounen (target audience)
+  'Shoujo': Users, // Users for Shoujo
+  'Seinen': Users, // Users for Seinen
+  'Josei': Users, // Users for Josei
+  'Isekai': Compass, // Compass for "another world"
+  'Psychological': Brain,
+  'Ecchi': HeartIconLucide, // Re-using Heart for Ecchi
+  'Harem': Users,
+  'Demons': VenetianMask, // Re-using VenetianMask
+  'Magic': Palette, // Re-using Palette
+  'Martial Arts': Swords,
+  'Military': Zap, // Re-using Zap
+  'Parody': Ghost, // Re-using Ghost
+  'Police': Zap, // Re-using Zap
+  'Samurai': Swords,
+  'Space': Rocket,
+  'Super Power': Zap,
+  'Vampire': VenetianMask,
+  'Game': Rocket,
+  'Slice of Life': CookingPot, // CookingPot for slice of life
   'Default': Tag,
 };
 
@@ -51,7 +61,7 @@ async function GenresDisplay() {
   let error: string | null = null;
 
   try {
-    genres = await getUniqueGenres();
+    genres = await getUniqueGenres(); // This should fetch all unique genres
     if (genres.length === 0) {
       error = "No genres are currently available. Please check back later.";
     }
@@ -74,14 +84,15 @@ async function GenresDisplay() {
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
       {genres.map((genre) => {
         const IconComponent = genreIcons[genre] || genreIcons['Default'];
+        const isRomance = genre.toLowerCase() === 'romance' || genre.toLowerCase() === 'ecchi';
         return (
           <Link key={genre} href={`/browse?genre=${encodeURIComponent(genre)}`} passHref legacyBehavior={false}>
-            <Card className="group bg-card hover:bg-primary/10 border-border/30 shadow-md hover:shadow-primary/20 transition-all duration-300 ease-in-out transform hover:-translate-y-1 cursor-pointer h-full flex flex-col">
+            <Card className="group bg-card hover:bg-primary/10 border-border/30 shadow-sm hover:shadow-primary/20 transition-all duration-300 ease-in-out transform hover:-translate-y-1 cursor-pointer h-full flex flex-col">
               <CardContent className="p-4 sm:p-5 flex flex-col items-center justify-center text-center flex-grow">
-                <IconComponent className={cn("w-8 h-8 sm:w-10 sm:h-10 mb-2 text-primary group-hover:text-primary transition-colors", genre === 'Romance' ? 'fill-primary' : '')} />
+                <IconComponent className={cn("w-8 h-8 sm:w-9 sm:h-9 mb-2 text-primary group-hover:text-primary transition-colors", isRomance ? 'fill-primary' : '')} />
                 <p className="text-sm sm:text-base font-semibold text-foreground group-hover:text-primary transition-colors truncate w-full">
                   {genre}
                 </p>
@@ -119,3 +130,4 @@ export default function GenresPage() {
     </Container>
   );
 }
+

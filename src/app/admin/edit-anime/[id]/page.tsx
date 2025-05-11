@@ -35,7 +35,7 @@ const animeSchema = z.object({
   trailerUrl: z.string().url('Must be a valid YouTube URL').optional().or(z.literal('')),
   isFeatured: z.boolean().optional(),
   averageRating: z.coerce.number().min(0).max(10).optional(),
-  aniListId: z.coerce.number().int().positive('AniList ID must be a positive number.').optional().nullable().transform(val => val === '' ? null : val),
+  aniListId: z.coerce.number().int().positive('AniList ID must be a positive number.').optional().nullable().transform(val => val === '' || val === null ? null : Number(val)),
 });
 
 type AnimeFormData = z.infer<typeof animeSchema>;
@@ -143,9 +143,13 @@ export default function EditAnimePage() {
   useEffect(() => {
     const fetchAllUniqueGenres = async () => {
         try {
-            const animes = await getAllAnimes({limit: 500}); 
+            const animes = await getAllAnimes({ count: -1 }); // Fetch all animes
             const uniqueGenresFromDB = new Set<string>(); 
-            animes.forEach(anime => anime.genre.forEach(g => uniqueGenresFromDB.add(g)));
+            animes.forEach(anime => anime.genre.forEach(g => {
+                 if (typeof g === 'string' && g.trim() !== '') {
+                    uniqueGenresFromDB.add(g.trim());
+                 }
+            }));
             const combinedGenres = new Set([...INITIAL_GENRES, ...Array.from(uniqueGenresFromDB)]);
             setAvailableGenres(Array.from(combinedGenres).sort());
         } catch (error) {
@@ -286,7 +290,7 @@ export default function EditAnimePage() {
               <Label className="font-medium">Genres (Select multiple)</Label>
               <ScrollArea className="h-32 md:h-40 mt-1 p-2 border rounded-md bg-input/30">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                  {availableGenres.map(genre => ( // No longer needs .sort() here if already sorted in useEffect
+                  {availableGenres.map(genre => ( 
                     <Button
                       key={genre}
                       type="button"
@@ -362,7 +366,7 @@ function FormSelectItem({ name, label, items, form }: FormSelectItemProps) {
         name={name}
         control={control}
         render={({ field }) => (
-          <Select onValueChange={field.onChange} value={field.value?.toString()} defaultValue={field.value?.toString()}>
+          <Select onValueChange={field.onChange} value={String(field.value)} defaultValue={String(field.value)}>
             <SelectTrigger id={name} className="bg-input border-border/70 focus:border-primary h-10 text-sm">
               <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
             </SelectTrigger>
