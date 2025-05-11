@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -17,10 +18,7 @@ import EpisodeEditorTab from '@/components/admin/EpisodeEditorTab';
 import ManualAddTab from '@/components/admin/ManualAddTab';
 import UserManagementTab from '@/components/admin/UserManagementTab';
 
-import { getAppUserById } from '@/services/appUserService';
 import type { AppUser, AppUserRole } from '@/types/appUser';
-
-const ADMIN_EMAIL = 'ninjax.desi@gmail.com'; // Owner's email
 
 type EffectiveAuthStatus = 'loading' | 'authorized' | 'unauthorized' | 'unauthenticated';
 
@@ -48,7 +46,7 @@ function AccessDeniedScreen() {
 
 
 export default function AdminPage() {
-  const { user, loading: authLoading, appUser } = useAuth(); // Get appUser from useAuth
+  const { user, loading: authLoading, appUser } = useAuth(); 
   const router = useRouter();
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -57,23 +55,21 @@ export default function AdminPage() {
   const [effectiveAuthStatus, setEffectiveAuthStatus] = useState<EffectiveAuthStatus>('loading');
 
   useEffect(() => {
-    if (!authLoading) { // Auth context has resolved Firebase user
-      if (!user) { // No Firebase user
+    if (!authLoading) { 
+      if (!user) { 
         router.push('/login?redirect=/admin');
         setEffectiveAuthStatus('unauthenticated');
-      } else if (appUser === undefined) { // appUser still loading from AuthContext
-        setEffectiveAuthStatus('loading'); // Wait for appUser to be fetched by AuthProvider
-      } else if (appUser === null) { // Firebase user exists, but no appUser document (should be rare after upsert)
-         // This case might mean the upsert in AuthProvider is pending or failed.
-         // Or it's the very first login for the owner.
-        if (user.email === ADMIN_EMAIL) {
-          setEffectiveAuthStatus('authorized'); // Assume owner until role is fully set in DB by AuthProvider
+      } else if (appUser === undefined) { 
+        setEffectiveAuthStatus('loading'); 
+      } else if (appUser === null) { 
+        if (user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
+          setEffectiveAuthStatus('authorized'); 
         } else {
           toast({ variant: 'destructive', title: 'Profile Error', description: 'User profile not found or not fully loaded. Please try again or contact support.' });
           router.push('/');
           setEffectiveAuthStatus('unauthorized');
         }
-      } else { // Both Firebase user and appUser (with role) are available
+      } else { 
         if (appUser.role === 'owner' || appUser.role === 'admin') {
           setEffectiveAuthStatus('authorized');
         } else {
@@ -106,32 +102,38 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue={defaultTabFromUrl} className="w-full">
-        <TabsList className="flex flex-nowrap overflow-x-auto md:grid md:grid-cols-3 lg:grid-cols-6 gap-2 mb-8 p-1 bg-card rounded-lg shadow-md scrollbar-hide">
-          {canViewStandardAdminTabs && (
-            <>
-              <TabsTrigger value="dashboard" className="admin-tab-trigger">
-                <GaugeCircle className="w-5 h-5 mr-2" /> Dashboard
+        {/* Wrapper for horizontal scrolling on mobile */}
+        <div className="overflow-x-auto scrollbar-hide mb-8">
+          <TabsList className="inline-flex items-center justify-start gap-2 p-1 bg-card rounded-lg shadow-md md:grid md:grid-cols-3 lg:grid-cols-6">
+            {/* Note: Removed flex, flex-nowrap, overflow-x-auto, scrollbar-hide from TabsList itself.
+                It now defaults to inline-flex which is fine for the scroll wrapper.
+                The md:grid and lg:grid-cols-6 will override display for larger screens. */}
+            {canViewStandardAdminTabs && (
+              <>
+                <TabsTrigger value="dashboard" className="admin-tab-trigger">
+                  <GaugeCircle className="w-5 h-5 mr-2" /> Dashboard
+                </TabsTrigger>
+                <TabsTrigger value="tools" className="admin-tab-trigger">
+                  <Wrench className="w-5 h-5 mr-2" /> Tools
+                </TabsTrigger>
+                <TabsTrigger value="content-management" className="admin-tab-trigger">
+                  <LibraryBig className="w-5 h-5 mr-2" /> Content
+                </TabsTrigger>
+                <TabsTrigger value="episode-editor" className="admin-tab-trigger">
+                  <ListVideo className="w-5 h-5 mr-2" /> Episodes
+                </TabsTrigger>
+                <TabsTrigger value="manual-add" className="admin-tab-trigger">
+                  <FilePlus2 className="w-5 h-5 mr-2" /> Manual Add
+                </TabsTrigger>
+              </>
+            )}
+            {canViewUserManagement && (
+              <TabsTrigger value="user-management" className="admin-tab-trigger">
+                <UsersRound className="w-5 h-5 mr-2" /> Users
               </TabsTrigger>
-              <TabsTrigger value="tools" className="admin-tab-trigger">
-                <Wrench className="w-5 h-5 mr-2" /> Tools
-              </TabsTrigger>
-              <TabsTrigger value="content-management" className="admin-tab-trigger">
-                <LibraryBig className="w-5 h-5 mr-2" /> Content
-              </TabsTrigger>
-              <TabsTrigger value="episode-editor" className="admin-tab-trigger">
-                <ListVideo className="w-5 h-5 mr-2" /> Episodes
-              </TabsTrigger>
-              <TabsTrigger value="manual-add" className="admin-tab-trigger">
-                <FilePlus2 className="w-5 h-5 mr-2" /> Manual Add
-              </TabsTrigger>
-            </>
-          )}
-          {canViewUserManagement && (
-            <TabsTrigger value="user-management" className="admin-tab-trigger">
-              <UsersRound className="w-5 h-5 mr-2" /> Users
-            </TabsTrigger>
-          )}
-        </TabsList>
+            )}
+          </TabsList>
+        </div>
 
         {canViewStandardAdminTabs && (
           <>
@@ -184,3 +186,4 @@ export default function AdminPage() {
     </Container>
   );
 }
+
