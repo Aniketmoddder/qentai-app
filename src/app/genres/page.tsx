@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Container from '@/components/layout/container';
 import { getUniqueGenres } from '@/services/animeService';
 import { Card, CardContent } from '@/components/ui/card';
-import { Tag, Zap, Film, Ghost, Compass, Drama, Rocket, Palette, AlertCircle, Loader2, Heart as HeartIconLucide, School, Users, Swords, Brain, VenetianMask, History, Music, CookingPot } from 'lucide-react';
+import { Tag, Zap, Compass, Ghost, Palette, Rocket, Drama, AlertCircle, Loader2, Heart as HeartIconLucide, School, Users, Swords, Brain, VenetianMask, History, Music, CookingPot, Film, Tv, Smile, Briefcase, Popcorn, Atom } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -18,49 +18,49 @@ export const metadata: Metadata = {
 const genreIcons: Record<string, React.ElementType> = {
   'Action': Zap,
   'Adventure': Compass,
-  'Comedy': Ghost,
-  'Drama': Drama,
-  'Fantasy': Palette,
-  'Sci-Fi': Rocket,
-  'Romance': HeartIconLucide,
-  'Horror': VenetianMask,
-  'Mystery': Compass,
-  'Thriller': Zap,
-  'Sports': Rocket,
-  'Supernatural': Ghost,
-  'Mecha': Rocket,
-  'Historical': History,
-  'Music': Music,
-  'School': School,
-  'Shounen': Users,
-  'Shoujo': Users,
-  'Seinen': Users,
-  'Josei': Users,
-  'Isekai': Compass,
-  'Psychological': Brain,
-  'Ecchi': HeartIconLucide,
-  'Harem': Users,
+  'Animation': Film,
+  'Comedy': Ghost, // Kept Ghost for Comedy, Smile could also be used
+  'Crime': Briefcase, // Using Briefcase for Crime
   'Demons': VenetianMask,
-  'Magic': Palette,
+  'Drama': Drama,
+  'Ecchi': HeartIconLucide, // Explicitly using Heart for Ecchi
+  'Family': Users, // Re-using Users
+  'Fantasy': Palette,
+  'Game': Rocket, // Re-using Rocket
+  'Harem': Users, // Re-using Users
+  'Historical': History,
+  'Horror': VenetianMask,
+  'Isekai': Compass, // Re-using Compass
+  'Josei': Users, // Re-using Users
+  'Kids': Smile, // Using Smile for Kids
+  'Magic': Palette, // Re-using Palette
   'Martial Arts': Swords,
-  'Military': Zap,
-  'Parody': Ghost,
-  'Police': Zap,
-  'Samurai': Swords,
-  'Space': Rocket,
-  'Super Power': Zap,
-  'Vampire': VenetianMask,
-  'Game': Rocket,
+  'Mecha': Atom, // Using Atom for Mecha/Robots
+  'Military': Zap, // Re-using Zap
+  'Music': Music,
+  'Mystery': Compass, // Re-using Compass
+  'Parody': Ghost, // Re-using Ghost
+  'Police': Briefcase, // Re-using Briefcase
+  'Psychological': Brain,
+  'Reality': Tv, // Using TV for Reality
+  'Romance': HeartIconLucide,
+  'Samurai': Swords, // Re-using Swords
+  'School': School,
+  'Sci-Fi': Rocket,
+  'Seinen': Users, // Re-using Users
+  'Shoujo': Users, // Re-using Users
+  'Shounen': Users, // Re-using Users
   'Slice of Life': CookingPot,
-  'Animation': Film, // Added specific icon for Animation if it appears as a genre
-  'Crime': Zap, // Re-using for crime
-  'Family': Users, // Re-using for family
-  'Kids': Users, // Re-using for kids
-  'Reality': Tv, // Assuming Tv icon from lucide-react
-  'Soap': Drama, // Re-using for Soap
-  'Talk': Users, // Re-using for Talk
-  'War & Politics': Swords, // Re-using for War & Politics
-  'Western': Compass, // Re-using for Western
+  'Soap': Drama, // Re-using Drama
+  'Space': Rocket, // Re-using Rocket
+  'Sports': Popcorn, // Using Popcorn for Sports entertainment
+  'Super Power': Zap, // Re-using Zap
+  'Supernatural': Ghost, // Re-using Ghost
+  'Talk': Users, // Re-using Users
+  'Thriller': Zap, // Re-using Zap
+  'Vampire': VenetianMask, // Re-using VenetianMask
+  'War & Politics': Swords, // Re-using Swords
+  'Western': Compass, // Re-using Compass
   'Default': Tag,
 };
 
@@ -68,18 +68,22 @@ const genreIcons: Record<string, React.ElementType> = {
 async function GenresDisplay() {
   let genres: string[] = [];
   let error: string | null = null;
+  const defaultFallbackGenres = ['Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Demons', 'Drama', 'Ecchi', 'Family', 'Fantasy', 'Game', 'Harem', 'Historical', 'Horror', 'Isekai', 'Josei', 'Kids', 'Magic', 'Martial Arts', 'Mecha', 'Military', 'Music', 'Mystery', 'Parody', 'Police', 'Psychological', 'Reality', 'Romance', 'Samurai', 'School', 'Sci-Fi', 'Seinen', 'Shoujo', 'Shounen', 'Slice of Life', 'Soap', 'Space', 'Sports', 'Super Power', 'Supernatural', 'Talk', 'Thriller', 'Vampire', 'War & Politics', 'Western'];
+
 
   try {
-    genres = await getUniqueGenres(); // This fetches all unique genres from the database
+    genres = await getUniqueGenres();
     if (genres.length === 0) {
-      error = "No genres are currently available. Please check back later or ensure anime data is populated.";
+      console.warn("No genres fetched from DB, using comprehensive fallback list for Genres page.");
+      genres = defaultFallbackGenres.sort();
     }
   } catch (e) {
     console.error("Failed to load genres for /genres page:", e);
-    error = "Could not load genres at this time. Please try refreshing the page.";
+    error = "Could not load genres at this time. Please try refreshing the page. Using fallback list.";
+    genres = defaultFallbackGenres.sort();
   }
 
-  if (error) {
+  if (error && genres.length === 0) { // Only show error if fallback also somehow fails (shouldn't)
     return (
       <div className="my-12 flex flex-col items-center text-center">
         <AlertCircle className="h-12 w-12 text-destructive mb-4" />
@@ -96,12 +100,12 @@ async function GenresDisplay() {
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
       {genres.map((genre) => {
         const IconComponent = genreIcons[genre] || genreIcons['Default'];
-        const isRomance = genre.toLowerCase() === 'romance' || genre.toLowerCase() === 'ecchi';
+        const isHeartGenre = ['romance', 'ecchi'].includes(genre.toLowerCase());
         return (
           <Link key={genre} href={`/browse?genre=${encodeURIComponent(genre)}`} passHref legacyBehavior={false}>
             <Card className="group bg-card hover:bg-primary/10 border-border/30 shadow-sm hover:shadow-primary/20 transition-all duration-300 ease-in-out transform hover:-translate-y-1 cursor-pointer h-full flex flex-col">
               <CardContent className="p-4 sm:p-5 flex flex-col items-center justify-center text-center flex-grow">
-                <IconComponent className={cn("w-8 h-8 sm:w-9 sm:h-9 mb-2 text-primary group-hover:text-primary transition-colors", isRomance ? 'fill-primary' : '')} />
+                <IconComponent className={cn("w-8 h-8 sm:w-9 sm:h-9 mb-2 text-primary group-hover:text-primary transition-colors", isHeartGenre ? 'fill-primary' : '')} />
                 <p className="text-sm sm:text-base font-semibold text-foreground group-hover:text-primary transition-colors truncate w-full">
                   {genre}
                 </p>
@@ -139,6 +143,3 @@ export default function GenresPage() {
     </Container>
   );
 }
-
-// Adding Tv icon for completeness if not already imported, assuming it's from lucide-react
-import { Tv } from 'lucide-react';

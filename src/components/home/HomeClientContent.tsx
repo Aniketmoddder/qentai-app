@@ -8,13 +8,13 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight, AlertTriangle, Play, Plus, Tv, Calendar, ListVideo, Star as StarIcon, Volume2, VolumeX, Loader2 } from 'lucide-react';
-import { convertAnimeTimestampsForClient } from '@/lib/animeUtils';
 import type { Anime } from '@/types/anime';
 import FeaturedAnimeCard from '@/components/anime/FeaturedAnimeCard';
 import TopAnimeListItem from '@/components/anime/TopAnimeListItem';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-// Removed FirestoreError import as it's not directly used here for type checking
+import AnimeCardSkeleton from '../anime/AnimeCardSkeleton';
+
 
 const shuffleArray = <T,>(array: T[]): T[] => {
   if (!array || array.length === 0) return [];
@@ -49,30 +49,28 @@ const getYouTubeVideoId = (url?: string): string | null => {
 
 export interface HomeClientProps {
   homePageGenreSectionComponent: React.ReactNode;
-  recommendationsSectionComponent: React.ReactNode;
+  recommendationsSectionComponent: React.ReactNode; // This will be cloned with props
   initialAllAnimeData?: Anime[]; 
   initialFeaturedAnimes?: Anime[];
-  fetchError?: string | null; // Added to receive fetch errors
+  fetchError?: string | null; 
 }
 
 export default function HomeClient({ 
     homePageGenreSectionComponent, 
-    recommendationsSectionComponent,
+    recommendationsSectionComponent: RecommendationsSectionProp, // Renamed for clarity
     initialAllAnimeData = [],
     initialFeaturedAnimes = [],
-    fetchError: initialFetchError // Receive fetchError prop
+    fetchError: initialFetchError 
 }: HomeClientProps) {
   const [allAnime, setAllAnime] = useState<Anime[]>(initialAllAnimeData);
   const [featuredAnimesList, setFeaturedAnimesList] = useState<Anime[]>(initialFeaturedAnimes);
   const [fetchError, setFetchError] = useState<string | null>(initialFetchError);
-  const [isLoading, setIsLoading] = useState(true); // Start as true
+  const [isLoading, setIsLoading] = useState(true); 
 
   const [playTrailer, setPlayTrailer] = useState(false);
   const [isTrailerMuted, setIsTrailerMuted] = useState(true);
 
   useEffect(() => {
-    // This effect now primarily handles updates if props change post-initial render,
-    // and sets initial loading state correctly.
     if (initialFetchError) {
       setFetchError(initialFetchError);
       setAllAnime([]);
@@ -84,8 +82,6 @@ export default function HomeClient({
       setFetchError(null);
       setIsLoading(false);
     } else {
-      // No error, but also no data. Could be legitimately empty or still loading server-side.
-      // If HomePageWrapper has run and passed empty arrays with no error, it implies data is empty.
       setIsLoading(false);
     }
   }, [initialAllAnimeData, initialFeaturedAnimes, initialFetchError]);
@@ -96,7 +92,7 @@ export default function HomeClient({
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (heroAnime && youtubeVideoId && !playTrailer && !fetchError) { // Don't start trailer if there's an error
+    if (heroAnime && youtubeVideoId && !playTrailer && !fetchError) { 
       timer = setTimeout(() => {
         setPlayTrailer(true);
       }, 3000);
@@ -109,7 +105,7 @@ export default function HomeClient({
   const popularAnime = allAnime.length > 0 
     ? [...allAnime]
         .filter(a => a.averageRating !== undefined && a.averageRating !== null && a.averageRating >= 7.0) 
-        .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0)) 
+        .sort((a, b) => (b.popularity || 0) - (a.popularity || 0)) // Sort by popularity
         .slice(0, 10)
     : [];
 
@@ -126,7 +122,7 @@ export default function HomeClient({
     .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
     .slice(0, 10) : [];
 
-  if (isLoading && !fetchError) { // Show skeleton only if loading and no initial error
+  if (isLoading && !fetchError) { 
     return (
       <>
         <section className="relative h-[65vh] md:h-[80vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] bg-muted/30">
@@ -156,13 +152,9 @@ export default function HomeClient({
           {[...Array(3)].map((_, i) => (
             <div key={i} className="mb-8">
               <Skeleton className="h-8 w-1/3 mb-4 rounded-md" />
-              <div className="flex space-x-4 overflow-hidden">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-3 gap-y-4 sm:gap-x-4 place-items-center sm:place-items-stretch">
                 {[...Array(5)].map((_, j) => (
-                  <div key={j} className="flex-shrink-0">
-                    <Skeleton className="w-[180px] h-[270px] rounded-lg" />
-                    <Skeleton className="h-4 w-3/4 mt-2 rounded" />
-                    <Skeleton className="h-3 w-1/2 mt-1 rounded" />
-                  </div>
+                  <AnimeCardSkeleton key={j} />
                 ))}
               </div>
             </div>
@@ -190,6 +182,12 @@ export default function HomeClient({
   }
   
   const noContentAvailable = !isLoading && !fetchError && allAnime.length === 0 && featuredAnimesList.length === 0 && !heroAnime;
+
+  // Clone the RecommendationsSectionProp to pass the initialAllAnimeData as allAnimesCache
+  const recommendationsSectionWithProps = React.isValidElement(RecommendationsSectionProp) 
+    ? React.cloneElement(RecommendationsSectionProp as React.ReactElement<any>, { allAnimesCache: initialAllAnimeData })
+    : RecommendationsSectionProp;
+
 
   return (
     <> 
@@ -326,7 +324,7 @@ export default function HomeClient({
             </div>
           </section>
         )}
-        {recommendationsSectionComponent}
+        {recommendationsSectionWithProps}
       </Container>
     </> 
   );
