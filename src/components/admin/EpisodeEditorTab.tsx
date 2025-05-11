@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -28,7 +27,7 @@ export default function EpisodeEditorTab() {
       setIsLoadingAnimes(true);
       setError(null);
       try {
-        const animes = await getAllAnimes(300); 
+        const animes = await getAllAnimes({count: 300, filters: {}}); 
         setAllAnimes(animes.sort((a, b) => a.title.localeCompare(b.title)));
       } catch (err) {
         console.error('Failed to fetch animes for editor:', err);
@@ -48,7 +47,7 @@ export default function EpisodeEditorTab() {
       setSelectedAnime(anime);
       // Sort episodes by season then episode number
       const sortedEpisodes = (anime.episodes || []).sort((a, b) => {
-        if (a.seasonNumber !== b.seasonNumber) {
+        if ((a.seasonNumber || 0) !== (b.seasonNumber || 0)) {
           return (a.seasonNumber || 0) - (b.seasonNumber || 0);
         }
         return (a.episodeNumber || 0) - (b.episodeNumber || 0);
@@ -73,40 +72,57 @@ export default function EpisodeEditorTab() {
       toast({ variant: 'destructive', title: 'Error', description: 'No anime selected.' });
       return;
     }
-    if (!episode.url && selectedAnime.type !== 'Movie') { // URL might be optional for movies if handled differently
-        // For movies, the single episode entry might not need a URL if it's a placeholder
+    // Validate URL for non-movie types if it's empty
+    if (selectedAnime.type !== 'Movie' && (!episode.url || episode.url.trim() === '')) {
+      // toast({ variant: 'destructive', title: 'Validation Error', description: 'Video URL is required for TV episodes, OVAs, and Specials.' });
+      // return; // Allow saving even if URL is empty, admin might add later.
     }
 
 
     setSavingEpisodeId(episode.id);
     try {
-      // Only send fields that are meant to be updated
       const updatePayload: Partial<Episode> = {
-        url: episode.url,
+        url: episode.url || undefined, // Ensure empty string becomes undefined
         title: episode.title,
-        thumbnail: episode.thumbnail,
-        duration: episode.duration,
-        overview: episode.overview,
+        thumbnail: episode.thumbnail || undefined,
+        duration: episode.duration || undefined,
+        overview: episode.overview || undefined,
         // episodeNumber and seasonNumber are generally not changed post-creation via this UI
       };
 
       await updateAnimeEpisode(selectedAnime.id, episode.id, updatePayload);
       toast({ title: 'Episode Updated', description: `${selectedAnime.title} - Ep ${episode.episodeNumber} saved.` });
       
-      // Update local state for selectedAnime to reflect changes
+      // Update local state for selectedAnime to reflect changes for immediate UI update
       setSelectedAnime(prev => {
         if (!prev) return null;
+        const updatedEpisodes = prev.episodes?.map(e => e.id === episode.id ? {...e, ...updatePayload} : e) || [];
         return {
           ...prev,
-          episodes: prev.episodes?.map(e => e.id === episode.id ? {...e, ...updatePayload} : e)
-        }
+          episodes: updatedEpisodes.sort((a, b) => { // Re-sort after update
+            if ((a.seasonNumber || 0) !== (b.seasonNumber || 0)) {
+              return (a.seasonNumber || 0) - (b.seasonNumber || 0);
+            }
+            return (a.episodeNumber || 0) - (b.episodeNumber || 0);
+          }),
+        };
       });
+      // Also update the episodes list state
+      setEpisodes(prevEpisodes => {
+          const updatedList = prevEpisodes.map(e => e.id === episode.id ? {...e, ...updatePayload} : e);
+          return updatedList.sort((a, b) => { // Re-sort after update
+            if ((a.seasonNumber || 0) !== (b.seasonNumber || 0)) {
+              return (a.seasonNumber || 0) - (b.seasonNumber || 0);
+            }
+            return (a.episodeNumber || 0) - (b.episodeNumber || 0);
+          });
+      });
+
 
     } catch (err) {
       console.error('Failed to save episode:', err);
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
       toast({ variant: 'destructive', title: 'Save Error', description: `Failed to save episode: ${errorMessage}` });
-      // Optionally revert optimistic update here by refetching or using original selectedAnime episodes
     } finally {
       setSavingEpisodeId(null);
     }
@@ -156,7 +172,7 @@ export default function EpisodeEditorTab() {
             </h3>
             {episodes.length === 0 ? (
               <p className="text-muted-foreground p-4 bg-muted/30 rounded-md text-center">
-                {selectedAnime.type === 'Movie' ? 'This is a Movie. Manage its main video URL below if applicable.' : 'No episodes found for this series. You can add them via Manual Add or TMDB import.'}
+                {selectedAnime.type === 'Movie' ? 'This is a Movie. Manage its main video URL below if applicable. If no "episode" form appears, add one manually via "Manual Add" for this Movie ID and set its type to Movie.' : 'No episodes found for this series. You can add them via Manual Add or TMDB import.'}
               </p>
             ) : (
               <ScrollArea className="h-[500px] pr-3 -mr-3 border border-border/30 rounded-lg p-1">
@@ -165,7 +181,7 @@ export default function EpisodeEditorTab() {
                     <Card key={episode.id} className="p-3 sm:p-4 bg-card/80 border-border/50 shadow-sm">
                       <div className="flex justify-between items-start mb-2">
                         <p className="font-medium text-foreground text-sm">
-                         S{episode.seasonNumber} Ep{episode.episodeNumber}: {selectedAnime.type === 'Movie' ? "Movie File" : episode.title}
+                         S{episode.seasonNumber || 1} Ep{episode.episodeNumber || 1}: {selectedAnime.type === 'Movie' ? "Movie File" : episode.title}
                         </p>
                          <Badge variant="outline" className="text-xs">{episode.duration || 'N/A'}</Badge>
                       </div>

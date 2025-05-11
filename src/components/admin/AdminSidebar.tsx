@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -7,7 +6,7 @@ import Logo from '@/components/common/logo';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import type { AdminNavItem } from '@/app/admin/layout'; // Assuming type is exported from layout
+import type { AdminNavItem } from '@/app/admin/layout'; 
 import { useAuth } from '@/hooks/use-auth';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -47,6 +46,7 @@ export default function AdminSidebar({
   const filteredNavItems = navItems.filter(item => {
     if (item.isOwnerOnly && currentAppUserRole !== 'owner') return false;
     if (item.isThemeSettings && currentAppUserRole !== 'owner') return false;
+    if (item.isAdminOrOwner && !(currentAppUserRole === 'admin' || currentAppUserRole === 'owner')) return false;
     return true;
   });
 

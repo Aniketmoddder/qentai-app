@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -61,15 +60,17 @@ export default function TmdbImportTab() {
         tmdbId: fetchedAnime.tmdbId,
         title: fetchedAnime.title,
         coverImage: fetchedAnime.coverImage || `https://picsum.photos/seed/${fetchedAnime.tmdbId || fetchedAnime.title}/300/450`,
-        bannerImage: fetchedAnime.bannerImage, 
+        bannerImage: fetchedAnime.bannerImage || undefined, 
         year: fetchedAnime.year || new Date().getFullYear(), 
         genre: fetchedAnime.genre || [], 
         status: fetchedAnime.status || 'Unknown', 
         synopsis: fetchedAnime.synopsis || 'Synopsis not available.', 
         averageRating: fetchedAnime.averageRating, 
-        episodes: fetchedAnime.episodes || [], 
+        episodes: fetchedAnime.episodes || [], // Ensure episodes are included
         type: fetchedAnime.type || (mediaType === 'tv' ? 'TV' : 'Movie'),
         sourceAdmin: 'tmdb',
+        trailerUrl: undefined, // TMDB import does not fetch YouTube trailer URLs
+        isFeatured: false, // Default to not featured
       };
       
       const newAnimeId = await addAnimeToFirestore(animeDataToAdd);

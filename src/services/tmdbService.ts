@@ -1,4 +1,3 @@
-
 'use server';
 import type { Anime, Episode, Season } from '@/types/anime';
 import type { TMDBMovie, TMDBTVShow, TMDBTVSeasonResponse, TMDBEpisode } from '@/types/tmdb';
@@ -22,7 +21,7 @@ const fetchFromTMDB = async <T>(endpoint: string, params: Record<string, string 
   });
   const url = `${TMDB_BASE_URL}/${endpoint}?${urlParams.toString()}`;
   
-  console.log(`Fetching from TMDB URL: ${url}`); 
+  // console.log(`Fetching from TMDB URL: ${url}`); 
 
   try {
     const response = await fetch(url);
@@ -64,20 +63,25 @@ export const fetchAnimeDetailsFromTMDB = async (tmdbId: string, type: 'movie' | 
       title: movieData.title,
       synopsis: movieData.overview,
       coverImage: movieData.poster_path ? `${TMDB_IMAGE_BASE_URL}w500${movieData.poster_path}` : `https://picsum.photos/seed/${movieData.id}poster/300/450`,
-      bannerImage: movieData.backdrop_path ? `${TMDB_IMAGE_BASE_URL}w1280${movieData.backdrop_path}` : `https://picsum.photos/seed/${movieData.id}banner/1200/400`,
+      bannerImage: movieData.backdrop_path ? `${TMDB_IMAGE_BASE_URL}w1280${movieData.backdrop_path}` : undefined,
       year: movieData.release_date ? parseInt(movieData.release_date.split('-')[0]) : 0,
       genre: movieData.genres.map(g => g.name),
       averageRating: movieData.vote_average ? parseFloat(movieData.vote_average.toFixed(1)) : undefined,
       status: getTMDBStatus(movieData.status, 'movie'),
       type: 'Movie',
       episodes: [{ 
-          id: `${movieData.id}-movie`,
+          id: `${movieData.id}-movie-s1e1-${Date.now()}`.toLowerCase(), // More unique ID
           title: 'Full Movie',
           episodeNumber: 1,
           seasonNumber: 1,
+          url: undefined, // URL to be added by admin
+          thumbnail: movieData.backdrop_path ? `${TMDB_IMAGE_BASE_URL}w780${movieData.backdrop_path}` : undefined, // Use backdrop as a general thumbnail for movie
+          duration: movieData.runtime ? `${movieData.runtime}min` : undefined,
+          overview: movieData.overview || undefined,
       }],
       sourceAdmin: 'tmdb',
-      trailerUrl: undefined, // Trailer URL is for manual YouTube links
+      trailerUrl: undefined, 
+      isFeatured: false,
     };
   } else if (type === 'tv') {
     const tvData = await fetchFromTMDB<TMDBTVShow>(`tv/${tmdbId}`);
@@ -85,20 +89,25 @@ export const fetchAnimeDetailsFromTMDB = async (tmdbId: string, type: 'movie' | 
 
     const animeEpisodes: Episode[] = [];
     if (tvData.seasons && tvData.seasons.length > 0) {
-      for (const seasonBrief of tvData.seasons.filter(s => s.season_number > 0)) { 
+      // Filter out "Specials" seasons (season_number 0) unless specifically needed.
+      const validSeasons = tvData.seasons.filter(s => s.season_number > 0);
+
+      for (const seasonBrief of validSeasons) { 
         const seasonDetails = await fetchFromTMDB<TMDBTVSeasonResponse>(`tv/${tmdbId}/season/${seasonBrief.season_number}`);
         if (seasonDetails && seasonDetails.episodes) {
           seasonDetails.episodes.forEach((ep: TMDBEpisode) => {
             animeEpisodes.push({
-              id: `s${seasonBrief.season_number}e${ep.episode_number}-${tvData.id}`,
+              // Generate a more unique ID to avoid collisions if multiple animes have same S/E numbers
+              id: `s${seasonBrief.season_number}e${ep.episode_number}-${tvData.id}-${Date.now()}`.toLowerCase(), 
               tmdbEpisodeId: ep.id,
               title: ep.name || `Episode ${ep.episode_number}`,
               episodeNumber: ep.episode_number,
               seasonNumber: seasonBrief.season_number,
-              thumbnail: ep.still_path ? `${TMDB_IMAGE_BASE_URL}w300${ep.still_path}` : `https://picsum.photos/seed/s${seasonBrief.season_number}e${ep.episode_number}${tvData.id}thumb/320/180`,
+              thumbnail: ep.still_path ? `${TMDB_IMAGE_BASE_URL}w300${ep.still_path}` : undefined,
               duration: ep.runtime ? `${ep.runtime}min` : undefined,
               airDate: ep.air_date || undefined,
-              overview: ep.overview,
+              overview: ep.overview || undefined,
+              url: undefined, // URL to be added by admin
             });
           });
         }
@@ -110,15 +119,19 @@ export const fetchAnimeDetailsFromTMDB = async (tmdbId: string, type: 'movie' | 
       title: tvData.name,
       synopsis: tvData.overview,
       coverImage: tvData.poster_path ? `${TMDB_IMAGE_BASE_URL}w500${tvData.poster_path}` : `https://picsum.photos/seed/${tvData.id}poster/300/450`,
-      bannerImage: tvData.backdrop_path ? `${TMDB_IMAGE_BASE_URL}w1280${tvData.backdrop_path}` : `https://picsum.photos/seed/${tvData.id}banner/1200/400`,
+      bannerImage: tvData.backdrop_path ? `${TMDB_IMAGE_BASE_URL}w1280${tvData.backdrop_path}` : undefined,
       year: tvData.first_air_date ? parseInt(tvData.first_air_date.split('-')[0]) : 0,
       genre: tvData.genres.map(g => g.name),
       averageRating: tvData.vote_average ? parseFloat(tvData.vote_average.toFixed(1)) : undefined,
       status: getTMDBStatus(tvData.status, 'tv'),
       type: 'TV',
-      episodes: animeEpisodes.length > 0 ? animeEpisodes : undefined,
+      episodes: animeEpisodes.length > 0 ? animeEpisodes.sort((a,b) => {
+        if(a.seasonNumber !== b.seasonNumber) return a.seasonNumber - b.seasonNumber;
+        return a.episodeNumber - b.episodeNumber;
+      }) : undefined,
       sourceAdmin: 'tmdb',
-      trailerUrl: undefined, // Trailer URL is for manual YouTube links
+      trailerUrl: undefined, 
+      isFeatured: false,
     };
   }
   return details;
