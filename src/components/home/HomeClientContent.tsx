@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -12,8 +11,8 @@ import type { Anime } from '@/types/anime';
 import FeaturedAnimeCard from '@/components/anime/FeaturedAnimeCard';
 import TopAnimeListItem from '@/components/anime/TopAnimeListItem';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import AnimeCardSkeleton from '../anime/AnimeCardSkeleton';
+import AnimeCardSkeleton from '@/components/anime/AnimeCardSkeleton';
+import HeroSkeleton from '@/components/home/HeroSkeleton'; // Import HeroSkeleton
 
 
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -49,7 +48,7 @@ const getYouTubeVideoId = (url?: string): string | null => {
 
 export interface HomeClientProps {
   homePageGenreSectionComponent: React.ReactNode;
-  recommendationsSectionComponent: React.ReactNode; // This will be cloned with props
+  recommendationsSectionComponent: React.ReactNode;
   initialAllAnimeData?: Anime[]; 
   initialFeaturedAnimes?: Anime[];
   fetchError?: string | null; 
@@ -57,7 +56,7 @@ export interface HomeClientProps {
 
 export default function HomeClient({ 
     homePageGenreSectionComponent, 
-    recommendationsSectionComponent: RecommendationsSectionProp, // Renamed for clarity
+    recommendationsSectionComponent: RecommendationsSectionProp,
     initialAllAnimeData = [],
     initialFeaturedAnimes = [],
     fetchError: initialFetchError 
@@ -81,8 +80,11 @@ export default function HomeClient({
       setFeaturedAnimesList(initialFeaturedAnimes);
       setFetchError(null);
       setIsLoading(false);
-    } else {
-      setIsLoading(false);
+    } else if (!initialFetchError && initialAllAnimeData.length === 0 && initialFeaturedAnimes.length === 0) {
+      // This case means data fetching completed but returned empty, not necessarily an error itself
+      // It could be that there's no data yet.
+      setIsLoading(false); // Stop loading if there's no error and data is confirmed empty
+      setFetchError(null);
     }
   }, [initialAllAnimeData, initialFeaturedAnimes, initialFetchError]);
 
@@ -92,20 +94,20 @@ export default function HomeClient({
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (heroAnime && youtubeVideoId && !playTrailer && !fetchError) { 
+    if (heroAnime && youtubeVideoId && !playTrailer && !fetchError && !isLoading) { 
       timer = setTimeout(() => {
         setPlayTrailer(true);
       }, 3000);
     }
     return () => clearTimeout(timer);
-  }, [heroAnime, youtubeVideoId, playTrailer, fetchError]);
+  }, [heroAnime, youtubeVideoId, playTrailer, fetchError, isLoading]);
 
   const trendingAnime = allAnime.length > 0 ? shuffleArray([...allAnime]).slice(0, 10) : [];
   
   const popularAnime = allAnime.length > 0 
     ? [...allAnime]
         .filter(a => a.averageRating !== undefined && a.averageRating !== null && a.averageRating >= 7.0) 
-        .sort((a, b) => (b.popularity || 0) - (a.popularity || 0)) // Sort by popularity
+        .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
         .slice(0, 10)
     : [];
 
@@ -125,36 +127,16 @@ export default function HomeClient({
   if (isLoading && !fetchError) { 
     return (
       <>
-        <section className="relative h-[65vh] md:h-[80vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] bg-muted/30">
-          <div className="absolute inset-0">
-             <Skeleton className="w-full h-full opacity-40" />
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent"></div>
-          </div>
-           <Container className="relative z-10 pb-12 md:pb-20 text-foreground">
-            <div className="max-w-2xl">
-              <Skeleton className="h-6 w-24 mb-3 rounded-md" /> 
-              <Skeleton className="h-12 md:h-16 w-3/4 mb-4 rounded-md" /> 
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mb-5"> 
-                <Skeleton className="h-4 w-20 rounded-md" />
-                <Skeleton className="h-4 w-24 rounded-md" />
-                <Skeleton className="h-4 w-16 rounded-md" />
-              </div>
-              <Skeleton className="h-5 w-full mb-2 rounded-md" /> 
-              <Skeleton className="h-5 w-5/6 mb-6 rounded-md" /> 
-              <div className="flex flex-wrap gap-3 sm:gap-4">
-                <Skeleton className="h-12 w-36 rounded-full" /> 
-                <Skeleton className="h-12 w-36 rounded-full" /> 
-              </div>
-            </div>
-          </Container>
-        </section>
+        <HeroSkeleton />
         <Container className="py-8">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="mb-8">
-              <Skeleton className="h-8 w-1/3 mb-4 rounded-md" />
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-3 gap-y-4 sm:gap-x-4 place-items-center sm:place-items-stretch">
+              <div className="h-8 w-1/3 mb-4 rounded-md bg-muted animate-pulse" /> {/* Carousel Title Skeleton */}
+              <div className="flex overflow-x-auto pb-4 gap-3 sm:gap-4 md:gap-x-5 scrollbar-hide">
                 {[...Array(5)].map((_, j) => (
-                  <AnimeCardSkeleton key={j} />
+                  <div key={j} className="flex-shrink-0">
+                    <AnimeCardSkeleton />
+                  </div>
                 ))}
               </div>
             </div>
@@ -183,7 +165,6 @@ export default function HomeClient({
   
   const noContentAvailable = !isLoading && !fetchError && allAnime.length === 0 && featuredAnimesList.length === 0 && !heroAnime;
 
-  // Clone the RecommendationsSectionProp to pass the initialAllAnimeData as allAnimesCache
   const recommendationsSectionWithProps = React.isValidElement(RecommendationsSectionProp) 
     ? React.cloneElement(RecommendationsSectionProp as React.ReactElement<any>, { allAnimesCache: initialAllAnimeData })
     : RecommendationsSectionProp;
