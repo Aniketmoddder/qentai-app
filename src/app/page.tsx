@@ -1,4 +1,3 @@
-
 // src/app/page.tsx
 import HomeClient from '@/components/home/HomeClientContent';
 import RecommendationsSection from '@/components/anime/recommendations-section';
@@ -13,7 +12,7 @@ export interface HomeClientProps {
   recommendationsSectionComponent: ReactNode;
   initialAllAnimeData?: Anime[];
   initialFeaturedAnimes?: Anime[];
-  fetchError?: string | null; // Added to pass potential server-side fetch errors
+  fetchError?: string | null; 
 }
 
 export default async function HomePageWrapper() {
@@ -24,17 +23,19 @@ export default async function HomePageWrapper() {
   try {
     const [allAnimesRaw, featuredAnimesRaw] = await Promise.all([
       getAllAnimes({ count: 100, filters: { sortBy: 'updatedAt', sortOrder: 'desc' } }),
-      getFeaturedAnimes({ count: 5, filters: { sortBy: 'popularity', sortOrder: 'desc' } })
+      getFeaturedAnimes({ count: 5, sortByPopularity: true }) // Use sortByPopularity flag
     ]);
 
-    allAnimeData = allAnimesRaw.map(a => convertAnimeTimestampsForClient(a) as Anime);
-    featuredAnimesData = featuredAnimesRaw.map(a => convertAnimeTimestampsForClient(a) as Anime);
+    allAnimeData = allAnimesRaw.map(a => convertAnimeTimestampsForClient(a));
+    featuredAnimesData = featuredAnimesRaw.map(a => convertAnimeTimestampsForClient(a));
     
+    // If no animes are explicitly featured, pick the most popular overall as a fallback for the hero section
     if (featuredAnimesData.length === 0 && allAnimeData.length > 0) {
       featuredAnimesData = [...allAnimeData]
-        .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
-        .slice(0, 1);
+        .sort((a, b) => (b.popularity || 0) - (a.popularity || 0)) // Sort by popularity
+        .slice(0, 1); // Take the top one
     }
+
   } catch (error) {
     console.error("HomePageWrapper: Failed to fetch initial anime data:", error);
     if (error instanceof Error) {
@@ -42,13 +43,12 @@ export default async function HomePageWrapper() {
     } else {
       fetchError = "An unknown error occurred while fetching anime data. Please ensure Firebase services are correctly configured and reachable.";
     }
-    // Ensure arrays are empty on error so client knows data isn't just 'not there'
     allAnimeData = [];
     featuredAnimesData = [];
   }
   
   const homePageGenreSection = <HomePageGenreSection />;
-  const recommendationsSection = <RecommendationsSection allAnimesCache={allAnimeData} />;
+  const recommendationsSection = <RecommendationsSection />;
 
   return (
     <HomeClient 
@@ -56,7 +56,8 @@ export default async function HomePageWrapper() {
       recommendationsSectionComponent={recommendationsSection}
       initialAllAnimeData={allAnimeData}
       initialFeaturedAnimes={featuredAnimesData}
-      fetchError={fetchError} // Pass the error state
+      fetchError={fetchError}
     />
   );
 }
+
