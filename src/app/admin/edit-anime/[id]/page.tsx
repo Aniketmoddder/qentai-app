@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { getAnimeById, updateAnimeInFirestore, getAllAnimes } from '@/services/animeService';
 import type { Anime } from '@/types/anime';
-import { Loader2, Save, ArrowLeft, AlertCircle, Youtube, Wand } from 'lucide-react'; // Added Wand for AniList ID
+import { Loader2, Save, ArrowLeft, AlertCircle, Youtube, Wand } from 'lucide-react'; 
 import Container from '@/components/layout/container';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
@@ -35,12 +35,13 @@ const animeSchema = z.object({
   trailerUrl: z.string().url('Must be a valid YouTube URL').optional().or(z.literal('')),
   isFeatured: z.boolean().optional(),
   averageRating: z.coerce.number().min(0).max(10).optional(),
-  aniListId: z.coerce.number().int().positive('AniList ID must be a positive number.').optional().nullable().transform(val => val === '' ? null : val), // Optional AniList ID
+  aniListId: z.coerce.number().int().positive('AniList ID must be a positive number.').optional().nullable().transform(val => val === '' ? null : val),
 });
 
 type AnimeFormData = z.infer<typeof animeSchema>;
 
 const ADMIN_EMAIL = 'ninjax.desi@gmail.com';
+const INITIAL_GENRES = ['Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Sci-Fi', 'Slice of Life', 'Romance', 'Horror', 'Mystery', 'Thriller', 'Sports', 'Supernatural', 'Mecha', 'Historical', 'Music', 'School', 'Shounen', 'Shoujo', 'Seinen', 'Josei', 'Isekai', 'Psychological', 'Ecchi', 'Harem', 'Demons', 'Magic', 'Martial Arts', 'Military', 'Parody', 'Police', 'Samurai', 'Space', 'Super Power', 'Vampire', 'Game'];
 
 export default function EditAnimePage() {
   const { toast } = useToast();
@@ -55,7 +56,7 @@ export default function EditAnimePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   
-  const [availableGenres, setAvailableGenres] = useState<string[]>(['Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Sci-Fi', 'Slice of Life', 'Romance', 'Horror', 'Mystery', 'Thriller', 'Sports', 'Supernatural', 'Mecha', 'Historical', 'Music', 'School', 'Shounen', 'Shoujo', 'Seinen', 'Josei', 'Isekai', 'Psychological', 'Ecchi', 'Harem', 'Demons', 'Magic', 'Martial Arts', 'Military', 'Parody', 'Police', 'Samurai', 'Space', 'Super Power', 'Vampire', 'Game']);
+  const [availableGenres, setAvailableGenres] = useState<string[]>(INITIAL_GENRES);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
 
 
@@ -73,7 +74,7 @@ export default function EditAnimePage() {
       trailerUrl: '',
       isFeatured: false,
       averageRating: 0,
-      aniListId: null, // Initialize aniListId
+      aniListId: null, 
     },
   });
 
@@ -116,7 +117,7 @@ export default function EditAnimePage() {
           trailerUrl: animeData.trailerUrl || '',
           isFeatured: animeData.isFeatured || false,
           averageRating: animeData.averageRating || 0,
-          aniListId: animeData.aniListId || null, // Set aniListId
+          aniListId: animeData.aniListId || null, 
         });
         setSelectedGenres(animeData.genre || []);
       } else {
@@ -143,17 +144,18 @@ export default function EditAnimePage() {
     const fetchAllUniqueGenres = async () => {
         try {
             const animes = await getAllAnimes({limit: 500}); 
-            const uniqueGenres = new Set<string>(availableGenres); 
-            animes.forEach(anime => anime.genre.forEach(g => uniqueGenres.add(g)));
-            setAvailableGenres(Array.from(uniqueGenres).sort());
+            const uniqueGenresFromDB = new Set<string>(); 
+            animes.forEach(anime => anime.genre.forEach(g => uniqueGenresFromDB.add(g)));
+            const combinedGenres = new Set([...INITIAL_GENRES, ...Array.from(uniqueGenresFromDB)]);
+            setAvailableGenres(Array.from(combinedGenres).sort());
         } catch (error) {
             console.warn("Could not fetch all unique genres for selector, using predefined list.", error);
+            setAvailableGenres(INITIAL_GENRES.sort());
         }
     };
     if (isAuthorized) {
         fetchAllUniqueGenres();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthorized]);
 
 
@@ -170,7 +172,7 @@ export default function EditAnimePage() {
     try {
       const updateData: Partial<Omit<Anime, 'episodes' | 'id'>> = { 
         ...data,
-        aniListId: data.aniListId || undefined, // Store as number or undefined
+        aniListId: data.aniListId || undefined, 
         trailerUrl: data.trailerUrl || undefined, 
       };
       await updateAnimeInFirestore(animeId, updateData);
@@ -252,7 +254,7 @@ export default function EditAnimePage() {
 
             <FormFieldItem name="synopsis" label="Synopsis" placeholder="A brief summary of the content..." form={form} isTextarea />
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4"> {/* Adjusted for AniList ID */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4"> 
               <FormSelectItem name="type" label="Type" items={['TV', 'Movie', 'OVA', 'Special', 'Unknown']} form={form} />
               <FormSelectItem name="status" label="Status" items={['Ongoing', 'Completed', 'Upcoming', 'Unknown']} form={form} />
               <FormFieldItem name="aniListId" label="AniList ID (Optional)" type="number" placeholder="e.g., 11061" form={form} Icon={Wand} />
@@ -284,7 +286,7 @@ export default function EditAnimePage() {
               <Label className="font-medium">Genres (Select multiple)</Label>
               <ScrollArea className="h-32 md:h-40 mt-1 p-2 border rounded-md bg-input/30">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                  {availableGenres.map(genre => (
+                  {availableGenres.map(genre => ( // No longer needs .sort() here if already sorted in useEffect
                     <Button
                       key={genre}
                       type="button"

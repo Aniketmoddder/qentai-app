@@ -9,13 +9,12 @@ import AnimeCardSkeleton from './AnimeCardSkeleton';
 import { Button } from '@/components/ui/button';
 import { Loader2, Wand2, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-// Removed: import { getAllAnimes } from '@/services/animeService';
 
 // Simulate user watch history - replace with actual user data in a real app
 const mockWatchHistoryTitles = ['Attack on Titan', 'Solo Leveling', 'One Punch Man']; // Titles the user has watched
 
 interface RecommendationsSectionProps {
-  allAnimesCache: Anime[]; // Accept pre-fetched anime list as a prop
+  allAnimesCache: Anime[]; 
 }
 
 export default function RecommendationsSection({ allAnimesCache }: RecommendationsSectionProps) {
@@ -41,8 +40,9 @@ export default function RecommendationsSection({ allAnimesCache }: Recommendatio
       
       const detailedRecommendations = result.recommendations
         .map(title => {
+          const normalizedRecTitle = title.toLowerCase().trim();
           return allAnimesCache.find(anime => 
-            anime.title.toLowerCase() === title.toLowerCase()
+            anime.title.toLowerCase().trim() === normalizedRecTitle
           );
         })
         .filter((anime): anime is Anime => anime !== undefined); 
@@ -62,18 +62,20 @@ export default function RecommendationsSection({ allAnimesCache }: Recommendatio
         }
       }
       setError(errorMessage);
-      setRecommendations([]); // Clear recommendations on error
+      setRecommendations([]); 
     } finally {
       setIsLoading(false);
     }
-  }, [allAnimesCache, isLoading]); // Added isLoading
+  }, [allAnimesCache, isLoading]); 
 
   useEffect(() => {
+    // Fetch recommendations if cache is available, and they haven't been fetched yet,
+    // and no error is present, and not currently loading.
     if (allAnimesCache && allAnimesCache.length > 0 && recommendations.length === 0 && !error && !isLoading) { 
       fetchRecommendations();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allAnimesCache, recommendations.length, error]); // Removed fetchRecommendations and isLoading from dep array
+  }, [allAnimesCache, recommendations.length, error]); // Dependencies that trigger re-evaluation
 
   return (
     <section className="py-6 md:py-8">

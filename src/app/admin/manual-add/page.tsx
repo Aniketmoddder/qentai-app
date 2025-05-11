@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -12,9 +12,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { addAnimeToFirestore } from '@/services/animeService';
+import { addAnimeToFirestore, getAllAnimes } from '@/services/animeService'; // Added getAllAnimes
 import type { Anime, Episode } from '@/types/anime';
-import { Loader2, PlusCircle, Trash2, Save, CloudUpload, Youtube, Wand } from 'lucide-react'; // Added Wand for AniList ID
+import { Loader2, PlusCircle, Trash2, Save, CloudUpload, Youtube, Wand } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { slugify } from '@/lib/stringUtils';
 
@@ -47,10 +47,13 @@ const animeSchema = z.object({
 
 type AnimeFormData = z.infer<typeof animeSchema>;
 
+const INITIAL_GENRES = ['Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Sci-Fi', 'Slice of Life', 'Romance', 'Horror', 'Mystery', 'Thriller', 'Sports', 'Supernatural', 'Mecha', 'Historical', 'Music', 'School', 'Shounen', 'Shoujo', 'Seinen', 'Josei', 'Isekai', 'Psychological', 'Ecchi', 'Harem', 'Demons', 'Magic', 'Martial Arts', 'Military', 'Parody', 'Police', 'Samurai', 'Space', 'Super Power', 'Vampire', 'Game'];
+
+
 export default function ManualAddTab() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [availableGenres] = useState(['Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Sci-Fi', 'Slice of Life', 'Romance', 'Horror', 'Mystery', 'Thriller', 'Sports', 'Supernatural', 'Mecha', 'Historical', 'Music', 'School', 'Shounen', 'Shoujo', 'Seinen', 'Josei', 'Isekai', 'Psychological', 'Ecchi', 'Harem', 'Demons', 'Magic', 'Martial Arts', 'Military', 'Parody', 'Police', 'Samurai', 'Space', 'Super Power', 'Vampire', 'Game']);
+  const [availableGenres, setAvailableGenres] = useState<string[]>(INITIAL_GENRES);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
 
   const form = useForm<AnimeFormData>({
@@ -78,6 +81,27 @@ export default function ManualAddTab() {
 
   const watchType = form.watch("type");
   const watchTitle = form.watch("title");
+
+  useEffect(() => {
+    const fetchAllUniqueGenres = async () => {
+        try {
+            // Assuming getAllAnimes can fetch all animes if count is large or -1
+            const animes = await getAllAnimes({ count: 500 }); 
+            const uniqueGenresFromDB = new Set<string>();
+            animes.forEach(anime => anime.genre.forEach(g => uniqueGenresFromDB.add(g)));
+            
+            // Combine with initial static list and remove duplicates
+            const combinedGenres = new Set([...INITIAL_GENRES, ...Array.from(uniqueGenresFromDB)]);
+            setAvailableGenres(Array.from(combinedGenres).sort());
+        } catch (error) {
+            console.warn("Could not fetch all unique genres for selector, using predefined list.", error);
+            // Fallback to initial static list if fetch fails
+            setAvailableGenres(INITIAL_GENRES.sort());
+        }
+    };
+    fetchAllUniqueGenres();
+  }, []);
+
 
   React.useEffect(() => {
     const animeTitleSlug = slugify(watchTitle || 'movie');
@@ -112,12 +136,11 @@ export default function ManualAddTab() {
   const onSubmit = async (data: AnimeFormData) => {
     setIsLoading(true);
     try {
-      // The ID is generated from title by addAnimeToFirestore service
       const animeDataForDb: Omit<Anime, 'id' | 'createdAt' | 'updatedAt'> = { 
         ...data,
         aniListId: data.aniListId || undefined,
         episodes: (data.episodes || []).map((ep, index) => {
-            const animeTitleSlug = slugify(data.title); // Ensure title is available for episode ID generation
+            const animeTitleSlug = slugify(data.title); 
             return {
                 ...ep,
                 id: ep.id || `${animeTitleSlug}-s${ep.seasonNumber || 1}e${ep.episodeNumber || (index + 1)}-${Date.now()}`.toLowerCase()
@@ -126,7 +149,7 @@ export default function ManualAddTab() {
         trailerUrl: data.trailerUrl || undefined, 
       };
 
-      const newAnimeId = await addAnimeToFirestore(animeDataForDb); // This now returns the slugified ID
+      const newAnimeId = await addAnimeToFirestore(animeDataForDb); 
       toast({ title: 'Content Added', description: `${data.title} has been successfully added with ID: ${newAnimeId}.` });
       form.reset();
       setSelectedGenres([]);
@@ -175,7 +198,7 @@ export default function ManualAddTab() {
             <Label className="font-medium">Genres (Select multiple)</Label>
             <ScrollArea className="h-32 md:h-40 mt-1 p-2 border rounded-md bg-input/30">
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                {availableGenres.sort().map(genre => (
+                {availableGenres.map(genre => ( // No longer needs .sort() here if already sorted in useEffect
                   <Button
                     key={genre}
                     type="button"
