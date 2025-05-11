@@ -142,4 +142,3 @@ export default function GenresPage() {
 
 // Adding Tv icon for completeness if not already imported, assuming it's from lucide-react
 import { Tv } from 'lucide-react';
-```
