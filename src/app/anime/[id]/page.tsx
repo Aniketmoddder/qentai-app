@@ -5,16 +5,16 @@ import Container from '@/components/layout/container';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Star, PlayCircle, CalendarDays, Tv, Film, ListVideo, List, ChevronRight, AlertTriangle, Users, ShieldCheck, Info, ExternalLink, Tag as GenreIcon, Clapperboard, UserSquare2, BookOpen, History as HistoryIcon, Globe2 } from 'lucide-react';
+import { Star, PlayCircle, CalendarDays, Tv, Film, ListVideo, List, ChevronRight, AlertTriangle, Users, ShieldCheck, Info, ExternalLink, Tag as GenreIcon, Clapperboard, UserSquare2, BookOpen, History as HistoryIcon, Globe2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import AnimeInteractionControls from '@/components/anime/anime-interaction-controls';
-import CharacterCarousel from '@/components/anime/CharacterCarousel'; 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; 
+import AnimeInteractionControls from '@/components/anime/anime-interaction-controls'; 
+import CharacterCarousel from '@/components/anime/CharacterCarousel';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import React, { Suspense } from 'react';
 import Logo from '@/components/common/logo';
-import ReadMoreSynopsis from '@/components/anime/ReadMoreSynopsis'; 
+import ReadMoreSynopsis from '@/components/anime/ReadMoreSynopsis';
 
 interface AnimeDetailsPageProps {
   params: {
@@ -41,7 +41,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
 
   try {
     // getAnimeById now internally handles fetching and merging TMDB & AniList data
-    anime = await getAnimeById(params.id); 
+    anime = await getAnimeById(params.id);
   } catch (error) {
     console.error(`Failed to fetch anime details for ID ${params.id}:`, error);
     if (error instanceof Error && error.message.includes("index")) {
@@ -105,7 +105,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
   return (
     <div className="min-h-screen text-foreground">
       <section 
-        className="relative h-[35vh] md:h-[45vh] lg:h-[50vh] w-full -mt-[calc(var(--header-height,4rem)+1px)] bg-card"
+        className="relative h-[45vh] md:h-[55vh] lg:h-[60vh] w-full -mt-[calc(var(--header-height,4rem)+1px)] bg-card"
       >
         <Image
           src={primaryImageSrc}
@@ -119,10 +119,10 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
         <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-transparent to-transparent md:hidden" />
       </section>
 
-      <Container className="relative z-10 -mt-[150px] md:-mt-[180px] lg:-mt-[220px] pb-16"> {/* Adjusted negative margin */}
+      <Container className="relative z-10 -mt-[180px] md:-mt-[220px] lg:-mt-[280px] pb-16">
         <div className="md:grid md:grid-cols-12 md:gap-8">
           <div className="md:col-span-4 lg:col-span-3">
-            <div className="sticky top-[calc(var(--header-height,4rem)+2rem)]"> {/* Adjusted sticky top */}
+            <div className="sticky top-[calc(var(--header-height,4rem)+2rem)]">
               <div className="aspect-[2/3] relative rounded-xl overflow-hidden shadow-2xl border-2 border-border/20 bg-card">
                 <Image
                   src={coverImageSrc}
@@ -304,3 +304,4 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     </div>
   );
 }
+
