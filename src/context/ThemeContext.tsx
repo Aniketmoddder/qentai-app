@@ -18,8 +18,8 @@ export interface ThemeOption {
 export const themes: ThemeOption[] = [
   { 
     value: 'dark-purple-premium', 
-    label: 'Default Dark',
-    colors: { primary: '#7F5AF0', background: '#0D0B1F'}
+    label: 'Premium Anime Dark', // Updated Label
+    colors: { primary: '#8B5CF6', background: '#0A0A13'} // Updated colors
   },
   { 
     value: 'light-pale-purple', 
@@ -38,7 +38,7 @@ export const themes: ThemeOption[] = [
   },
 ];
 
-const DEFAULT_THEME: Theme = 'dark-purple-premium';
+const DEFAULT_THEME: Theme = 'dark-purple-premium'; // This theme is now "Premium Anime Dark"
 
 interface ThemeContextType {
   theme: Theme;

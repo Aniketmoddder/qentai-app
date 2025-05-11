@@ -8,53 +8,54 @@
 
 
 @layer base {
-  /* Default Theme (Dark Purple Premium) - Fallback if no data-theme is set */
+  /* New Default Theme (Premium Anime Dark) - Replaces Dark Purple Premium */
   :root, html[data-theme="dark-purple-premium"] {
-    --background: 240 40% 8%; /* #0D0B1F */
-    --foreground: 220 13% 96%; /* #F4F4F5 */
+    --background: 240 23% 6%; /* #0A0A13 - Rich Night Black */
+    --foreground: 220 13% 96%; /* #F4F4F5 - Soft Light Gray */
 
-    --card: 240 40% 12%; /* Darker card background - Adjusted from original */
+    --card: 248 25% 14%; /* #1E1B2E - Deep UI Card Color (Surface) */
     --card-foreground: 220 13% 96%;
 
-    --popover: 240 40% 10%; /* Darker popover - Adjusted */
+    --popover: 240 23% 5%; /* Slightly darker than background */
     --popover-foreground: 220 13% 96%;
 
-    --primary: 252 85% 65%; /* #7F5AF0 */
-    --primary-darker: 252 85% 55%; /* Darker variant for gradients */
-    --primary-foreground: 220 13% 96%; /* Light text for on-purple buttons */
+    --primary: 262 89% 66%; /* #8B5CF6 - Premium Neon Violet */
+    --primary-foreground: 220 13% 96%; 
     
-    --secondary: 250 87% 77%; /* #A78BFA */
-    --secondary-foreground: 240 40% 10%; /* Dark text for on-secondary buttons */
+    --secondary: 198 93% 60%; /* #38BDF8 - Electric Cyan Blue */
+    --secondary-foreground: 240 23% 6%; /* Dark text for on-secondary */
 
-    --muted: 240 40% 15%; /* Dark Muted - Adjusted */
-    --muted-foreground: 220 10% 65%; /* Lighter gray for muted text - Adjusted */
+    --muted: 227 16% 15%; /* Darker than border for muted backgrounds */
+    --muted-foreground: 220 10% 55%; /* Adjusted for readability */
 
-    --accent: 337 88% 76%; /* #F472B6 */
-    --accent-foreground: 240 40% 8%; /* Dark text for on-accent */
+    --accent: 337 88% 70%; /* #F472B6 - Modern Candy Pink */
+    --accent-foreground: 240 23% 6%; /* Dark text for on-accent */
 
-    --destructive: 0 70% 55%; /* Adjusted for dark theme visibility */
+    --destructive: 0 70% 55%; /* Standard red, good contrast */
     --destructive-foreground: 0 0% 98%;
 
-    --border: 242 48% 28%; /* #312E81 */
-    --input: 240 40% 10%; /* Dark input backgrounds - Adjusted */
-    --ring: 252 85% 70%; /* Lighter variant of primary for focus rings */
+    --border: 227 16% 20%; /* #2A2E3B - Muted Divider Gray */
+    --input: 248 25% 12%; /* Slightly lighter than card/surface */
+    --ring: 262 89% 71%; /* Lighter primary for focus rings */
 
     --radius: 0.75rem;
 
-    --chart-1: 252 85% 65%; /* Primary */
-    --chart-2: 195 100% 50%; /* A contrasting color, e.g. secondary from Vibrant */
-    --chart-3: 337 88% 76%;  /* Accent */
-    --chart-4: 45 90% 55%;   /* Yellow/Orange variant */
-    --chart-5: 0 0% 50%;     /* Gray variant */
+    /* Chart colors using the new palette */
+    --chart-1: 262 89% 66%; /* Primary */
+    --chart-2: 198 93% 60%; /* Secondary */
+    --chart-3: 337 88% 70%;  /* Accent */
+    --chart-4: 187 85% 53%;   /* Highlight: #22D3EE - Aqua Glow */
+    --chart-5: 220 10% 75%;     /* Light Gray variant */
     
-    --sidebar-background: 240 40% 7%; 
+    /* Sidebar colors derived from the new palette */
+    --sidebar-background: 240 23% 5%; 
     --sidebar-foreground: 220 13% 90%;
-    --sidebar-primary: 252 85% 65%; 
+    --sidebar-primary: 262 89% 66%; 
     --sidebar-primary-foreground: 220 13% 96%;
-    --sidebar-accent: 240 40% 15%;
-    --sidebar-accent-foreground: 252 85% 65%; 
-    --sidebar-border: 242 48% 22%;
-    --sidebar-ring: 252 85% 70%;
+    --sidebar-accent: 248 25% 14%; /* Card color as accent bg */
+    --sidebar-accent-foreground: 262 89% 66%; /* Primary as text on accent */
+    --sidebar-border: 227 16% 18%;
+    --sidebar-ring: 262 89% 71%;
   }
 
   html[data-theme="light-pale-purple"] {
@@ -65,7 +66,6 @@
     --popover: 0 0% 100%; /* White */
     --popover-foreground: 222 47% 11%;
     --primary: 263 84% 56%; /* #7C3AED */
-    --primary-darker: 263 84% 46%;
     --primary-foreground: 0 0% 100%; /* White */
     --secondary: 231 100% 95%; /* #E0E7FF */
     --secondary-foreground: 263 84% 50%; /* Darker primary */
@@ -103,7 +103,6 @@
     --popover: 0 0% 6%;
     --popover-foreground: 320 100% 98%;
     --primary: 329 100% 65%; /* #FF4DB8 */
-    --primary-darker: 329 100% 55%;
     --primary-foreground: 0 0% 4%; /* Dark text */
     --secondary: 195 100% 50%; /* #00CFFF */
     --secondary-foreground: 0 0% 4%; /* Dark text */
@@ -141,7 +140,6 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 26% 19%;
     --primary: 352 96% 71%; /* #FB7185 */
-    --primary-darker: 352 96% 61%;
     --primary-foreground: 0 0% 100%; /* White */
     --secondary: 188 95% 81%; /* #A5F3FC */
     --secondary-foreground: 188 95% 50%; /* Darker secondary */
@@ -220,7 +218,7 @@
 
 @layer utilities {
   .btn-primary-gradient {
-    @apply bg-gradient-to-r from-primary to-[hsl(var(--primary-darker))] text-primary-foreground transition-all duration-300 ease-in-out shadow-md hover:shadow-primary/50;
+    @apply bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--secondary))] text-primary-foreground transition-all duration-300 ease-in-out shadow-md hover:shadow-primary/50;
     background-size: 150% auto; 
   }
   .btn-primary-gradient:hover {
