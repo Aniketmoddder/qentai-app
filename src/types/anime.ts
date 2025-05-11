@@ -1,12 +1,60 @@
-
 import type { Timestamp } from 'firebase/firestore';
+
+export interface VoiceActor {
+  id?: number; // AniList voice actor ID
+  name: string | null;
+  image: string | null; // URL
+  language?: string; // e.g., JAPANESE, ENGLISH
+}
+
+export interface CharacterNode { // From AniList structure
+  id: number;
+  name: {
+    full: string | null;
+    native?: string | null;
+    userPreferred?: string | null;
+  } | null;
+  image: {
+    large: string | null;
+    medium?: string | null;
+  } | null;
+  role?: 'MAIN' | 'SUPPORTING' | 'BACKGROUND'; // AniList character role
+}
+
+export interface CharacterEdge { // From AniList structure
+  node: CharacterNode;
+  role?: 'MAIN' | 'SUPPORTING' | 'BACKGROUND'; // Role of the character in the media
+  voiceActors?: { // Directly use AniList's voice actor structure
+    id: number;
+    name: {
+      full: string | null;
+      native?: string | null;
+      userPreferred?: string | null;
+    } | null;
+    image: {
+      large: string | null;
+      medium?: string | null;
+    } | null;
+    languageV2?: string; // e.g. Japanese, English
+  }[];
+}
+
+
+export interface Character {
+  id: number; // AniList character ID
+  name: string | null;
+  role?: 'MAIN' | 'SUPPORTING' | 'BACKGROUND' | string; // Allow string for flexibility
+  image: string | null; // URL to anime character image
+  voiceActors?: VoiceActor[]; // Parsed Voice Actors
+}
 
 export interface Anime {
   id: string; // Firestore document ID
   tmdbId?: string; // TMDB ID (movie or TV), optional
+  aniListId?: number; // AniList ID, optional
   title: string;
-  coverImage: string; // URL to poster image
-  bannerImage?: string; // URL to backdrop image
+  coverImage: string; // URL to poster image (can be from TMDB or AniList)
+  bannerImage?: string; // URL to backdrop image (can be from TMDB or AniList)
   year: number;
   genre: string[];
   status: 'Ongoing' | 'Completed' | 'Upcoming' | 'Unknown';
@@ -14,9 +62,10 @@ export interface Anime {
   averageRating?: number; // Optional, 0-10 scale
   episodes?: Episode[]; // Optional, especially for movies or if episodes are added later
   type?: 'TV' | 'Movie' | 'OVA' | 'Special' | 'Unknown';
-  sourceAdmin?: 'tmdb' | 'manual'; // To track how it was added
+  sourceAdmin?: 'tmdb' | 'manual' | 'tmdb_anilist'; // To track how it was added/enriched
   isFeatured?: boolean; // To mark anime as featured
   trailerUrl?: string; // Optional YouTube video URL for trailer
+  characters?: Character[]; // Enriched character data from AniList
   createdAt?: string; // Firestore Timestamp for when the document was created, converted to ISO string
   updatedAt?: string; // Firestore Timestamp for when the document was last updated, converted to ISO string
 }
@@ -55,4 +104,3 @@ export interface AnimeRecommendation {
   coverImage: string;
   reason?: string; // Optional: Why this is recommended
 }
-

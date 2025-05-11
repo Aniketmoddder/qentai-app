@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -16,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { getAnimeById, updateAnimeInFirestore, getAllAnimes } from '@/services/animeService';
 import type { Anime } from '@/types/anime';
-import { Loader2, Save, ArrowLeft, AlertCircle, Youtube } from 'lucide-react';
+import { Loader2, Save, ArrowLeft, AlertCircle, Youtube, Wand } from 'lucide-react'; // Added Wand for AniList ID
 import Container from '@/components/layout/container';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
@@ -35,6 +34,7 @@ const animeSchema = z.object({
   trailerUrl: z.string().url('Must be a valid YouTube URL').optional().or(z.literal('')),
   isFeatured: z.boolean().optional(),
   averageRating: z.coerce.number().min(0).max(10).optional(),
+  aniListId: z.coerce.number().int().positive('AniList ID must be a positive number.').optional().nullable().transform(val => val === '' ? null : val), // Optional AniList ID
 });
 
 type AnimeFormData = z.infer<typeof animeSchema>;
@@ -42,7 +42,7 @@ type AnimeFormData = z.infer<typeof animeSchema>;
 const ADMIN_EMAIL = 'ninjax.desi@gmail.com';
 
 export default function EditAnimePage() {
-  const { toast } = useToast();
+  const { toast } } = useToast();
   const router = useRouter();
   const params = useParams();
   const animeId = params.id as string;
@@ -72,6 +72,7 @@ export default function EditAnimePage() {
       trailerUrl: '',
       isFeatured: false,
       averageRating: 0,
+      aniListId: null, // Initialize aniListId
     },
   });
 
@@ -114,6 +115,7 @@ export default function EditAnimePage() {
           trailerUrl: animeData.trailerUrl || '',
           isFeatured: animeData.isFeatured || false,
           averageRating: animeData.averageRating || 0,
+          aniListId: animeData.aniListId || null, // Set aniListId
         });
         setSelectedGenres(animeData.genre || []);
       } else {
@@ -165,8 +167,9 @@ export default function EditAnimePage() {
   const onSubmit = async (data: AnimeFormData) => {
     setIsSubmitting(true);
     try {
-      const updateData: Partial<Omit<Anime, 'episodes'>> = { 
+      const updateData: Partial<Omit<Anime, 'episodes' | 'id'>> = { 
         ...data,
+        aniListId: data.aniListId || undefined, // Store as number or undefined
         trailerUrl: data.trailerUrl || undefined, 
       };
       await updateAnimeInFirestore(animeId, updateData);
@@ -248,9 +251,10 @@ export default function EditAnimePage() {
 
             <FormFieldItem name="synopsis" label="Synopsis" placeholder="A brief summary of the content..." form={form} isTextarea />
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4"> {/* Adjusted for AniList ID */}
               <FormSelectItem name="type" label="Type" items={['TV', 'Movie', 'OVA', 'Special', 'Unknown']} form={form} />
               <FormSelectItem name="status" label="Status" items={['Ongoing', 'Completed', 'Upcoming', 'Unknown']} form={form} />
+              <FormFieldItem name="aniListId" label="AniList ID (Optional)" type="number" placeholder="e.g., 11061" form={form} Icon={Wand} />
             </div>
              <FormFieldItem name="trailerUrl" label="YouTube Trailer URL (Optional)" placeholder="https://www.youtube.com/watch?v=..." form={form} Icon={Youtube} />
 
@@ -330,7 +334,7 @@ function FormFieldItem({ name, label, placeholder, type = "text", form, isTextar
       {isTextarea ? (
         <Textarea id={name} placeholder={placeholder} {...register(name)} className="bg-input border-border/70 focus:border-primary text-sm" rows={3} />
       ) : (
-        <Input id={name} type={type} placeholder={placeholder} {...register(name, type === 'number' ? { valueAsNumber: true } : {})} className="bg-input border-border/70 focus:border-primary h-9 text-sm" />
+        <Input id={name} type={type} placeholder={placeholder} {...register(name, type === 'number' ? { setValueAs: (value) => value === '' ? null : Number(value) } : {})} className="bg-input border-border/70 focus:border-primary h-9 text-sm" />
       )}
       {error && <p className="text-xs text-destructive mt-0.5">{(error as any).message}</p>}
     </div>

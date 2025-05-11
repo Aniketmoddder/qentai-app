@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -14,18 +13,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { addAnimeToFirestore } from '@/services/animeService';
 import type { Anime, Episode } from '@/types/anime';
-import { Loader2, PlusCircle, Trash2, Save, CloudUpload, Youtube } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Save, CloudUpload, Youtube, Wand } from 'lucide-react'; // Added Wand for AniList ID
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const episodeSchema = z.object({
   id: z.string().optional(), 
   title: z.string().min(1, 'Episode title is required'),
-  episodeNumber: z.coerce.number().min(0, 'Episode number must be 0 or positive (0 for movies/specials if needed)'), // Allow 0 for movie case
-  seasonNumber: z.coerce.number().min(0, 'Season number must be 0 or positive (0 for movies/specials if needed)'), // Allow 0 for movie case
+  episodeNumber: z.coerce.number().min(0, 'Episode number must be 0 or positive (0 for movies/specials if needed)'),
+  seasonNumber: z.coerce.number().min(0, 'Season number must be 0 or positive (0 for movies/specials if needed)'),
   thumbnail: z.string().url('Must be a valid URL for thumbnail').optional().or(z.literal('')),
   duration: z.string().optional(),
   url: z.string().url('Must be a valid URL for video').optional().or(z.literal('')),
-  airDate: z.string().optional(), // Consider date picker or format validation
+  airDate: z.string().optional(),
   overview: z.string().optional(),
 });
 
@@ -41,12 +40,13 @@ const animeSchema = z.object({
   trailerUrl: z.string().url('Must be a valid YouTube URL').optional().or(z.literal('')),
   sourceAdmin: z.literal('manual').default('manual'),
   episodes: z.array(episodeSchema).optional(),
+  aniListId: z.coerce.number().int().positive('AniList ID must be a positive number.').optional().nullable().transform(val => val === '' ? null : val), // Optional AniList ID
 });
 
 type AnimeFormData = z.infer<typeof animeSchema>;
 
 export default function ManualAddTab() {
-  const { toast } = useToast();
+  const { toast } } from useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [availableGenres] = useState(['Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Sci-Fi', 'Slice of Life', 'Romance', 'Horror', 'Mystery', 'Thriller', 'Sports', 'Supernatural', 'Mecha', 'Historical', 'Music', 'School', 'Shounen', 'Shoujo', 'Seinen', 'Josei', 'Isekai', 'Psychological', 'Ecchi', 'Harem', 'Demons', 'Magic', 'Martial Arts', 'Military', 'Parody', 'Police', 'Samurai', 'Space', 'Super Power', 'Vampire', 'Game']);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
@@ -65,6 +65,7 @@ export default function ManualAddTab() {
       trailerUrl: '',
       sourceAdmin: 'manual',
       episodes: [],
+      aniListId: null, // Initialize as null
     },
   });
   
@@ -75,7 +76,6 @@ export default function ManualAddTab() {
 
   const watchType = form.watch("type");
 
-  // Reset episodes when type changes between Movie and TV/OVA/Special
   React.useEffect(() => {
     if (watchType === 'Movie') {
         replace([{ 
@@ -90,7 +90,7 @@ export default function ManualAddTab() {
         }]);
     } else {
         if (fields.length === 1 && fields[0].title === "Full Movie") {
-            replace([]); // Clear movie placeholder if switching away from Movie
+            replace([]); 
         }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -110,18 +110,19 @@ export default function ManualAddTab() {
     try {
       const animeDataForDb: Omit<Anime, 'id'> = {
         ...data,
+        aniListId: data.aniListId || undefined, // Store as number or undefined
         episodes: (data.episodes || []).map((ep, index) => ({
           ...ep,
           id: ep.id || `${data.title.replace(/\s+/g, '-')}-s${ep.seasonNumber}e${ep.episodeNumber}-${index}-${Date.now()}`.toLowerCase()
         })),
-        trailerUrl: data.trailerUrl || undefined, // Ensure empty string becomes undefined
+        trailerUrl: data.trailerUrl || undefined, 
       };
 
       const newAnimeId = await addAnimeToFirestore(animeDataForDb);
       toast({ title: 'Content Added', description: `${data.title} has been successfully added with ID: ${newAnimeId}.` });
       form.reset();
       setSelectedGenres([]);
-      replace([]); // Reset episodes field array
+      replace([]); 
     } catch (err) {
       console.error('Failed to add content:', err);
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
@@ -154,13 +155,13 @@ export default function ManualAddTab() {
 
           <FormFieldItem name="synopsis" label="Synopsis" placeholder="A brief summary of the content..." form={form} isTextarea />
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4"> {/* Adjusted for 3 columns */}
             <FormSelectItem name="type" label="Type" items={['TV', 'Movie', 'OVA', 'Special', 'Unknown']} form={form} />
             <FormSelectItem name="status" label="Status" items={['Ongoing', 'Completed', 'Upcoming', 'Unknown']} form={form} />
+            <FormFieldItem name="aniListId" label="AniList ID (Optional)" type="number" placeholder="e.g., 11061" form={form} Icon={Wand} />
           </div>
 
           <FormFieldItem name="trailerUrl" label="YouTube Trailer URL (Optional)" placeholder="https://www.youtube.com/watch?v=..." form={form} Icon={Youtube} />
-
 
           <div>
             <Label className="font-medium">Genres (Select multiple)</Label>
@@ -265,8 +266,8 @@ function FormFieldItem({ name, label, placeholder, type = "text", form, isTextar
       const parts = name.split('.');
       const episodeIndex = parseInt(parts[1]);
       const fieldName = parts[2];
-      if (errors.episodes && errors.episodes[episodeIndex] && errors.episodes[episodeIndex][fieldName]) {
-          error = errors.episodes[episodeIndex][fieldName];
+      if (errors.episodes && errors.episodes[episodeIndex] && errors.episodes[episodeIndex]?.[fieldName as keyof Episode]) {
+          error = errors.episodes[episodeIndex]?.[fieldName as keyof Episode];
       }
   } else {
       error = errors[name as keyof AnimeFormData];
@@ -284,7 +285,7 @@ function FormFieldItem({ name, label, placeholder, type = "text", form, isTextar
       {isTextarea ? (
         <Textarea id={inputId} placeholder={placeholder} {...register(name)} className="bg-input border-border/70 focus:border-primary text-sm" rows={3} />
       ) : (
-        <Input id={inputId} type={type} placeholder={placeholder} {...register(name, type === 'number' ? { valueAsNumber: true } : {})} className="bg-input border-border/70 focus:border-primary h-9 text-sm" />
+        <Input id={inputId} type={type} placeholder={placeholder} {...register(name, type === 'number' ? { setValueAs: (value) => value === '' ? null : Number(value) } : {})} className="bg-input border-border/70 focus:border-primary h-9 text-sm" />
       )}
       {error && <p className="text-xs text-destructive mt-0.5">{(error as any).message}</p>}
     </div>
@@ -292,7 +293,7 @@ function FormFieldItem({ name, label, placeholder, type = "text", form, isTextar
 }
 
 interface FormSelectItemProps {
-  name: any;
+  name: keyof AnimeFormData; 
   label: string;
   items: string[];
   form: ReturnType<typeof useForm<AnimeFormData>>;
@@ -300,7 +301,7 @@ interface FormSelectItemProps {
 
 function FormSelectItem({ name, label, items, form }: FormSelectItemProps) {
   const { control, formState: { errors } } = form;
-  const error = errors[name as keyof AnimeFormData];
+  const error = errors[name];
 
   return (
     <div className="space-y-1">
@@ -309,7 +310,7 @@ function FormSelectItem({ name, label, items, form }: FormSelectItemProps) {
         name={name}
         control={control}
         render={({ field }) => (
-          <Select onValueChange={field.onChange} value={field.value}>
+          <Select onValueChange={field.onChange} value={field.value as string | undefined}> 
             <SelectTrigger id={name} className="bg-input border-border/70 focus:border-primary h-10 text-sm">
               <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
             </SelectTrigger>
@@ -325,3 +326,4 @@ function FormSelectItem({ name, label, items, form }: FormSelectItemProps) {
     </div>
   );
 }
+

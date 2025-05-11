@@ -1,6 +1,7 @@
 'use server';
 import type { Anime, Episode, Season } from '@/types/anime';
 import type { TMDBMovie, TMDBTVShow, TMDBTVSeasonResponse, TMDBEpisode } from '@/types/tmdb';
+// import { searchAniListByTitle } from './aniListService'; // For future AniList ID linking
 
 const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
@@ -21,10 +22,8 @@ const fetchFromTMDB = async <T>(endpoint: string, params: Record<string, string 
   });
   const url = `${TMDB_BASE_URL}/${endpoint}?${urlParams.toString()}`;
   
-  // console.log(`Fetching from TMDB URL: ${url}`); 
-
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { next: { revalidate: 3600 * 24 } }); // Cache TMDB responses for 24 hours
     if (!response.ok) {
       console.error(`TMDB API Error for ${url}: ${response.status} ${response.statusText}`);
       const errorData = await response.json().catch(() => ({ message: `TMDB API request failed with status ${response.status}` }));
@@ -55,11 +54,17 @@ export const fetchAnimeDetailsFromTMDB = async (tmdbId: string, type: 'movie' | 
   if (!TMDB_API_KEY) return null;
   let details: Partial<Anime> = {};
 
+  // Placeholder for finding AniList ID - this is a complex task and should ideally be handled
+  // by a separate process or manually linked. For now, we assume aniListId is not auto-fetched here.
+  // let foundAniListId: number | undefined = undefined;
+  // Example: if (titleForSearch) { const aniListResults = await searchAniListByTitle(titleForSearch); ... }
+
   if (type === 'movie') {
     const movieData = await fetchFromTMDB<TMDBMovie>(`movie/${tmdbId}`);
     if (!movieData) return null;
     details = {
       tmdbId: movieData.id.toString(),
+      // aniListId: foundAniListId, // Would be set if auto-linking was implemented
       title: movieData.title,
       synopsis: movieData.overview,
       coverImage: movieData.poster_path ? `${TMDB_IMAGE_BASE_URL}w500${movieData.poster_path}` : `https://picsum.photos/seed/${movieData.id}poster/300/450`,
@@ -70,12 +75,12 @@ export const fetchAnimeDetailsFromTMDB = async (tmdbId: string, type: 'movie' | 
       status: getTMDBStatus(movieData.status, 'movie'),
       type: 'Movie',
       episodes: [{ 
-          id: `${movieData.id}-movie-s1e1-${Date.now()}`.toLowerCase(), // More unique ID
+          id: `${movieData.id}-movie-s1e1-${Date.now()}`.toLowerCase(),
           title: 'Full Movie',
           episodeNumber: 1,
           seasonNumber: 1,
-          url: undefined, // URL to be added by admin
-          thumbnail: movieData.backdrop_path ? `${TMDB_IMAGE_BASE_URL}w780${movieData.backdrop_path}` : undefined, // Use backdrop as a general thumbnail for movie
+          url: undefined, 
+          thumbnail: movieData.backdrop_path ? `${TMDB_IMAGE_BASE_URL}w780${movieData.backdrop_path}` : undefined,
           duration: movieData.runtime ? `${movieData.runtime}min` : undefined,
           overview: movieData.overview || undefined,
       }],
@@ -89,7 +94,6 @@ export const fetchAnimeDetailsFromTMDB = async (tmdbId: string, type: 'movie' | 
 
     const animeEpisodes: Episode[] = [];
     if (tvData.seasons && tvData.seasons.length > 0) {
-      // Filter out "Specials" seasons (season_number 0) unless specifically needed.
       const validSeasons = tvData.seasons.filter(s => s.season_number > 0);
 
       for (const seasonBrief of validSeasons) { 
@@ -97,7 +101,6 @@ export const fetchAnimeDetailsFromTMDB = async (tmdbId: string, type: 'movie' | 
         if (seasonDetails && seasonDetails.episodes) {
           seasonDetails.episodes.forEach((ep: TMDBEpisode) => {
             animeEpisodes.push({
-              // Generate a more unique ID to avoid collisions if multiple animes have same S/E numbers
               id: `s${seasonBrief.season_number}e${ep.episode_number}-${tvData.id}-${Date.now()}`.toLowerCase(), 
               tmdbEpisodeId: ep.id,
               title: ep.name || `Episode ${ep.episode_number}`,
@@ -107,7 +110,7 @@ export const fetchAnimeDetailsFromTMDB = async (tmdbId: string, type: 'movie' | 
               duration: ep.runtime ? `${ep.runtime}min` : undefined,
               airDate: ep.air_date || undefined,
               overview: ep.overview || undefined,
-              url: undefined, // URL to be added by admin
+              url: undefined,
             });
           });
         }
@@ -116,6 +119,7 @@ export const fetchAnimeDetailsFromTMDB = async (tmdbId: string, type: 'movie' | 
 
     details = {
       tmdbId: tvData.id.toString(),
+      // aniListId: foundAniListId, // Would be set if auto-linking was implemented
       title: tvData.name,
       synopsis: tvData.overview,
       coverImage: tvData.poster_path ? `${TMDB_IMAGE_BASE_URL}w500${tvData.poster_path}` : `https://picsum.photos/seed/${tvData.id}poster/300/450`,
@@ -137,7 +141,6 @@ export const fetchAnimeDetailsFromTMDB = async (tmdbId: string, type: 'movie' | 
   return details;
 };
 
-// Placeholder for searching TMDB, could be used in admin panel
 export const searchTMDB = async (query: string, type: 'movie' | 'tv' | 'multi' = 'multi') => {
   if (!TMDB_API_KEY) return null;
   const endpoint = type === 'multi' ? `search/multi` : `search/${type}`;
