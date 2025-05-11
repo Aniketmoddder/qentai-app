@@ -19,7 +19,7 @@ export const themes: ThemeOption[] = [
   { 
     value: 'dark-purple-premium', 
     label: 'Premium Anime Dark', // Updated Label
-    colors: { primary: '#8B5CF6', background: '#0A0A13'} // Updated colors
+    colors: { primary: '#8B5CF6', background: '#0A0A13'} // Updated colors from prompt
   },
   { 
     value: 'light-pale-purple', 
@@ -99,3 +99,4 @@ export const useTheme = (): ThemeContextType => {
   }
   return context;
 };
+
