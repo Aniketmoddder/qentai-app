@@ -1,3 +1,4 @@
+
 /* Vidstack Player Styles */
 @import 'vidstack/player/styles/default/theme.css';
 @import 'vidstack/player/styles/default/layouts/video.css';
@@ -50,14 +51,12 @@
     --chart-5: 215 25% 75%;     /* Light Gray variant from new foreground */
     
     /* Sidebar colors derived from the new palette */
-    --sidebar-background: 240 7% 6%; 
-    --sidebar-foreground: 215 28% 84%;
-    --sidebar-primary: 260 100% 70%; 
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 7% 7%; /* Card color as accent bg */
-    --sidebar-accent-foreground: 260 100% 70%; /* Primary as text on accent */
-    --sidebar-border: 240 5% 11%; /* Slightly darker than main border */
-    --sidebar-ring: 260 100% 75%;
+    --sidebar-background: hsl(var(--background)); 
+    --sidebar-foreground: hsl(var(--foreground));
+    --sidebar-border: hsl(var(--border));
+    --sidebar-accent: hsl(var(--primary) / 0.15); /* Accent color for sidebar items, e.g., hover */
+    --sidebar-accent-foreground: hsl(var(--primary)); /* Text color on sidebar accent */
+    --sidebar-ring: hsl(var(--ring));
   }
 
   /* Light Theme (Elegant Light / Clean Pale Purple) */
@@ -74,7 +73,6 @@
     --primary: 250 66% 62%; /* #7C3AED */
     --primary-foreground: 0 0% 100%; /* White */
     
-    --secondary: 220 20% 90%; /* #E0E7FF -> Changed to #14B8A6 (Teal) -> hsl(173, 78%, 40%) */
     --secondary-hsl: 173 78% 40%; /* HSL for #14B8A6 */
     --secondary: var(--secondary-hsl);
     --secondary-foreground: 0 0% 100%; /* White text for Teal */
@@ -104,14 +102,12 @@
     --chart-5: 220 10% 65%; /* Muted Gray for charts */
     
     /* Sidebar colors for Elegant Light theme */
-    --sidebar-background: 220 30% 96%; 
-    --sidebar-foreground: 222 47% 15%;
-    --sidebar-primary: 250 66% 62%; 
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 250 100% 92%; /* Lighter version of primary or secondary */
-    --sidebar-accent-foreground: 250 66% 62%; 
-    --sidebar-border: 220 14% 85%;
-    --sidebar-ring: 250 66% 67%;
+    --sidebar-background: hsl(var(--background)); 
+    --sidebar-foreground: hsl(var(--foreground));
+    --sidebar-border: hsl(var(--border));
+    --sidebar-accent: hsl(var(--primary) / 0.1); 
+    --sidebar-accent-foreground: hsl(var(--primary)); 
+    --sidebar-ring: hsl(var(--ring));
   }
 
   /* Kawaii Pink Vibe Theme */
@@ -156,14 +152,12 @@
     --chart-5: 287 30% 60%;     /* Muted Foreground */
     
     /* Sidebar colors */
-    --sidebar-background: 287 50% 8%; 
-    --sidebar-foreground: 287 100% 95%;
-    --sidebar-primary: 327 82% 60%; 
-    --sidebar-primary-foreground: 287 100% 98%;
-    --sidebar-accent: 287 67% 13%; /* Card color as accent bg */
-    --sidebar-accent-foreground: 327 82% 60%; /* Primary as text on accent */
-    --sidebar-border: 287 67% 16%;
-    --sidebar-ring: 327 82% 65%;
+    --sidebar-background: hsl(var(--background)); 
+    --sidebar-foreground: hsl(var(--foreground));
+    --sidebar-border: hsl(var(--border));
+    --sidebar-accent: hsl(var(--primary) / 0.2); 
+    --sidebar-accent-foreground: hsl(var(--primary)); 
+    --sidebar-ring: hsl(var(--ring));
   }
 
   /* Futuristic Cyberpunk Theme */
@@ -208,14 +202,12 @@
     --chart-5: 220 10% 70%;  /* Light Gray variant */
     
     /* Sidebar colors */
-    --sidebar-background: 231 25% 6%; 
-    --sidebar-foreground: 220 13% 85%;
-    --sidebar-primary: 180 100% 50%; 
-    --sidebar-primary-foreground: 231 25% 8%;
-    --sidebar-accent: 231 25% 12%; /* Card color as accent bg */
-    --sidebar-accent-foreground: 180 100% 50%; /* Primary as text on accent */
-    --sidebar-border: 231 25% 15%;
-    --sidebar-ring: 180 100% 55%;
+    --sidebar-background: hsl(var(--background)); 
+    --sidebar-foreground: hsl(var(--foreground));
+    --sidebar-border: hsl(var(--border));
+    --sidebar-accent: hsl(var(--primary) / 0.25); 
+    --sidebar-accent-foreground: hsl(var(--primary)); 
+    --sidebar-ring: hsl(var(--ring));
   }
 
 
