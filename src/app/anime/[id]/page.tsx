@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import React, { Suspense } from 'react';
 import Logo from '@/components/common/logo';
 import ReadMoreSynopsis from '@/components/anime/ReadMoreSynopsis';
+import { Skeleton } from '@/components/ui/skeleton'; // Added import for Skeleton
 
 interface AnimeDetailsPageProps {
   params: {
