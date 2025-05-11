@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -13,6 +14,7 @@ import TopAnimeListItem from '@/components/anime/TopAnimeListItem';
 import { Badge } from '@/components/ui/badge';
 import AnimeCardSkeleton from '@/components/anime/AnimeCardSkeleton';
 import HeroSkeleton from '@/components/home/HeroSkeleton'; 
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -328,4 +330,3 @@ export default function HomeClient({
     </> 
   );
 }
-
