@@ -74,7 +74,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
       </section>
 
-      <Container className="relative z-10 -mt-28 md:-mt-40 pb-12"> {/* Adjusted negative top margin here */}
+      <Container className="relative z-10 -mt-40 md:-mt-56 pb-12"> {/* Significantly increased negative top margin */}
         <div className="md:flex md:space-x-8">
           <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0">
             <div className="aspect-[2/3] relative rounded-lg overflow-hidden shadow-2xl">
