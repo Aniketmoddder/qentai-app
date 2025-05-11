@@ -56,7 +56,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     Movie: <Film className="w-4 h-4 mr-1.5" />,
     OVA: <ListVideo className="w-4 h-4 mr-1.5" />,
     Special: <ListVideo className="w-4 h-4 mr-1.5" />,
-    Unknown: <ListVideo className="w-4 h-4 mr-1.5" />, // Added for default
+    Unknown: <ListVideo className="w-4 h-4 mr-1.5" />, 
   };
 
   return (
@@ -74,7 +74,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
       </section>
 
-      <Container className="relative z-10 -mt-24 md:-mt-32 pb-12">
+      <Container className="relative z-10 -mt-28 md:-mt-40 pb-12"> {/* Adjusted negative top margin here */}
         <div className="md:flex md:space-x-8">
           <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0">
             <div className="aspect-[2/3] relative rounded-lg overflow-hidden shadow-2xl">
@@ -83,7 +83,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                 alt={anime.title}
                 fill
                 sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, 25vw"
-                className="object-cover object-top" // Added object-top to position image towards the top
+                className="object-cover object-top" 
                 data-ai-hint={`${anime.genre[0] || 'anime'} portrait`}
               />
             </div>
@@ -182,3 +182,4 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     </div>
   );
 }
+
