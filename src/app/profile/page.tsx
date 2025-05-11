@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -7,12 +8,12 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AnimeCard from '@/components/anime/anime-card';
+import AnimeCardSkeleton from '@/components/anime/AnimeCardSkeleton'; // Import skeleton
 import type { Anime } from '@/types/anime';
 import { getUserFavoriteIds, getUserWishlistIds } from '@/services/userDataService';
 import { getAnimesByIds } from '@/services/animeService';
-import { Loader2, User, Heart, Bookmark, AlertCircle, RotateCcw, Settings, Edit3, ShieldBan } from 'lucide-react';
+import { Loader2, User, Heart, Bookmark, AlertCircle, RotateCcw, Edit3, ShieldBan } from 'lucide-react';
 import Container from '@/components/layout/container';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from '@/components/ui/button';
 import { FirestoreError } from 'firebase/firestore';
@@ -114,11 +115,7 @@ export default function ProfilePage() {
       return (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-3 gap-y-4 sm:gap-x-4 place-items-center sm:place-items-stretch">
           {[...Array(6)].map((_, index) => (
-             <div key={index} className="w-full">
-                <Skeleton className="w-full aspect-[2/3] rounded-lg bg-muted" />
-                <Skeleton className="w-3/4 h-4 mt-2 rounded-md bg-muted" />
-                <Skeleton className="w-1/2 h-3 mt-1 rounded-md bg-muted" />
-            </div>
+            <AnimeCardSkeleton key={index} />
           ))}
         </div>
       );

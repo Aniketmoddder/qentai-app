@@ -81,7 +81,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
     try {
       const fetchDataPromises = [
         getAllAnimes({ count: 50, filters: { sortBy: 'updatedAt', sortOrder: 'desc' } }),
-        getFeaturedAnimes({ count: 5 })
+        getFeaturedAnimes({ count: 5, sortByTitle: false }) // Explicitly set sortByTitle to false
       ];
       
       const settledResults = await promiseWithTimeout(
@@ -114,7 +114,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
         console.error("HomeClient: Error fetching featured animes:", featuredResult.reason);
         let errorMsg = featuredResult.reason?.message || "Failed to load featured animes.";
         if (featuredResult.reason instanceof FirestoreError && featuredResult.reason.code === 'failed-precondition') {
-           errorMsg += ` Featured animes query failed. This usually means an index on 'isFeatured' (boolean) and 'title' (asc) is missing or Firestore requires a more specific composite index. Check the Firebase console for index suggestions.`;
+           errorMsg += ` Featured animes query failed. This usually means an index on 'isFeatured' (boolean) and potentially another field like 'updatedAt' (desc) is missing or Firestore requires a more specific composite index. Check the Firebase console for index suggestions.`;
         }
         errors.push(errorMsg);
       }
@@ -185,18 +185,39 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
           </div>
            <Container className="relative z-10 pb-12 md:pb-20 text-foreground">
             <div className="max-w-2xl">
-              <Skeleton className="h-6 w-24 mb-3 rounded-md" />
-              <Skeleton className="h-12 md:h-16 w-3/4 mb-3 rounded-md" />
-              <Skeleton className="h-4 w-1/2 mb-5 rounded-md" />
-              <Skeleton className="h-5 w-full mb-1.5 rounded-md" />
-              <Skeleton className="h-5 w-5/6 mb-6 rounded-md" />
+              <Skeleton className="h-6 w-24 mb-3 rounded-md" /> {/* Badge skeleton */}
+              <Skeleton className="h-12 md:h-16 w-3/4 mb-4 rounded-md" /> {/* Title skeleton */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mb-5"> {/* Meta info skeletons */}
+                <Skeleton className="h-4 w-20 rounded-md" />
+                <Skeleton className="h-4 w-24 rounded-md" />
+                <Skeleton className="h-4 w-16 rounded-md" />
+              </div>
+              <Skeleton className="h-5 w-full mb-2 rounded-md" /> {/* Synopsis line 1 */}
+              <Skeleton className="h-5 w-5/6 mb-6 rounded-md" /> {/* Synopsis line 2 */}
               <div className="flex flex-wrap gap-3 sm:gap-4">
-                <Skeleton className="h-12 w-36 rounded-full" />
-                <Skeleton className="h-12 w-36 rounded-full" />
+                <Skeleton className="h-12 w-36 rounded-full" /> {/* Button skeleton */}
+                <Skeleton className="h-12 w-36 rounded-full" /> {/* Button skeleton */}
               </div>
             </div>
           </Container>
         </section>
+        <Container className="py-8">
+          {/* Placeholder for carousels */}
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="mb-8">
+              <Skeleton className="h-8 w-1/3 mb-4 rounded-md" />
+              <div className="flex space-x-4 overflow-hidden">
+                {[...Array(5)].map((_, j) => (
+                  <div key={j} className="flex-shrink-0">
+                    <Skeleton className="w-[180px] h-[270px] rounded-lg" />
+                    <Skeleton className="h-4 w-3/4 mt-2 rounded" />
+                    <Skeleton className="h-3 w-1/2 mt-1 rounded" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </Container>
       </div>
     );
   }
@@ -204,7 +225,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
   const noContentAvailable = !isLoading && !fetchError && allAnime.length === 0 && featuredAnimesList.length === 0 && !heroAnime;
 
   return (
-    <div> {/* Changed root fragment to div */}
+    <div>
       {heroAnime && (
         <section className="relative h-[70vh] md:h-[85vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] overflow-hidden">
           <div className="absolute inset-0">
@@ -240,7 +261,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
                   <StarIcon className="w-3 h-3 mr-1.5 fill-current"/> Featured Pick
                 </Badge>
               ) : (
-                 <Badge className="bg-[hsl(var(--secondary-accent-pink))] text-white text-xs font-semibold px-2.5 py-1 rounded-md mb-3">
+                 <Badge className="bg-primary text-primary-foreground text-xs font-semibold px-2.5 py-1 rounded-md mb-3">
                     #1 Trending
                 </Badge>
               )}
@@ -269,7 +290,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
                   </Link>
                 </Button>
                 {playTrailer && youtubeVideoId && (
-                  <div className="ml-auto sm:ml-3">
+                  <div className="ml-auto sm:ml-0 mt-2 sm:mt-0 sm:ml-auto self-center"> {/* Adjusted for better mobile layout */}
                     <Button
                         variant="ghost"
                         size="icon"
@@ -277,7 +298,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
                         e.stopPropagation();
                         setIsTrailerMuted(!isTrailerMuted);
                         }}
-                        className="text-white/70 hover:text-white hover:bg-black/30 rounded-full"
+                        className="text-white/70 hover:text-white hover:bg-black/30 rounded-full w-10 h-10"
                         aria-label={isTrailerMuted ? "Unmute trailer" : "Mute trailer"}
                     >
                         {isTrailerMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
@@ -290,7 +311,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
         </section>
       )}
 
-      <Container className="overflow-x-clip py-8">
+      <Container className="overflow-x-clip py-8"> {/* Changed to overflow-x-clip for better layout on small screens */}
         {fetchError && (
           <div className="my-8 p-6 bg-destructive/10 border border-destructive/30 rounded-lg flex items-start text-destructive">
             <AlertTriangle className="h-6 w-6 mr-3 flex-shrink-0 mt-0.5" />
@@ -327,10 +348,10 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
         )}
 
         {trendingAnime.length > 0 && <AnimeCarousel title="Trending Now" animeList={trendingAnime} />}
-        {popularAnime.length > 0 && <AnimeCarousel title="Popular This Season" animeList={popularAnime} />}
-
+        
         {homePageGenreSectionComponent}
-
+        
+        {popularAnime.length > 0 && <AnimeCarousel title="Popular This Season" animeList={popularAnime} />}
         {recentlyAddedAnime.length > 0 && <AnimeCarousel title="Latest Additions" animeList={recentlyAddedAnime} />}
         {movies.length > 0 && <AnimeCarousel title="Popular Movies" animeList={movies} />}
         {tvSeries.length > 0 && <AnimeCarousel title="TV Series" animeList={tvSeries} />}

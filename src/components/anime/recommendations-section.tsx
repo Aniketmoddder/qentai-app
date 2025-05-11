@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { generateAnimeRecommendations } from '@/ai/flows/generate-anime-recommendations';
 import type { Anime } from '@/types/anime';
 import AnimeCard from './anime-card';
+import AnimeCardSkeleton from './AnimeCardSkeleton'; // Import skeleton
 import { Button } from '@/components/ui/button';
 import { Loader2, Wand2, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -21,7 +22,7 @@ export default function RecommendationsSection() {
 
   const fetchAllAnimesForMatching = useCallback(async () => {
     try {
-      const animesFromDB = await getAllAnimes(100); // Fetch a decent number for matching
+      const animesFromDB = await getAllAnimes({ count: 100, filters: {} }); // Fetch a decent number for matching
       setAllAnimesCache(animesFromDB);
     } catch (e) {
       console.error("Failed to fetch all animes for recommendation matching:", e);
@@ -109,13 +110,9 @@ export default function RecommendationsSection() {
       )}
 
       {isLoading && recommendations.length === 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-4 sm:gap-x-4 place-items-center sm:place-items-stretch">
           {[...Array(5)].map((_, index) => (
-            <div key={index} className="bg-card p-2 sm:p-3 rounded-lg shadow-md animate-pulse w-full">
-              <div className="aspect-[2/3] bg-muted rounded mb-2"></div>
-              <div className="h-4 bg-muted rounded w-3/4 mb-1"></div>
-              <div className="h-3 bg-muted rounded w-1/2"></div>
-            </div>
+            <AnimeCardSkeleton key={index} />
           ))}
         </div>
       )}
