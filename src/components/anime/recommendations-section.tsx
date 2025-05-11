@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { generateAnimeRecommendations } from '@/ai/flows/generate-anime-recommendations';
 import type { Anime } from '@/types/anime';
 import AnimeCard from './anime-card';
-import AnimeCardSkeleton from './AnimeCardSkeleton'; // Import skeleton
+import AnimeCardSkeleton from './AnimeCardSkeleton'; 
 import { Button } from '@/components/ui/button';
 import { Loader2, Wand2, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -35,10 +35,10 @@ export default function RecommendationsSection() {
     fetchAllAnimesForMatching();
   }, [fetchAllAnimesForMatching]);
 
-  const fetchRecommendations = async () => {
+  const fetchRecommendations = useCallback(async () => {
     if (allAnimesCache.length === 0) {
       setError("Anime catalog is not loaded yet. Cannot fetch recommendations.");
-      setIsLoading(false); // Ensure loading stops if catalog is missing
+      setIsLoading(false); 
       return;
     }
 
@@ -53,35 +53,41 @@ export default function RecommendationsSection() {
       
       const detailedRecommendations = result.recommendations
         .map(title => {
-          // Find the anime in our existing DB (allAnimesCache)
-          // AI should return exact titles, so direct match is preferred
           return allAnimesCache.find(anime => 
             anime.title.toLowerCase() === title.toLowerCase()
           );
         })
-        .filter((anime): anime is Anime => anime !== undefined); // Filter out undefined (not found or AI hallucinated)
+        .filter((anime): anime is Anime => anime !== undefined); 
 
-      setRecommendations(detailedRecommendations.slice(0, 5)); // Show top 5
-    } catch (e) {
+      setRecommendations(detailedRecommendations.slice(0, 5)); 
+    } catch (e: any) {
       console.error("Failed to fetch recommendations:", e);
-      setError("Could not load recommendations. Please try again.");
+      let errorMessage = "Could not load recommendations. Please try again.";
+      if (e && e.message) {
+        if (e.message.includes("503") || e.message.toLowerCase().includes("service unavailable")) {
+          errorMessage = "The recommendation service is temporarily unavailable. Please try again later.";
+        } else {
+          errorMessage = e.message;
+        }
+      }
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [allAnimesCache]); 
 
   // Fetch recommendations once the cache is populated
   useEffect(() => {
-    if (allAnimesCache.length > 0) {
+    if (allAnimesCache.length > 0 && recommendations.length === 0 && !isLoading && !error) { 
       fetchRecommendations();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allAnimesCache]); 
+  }, [allAnimesCache, fetchRecommendations]); 
 
   return (
     <section className="py-6 md:py-8">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl md:text-3xl font-bold text-foreground flex items-center">
+        <h2 className="text-2xl md:text-3xl font-bold text-foreground flex items-center section-title-bar">
           <Wand2 className="w-7 h-7 mr-2 text-primary" />
           Recommended For You
         </h2>
@@ -124,3 +130,4 @@ export default function RecommendationsSection() {
     </section>
   );
 }
+
