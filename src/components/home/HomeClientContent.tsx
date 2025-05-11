@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import AnimeCardSkeleton from '@/components/anime/AnimeCardSkeleton';
 import HeroSkeleton from '@/components/home/HeroSkeleton'; 
 import { Skeleton } from '@/components/ui/skeleton';
+import HomePageGenreSection from './HomePageGenreSection';
+import RecommendationsSection from '../anime/recommendations-section';
 
 
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -49,16 +51,12 @@ const getYouTubeVideoId = (url?: string): string | null => {
 };
 
 export interface HomeClientProps {
-  homePageGenreSectionComponent: React.ReactNode;
-  recommendationsSectionComponent: React.ReactNode;
-  initialAllAnimeData?: Anime[]; 
-  initialFeaturedAnimes?: Anime[];
-  fetchError?: string | null; 
+  initialAllAnimeData: Anime[]; 
+  initialFeaturedAnimes: Anime[];
+  fetchError: string | null; 
 }
 
 export default function HomeClient({ 
-    homePageGenreSectionComponent, 
-    recommendationsSectionComponent: RecommendationsSectionProp,
     initialAllAnimeData = [],
     initialFeaturedAnimes = [],
     fetchError: initialFetchError 
@@ -66,6 +64,7 @@ export default function HomeClient({
   const [allAnime, setAllAnime] = useState<Anime[]>(initialAllAnimeData);
   const [featuredAnimesList, setFeaturedAnimesList] = useState<Anime[]>(initialFeaturedAnimes);
   const [fetchError, setFetchError] = useState<string | null>(initialFetchError);
+  // isLoading is true by default, useEffect will set it to false once props are processed.
   const [isLoading, setIsLoading] = useState(true); 
 
   const [playTrailer, setPlayTrailer] = useState(false);
@@ -76,16 +75,20 @@ export default function HomeClient({
       setFetchError(initialFetchError);
       setAllAnime([]);
       setFeaturedAnimesList([]);
-      setIsLoading(false);
+      setIsLoading(false); // Stop loading on error
     } else if (initialAllAnimeData.length > 0 || initialFeaturedAnimes.length > 0) {
       setAllAnime(initialAllAnimeData);
       setFeaturedAnimesList(initialFeaturedAnimes);
       setFetchError(null);
-      setIsLoading(false);
+      setIsLoading(false); // Stop loading if there's data
     } else if (!initialFetchError && initialAllAnimeData.length === 0 && initialFeaturedAnimes.length === 0) {
-      setIsLoading(false); 
+      // Data is empty, no error -> means fetched successfully but no content
+      setAllAnime([]);
+      setFeaturedAnimesList([]);
       setFetchError(null);
+      setIsLoading(false); // Stop loading, show "no content" message
     }
+    // If initial props are still undefined or being resolved, isLoading remains true until one of the above conditions is met.
   }, [initialAllAnimeData, initialFeaturedAnimes, initialFetchError]);
 
 
@@ -129,19 +132,16 @@ export default function HomeClient({
       <>
         <HeroSkeleton />
         <Container className="py-8">
-          {/* Skeleton for Featured Anime Section (if applicable) */}
           <div className="mb-8">
-            <div className="h-8 w-1/3 mb-4 rounded-md bg-muted/50 animate-pulse" /> 
+            <Skeleton className="h-8 w-1/3 mb-4 rounded-md bg-muted/50" /> 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <Skeleton className="aspect-[16/10] sm:aspect-[16/9] rounded-xl bg-muted/50" />
                 <Skeleton className="aspect-[16/10] sm:aspect-[16/9] rounded-xl bg-muted/50 hidden md:block" />
             </div>
           </div>
-
-          {/* Skeletons for Anime Carousels */}
           {[...Array(3)].map((_, i) => (
             <div key={`carousel-skeleton-${i}`} className="mb-8">
-              <div className="h-8 w-1/3 mb-4 rounded-md bg-muted/50 animate-pulse" /> {/* Carousel Title Skeleton */}
+              <Skeleton className="h-8 w-1/3 mb-4 rounded-md bg-muted/50" />
               <div className="flex overflow-x-auto pb-4 gap-3 sm:gap-4 md:gap-x-5 scrollbar-hide">
                 {[...Array(5)].map((_, j) => (
                   <div key={`card-skeleton-${i}-${j}`} className="flex-shrink-0">
@@ -151,10 +151,8 @@ export default function HomeClient({
               </div>
             </div>
           ))}
-
-          {/* Skeleton for Top Anime List */}
            <div className="mb-8">
-            <div className="h-8 w-1/3 mb-6 rounded-md bg-muted/50 animate-pulse" />
+            <Skeleton className="h-8 w-1/3 mb-6 rounded-md bg-muted/50" />
             <div className="space-y-3">
                 {[...Array(5)].map((_, k) => (
                     <Skeleton key={`top-item-skeleton-${k}`} className="h-28 w-full rounded-lg bg-muted/50" />
@@ -184,11 +182,6 @@ export default function HomeClient({
   }
   
   const noContentAvailable = !isLoading && !fetchError && allAnime.length === 0 && featuredAnimesList.length === 0 && !heroAnime;
-
-  const recommendationsSectionWithProps = React.isValidElement(RecommendationsSectionProp) 
-    ? React.cloneElement(RecommendationsSectionProp as React.ReactElement<any>, { allAnimesCache: initialAllAnimeData })
-    : RecommendationsSectionProp;
-
 
   return (
     <> 
@@ -277,7 +270,7 @@ export default function HomeClient({
         </section>
       )}
 
-      <Container className="overflow-x-clip py-8">
+      <Container className="py-8">
         {noContentAvailable && (
            <div className="my-8 p-6 bg-card border border-border rounded-lg text-center">
             <h3 className="font-semibold text-xl font-orbitron">No Anime Found</h3>
@@ -303,7 +296,7 @@ export default function HomeClient({
 
         {trendingAnime.length > 0 && <AnimeCarousel title="Trending Now" animeList={trendingAnime} />}
         
-        {homePageGenreSectionComponent}
+        <HomePageGenreSection />
         
         {popularAnime.length > 0 && <AnimeCarousel title="Popular This Season" animeList={popularAnime} />}
         {recentlyAddedAnime.length > 0 && <AnimeCarousel title="Latest Additions" animeList={recentlyAddedAnime} />}
@@ -325,8 +318,9 @@ export default function HomeClient({
             </div>
           </section>
         )}
-        {recommendationsSectionWithProps}
+        <RecommendationsSection allAnimesCache={initialAllAnimeData} />
       </Container>
     </> 
   );
 }
+
