@@ -1,3 +1,4 @@
+// src/components/anime/EpisodeListSection.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -27,6 +28,7 @@ export default function EpisodeListSection({ anime }: EpisodeListSectionProps) {
     );
   }
 
+  // Sort episodes: by season, then by episode number
   const sortedEpisodes = [...anime.episodes].sort((a, b) => {
     if ((a.seasonNumber || 1) !== (b.seasonNumber || 1)) {
       return (a.seasonNumber || 1) - (b.seasonNumber || 1);
@@ -50,9 +52,7 @@ export default function EpisodeListSection({ anime }: EpisodeListSectionProps) {
           </Button>
         </div>
         <div className="flex items-center space-x-1">
-          {/* Placeholder icons from screenshot */}
           <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 w-8 h-8">
-            {/* Placeholder for a "save/download all" type icon if needed */}
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 17V3"></path><path d="m6 11 6 6 6-6"></path><path d="M19 21H5"></path></svg>
             <span className="sr-only">Download options</span>
           </Button>
@@ -68,10 +68,10 @@ export default function EpisodeListSection({ anime }: EpisodeListSectionProps) {
       </div>
 
       <div className="relative">
-        <ScrollArea 
+        <ScrollArea
             className={cn(
-                "rounded-lg border border-border/30 bg-card/50 shadow-inner",
-                viewMode === 'detailed' ? "max-h-[60vh]" : "max-h-[50vh]" // Using vh units for responsiveness
+                "rounded-lg border border-border/30 bg-card/50 shadow-inner overflow-y-auto", // Added overflow-y-auto
+                viewMode === 'detailed' ? "max-h-[55vh] sm:max-h-[60vh]" : "max-h-[45vh] sm:max-h-[50vh]" // Adjusted max-height
             )}
         >
           <div className={cn("p-3 sm:p-4 space-y-2", viewMode === 'simple' && 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2')}>
@@ -108,10 +108,9 @@ const DetailedEpisodeItem: React.FC<EpisodeItemProps> = ({ episode, animeId }) =
   return (
     <Link
       href={`/play/${animeId}?episode=${episode.id}`}
-      passHref legacyBehavior={false}
       className="group flex items-center p-2.5 bg-card hover:bg-primary/10 rounded-lg shadow-sm transition-all duration-200 ease-in-out border border-transparent hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-background"
     >
-      <div className="relative w-28 h-16 sm:w-32 sm:h-[72px] rounded-md overflow-hidden flex-shrink-0 border border-border/20">
+      <div className="relative w-28 h-16 sm:w-32 sm:h-[72px] rounded-md overflow-hidden flex-shrink-0 border border-border/20 bg-muted/50">
         <Image
           src={episode.thumbnail || placeholderThumbnail}
           alt={`Episode ${episode.episodeNumber}: ${episode.title}`}
@@ -143,7 +142,6 @@ const SimpleEpisodeItem: React.FC<EpisodeItemProps> = ({ episode, animeId }) => 
   return (
     <Link
       href={`/play/${animeId}?episode=${episode.id}`}
-      passHref legacyBehavior={false}
       className="group flex items-center p-2.5 bg-card hover:bg-primary/10 rounded-md shadow-sm transition-all duration-200 ease-in-out border border-transparent hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-background"
     >
       <GripVertical className="w-4 h-4 mr-2 text-muted-foreground group-hover:text-primary flex-shrink-0" />
