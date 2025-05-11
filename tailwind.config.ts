@@ -3,7 +3,7 @@ import type { Config } from "tailwindcss";
 import plugin from 'tailwindcss/plugin';
 
 export default {
-    darkMode: ["class"],
+    darkMode: ["class"], // or 'media' if you prefer OS-level dark mode
     content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -29,8 +29,8 @@ export default {
       fontFamily: {
         sans: ["Poppins", 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', '"Noto Sans"', 'sans-serif', '"Apple Color Emoji"', '"Segoe UI Emoji"', '"Segoe UI Symbol"', '"Noto Color Emoji"'],
         mono: ["var(--font-roboto-mono)", "monospace"],
-        'zen-dots': ["'Zen Dots'", 'sans-serif'], // Direct font name
-        orbitron: ["Orbitron", 'sans-serif'], // Direct font name
+        'zen-dots': ["'Zen Dots'", 'sans-serif'], 
+        orbitron: ["Orbitron", 'sans-serif'], 
       },
   		colors: {
   			background: 'hsl(var(--background))',
@@ -47,7 +47,6 @@ export default {
   				DEFAULT: 'hsl(var(--primary))',
   				foreground: 'hsl(var(--primary-foreground))'
   			},
-        'secondary-accent-pink': 'hsl(var(--secondary-accent-pink))',
   			secondary: {
   				DEFAULT: 'hsl(var(--secondary))',
   				foreground: 'hsl(var(--secondary-foreground))'
@@ -86,10 +85,10 @@ export default {
   			}
   		},
   		borderRadius: {
-  			lg: 'var(--radius)', // 0.75rem
-  			md: 'calc(var(--radius) - 2px)', // 0.75rem - 2px
-  			sm: 'calc(var(--radius) - 4px)', // 0.75rem - 4px
-        xl: 'calc(var(--radius) + 4px)', // 0.75rem + 4px for larger cards if needed
+  			lg: 'var(--radius)', 
+  			md: 'calc(var(--radius) - 2px)', 
+  			sm: 'calc(var(--radius) - 4px)', 
+        xl: 'calc(var(--radius) + 4px)', 
         full: '9999px',
   		},
   		keyframes: {
@@ -134,6 +133,3 @@ export default {
     })
   ],
 } satisfies Config;
-
-
-

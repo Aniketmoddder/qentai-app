@@ -2,8 +2,9 @@
 import Container from '@/components/layout/container';
 import Logo from '@/components/common/logo';
 import Link from 'next/link';
-import { Github, Twitter, Send, ListChecks, History, Moon, Sun, Grid, Settings, Tag } from 'lucide-react'; // Added Tag for Genres
+import { Github, Twitter, Send, ListChecks, History, Grid, Tag } from 'lucide-react'; 
 import { Button } from '@/components/ui/button';
+import ThemeSwitcher from '@/components/theme/ThemeSwitcher'; // Added ThemeSwitcher
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -13,7 +14,7 @@ export default function Footer() {
       <Container>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           <div className="space-y-3">
-            <Logo iconSize={14} />
+            <Logo iconSize={27} />
             <p className="text-sm text-muted-foreground leading-relaxed">
               Your ultimate destination for anime streaming. Discover new series and enjoy your favorites, all in one place.
             </p>
@@ -52,9 +53,7 @@ export default function Footer() {
             </div>
             <div>
                  <h3 className="text-base font-semibold text-foreground mb-2">Theme</h3>
-                 <Button variant="outline" size="sm" className="text-muted-foreground border-border/50 hover:bg-primary/10">
-                    <Moon size={14} className="mr-1.5"/> Dark Mode
-                 </Button>
+                 <ThemeSwitcher /> {/* Replaced static button with ThemeSwitcher */}
             </div>
           </div>
 
