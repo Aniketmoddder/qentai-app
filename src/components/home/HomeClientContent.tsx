@@ -81,7 +81,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
     try {
       const fetchDataPromises = [
         getAllAnimes({ count: 50, filters: { sortBy: 'updatedAt', sortOrder: 'desc' } }),
-        getFeaturedAnimes({ count: 5, sortByTitle: false }) 
+        getFeaturedAnimes({ count: 5 }) // No default sort, relies on Firestore's order or explicit sort param
       ];
       
       const settledResults = await promiseWithTimeout(
@@ -113,8 +113,8 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
       } else {
         console.error("HomeClient: Error fetching featured animes:", featuredResult.reason);
         let errorMsg = featuredResult.reason?.message || "Failed to load featured animes.";
-        if (featuredResult.reason instanceof FirestoreError && featuredResult.reason.code === 'failed-precondition') {
-           errorMsg += ` Featured animes query failed. This usually means an index on 'isFeatured' (boolean) and potentially another field like 'updatedAt' (desc) is missing or Firestore requires a more specific composite index. Check the Firebase console for index suggestions.`;
+         if (featuredResult.reason instanceof FirestoreError && featuredResult.reason.code === 'failed-precondition') {
+           errorMsg += ` Featured animes query failed. This usually means an index on 'isFeatured' (boolean) and potentially another field like 'updatedAt' (desc) or 'popularity' (desc) is missing, or Firestore requires a more specific composite index. Check the Firebase console for index suggestions. The app currently attempts to fetch featured items without a specific sort order to minimize default index requirements; if sorted featured items are needed, the index must exist.`;
         }
         errors.push(errorMsg);
       }
@@ -161,14 +161,11 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
   const popularAnime = allAnime.length > 0 ? shuffleArray([...allAnime].filter(a => a.averageRating && a.averageRating >= 7.0)).slice(0,10) : [];
   const recentlyAddedAnime = allAnime.length > 0
     ? [...allAnime].sort((a,b) => {
-        const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.year, 0, 1).getTime());
-        const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : new Date(a.year, 0, 1).getTime());
+        const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : (a.year ? new Date(a.year, 0, 1).getTime() : 0));
+        const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : (b.year ? new Date(b.year, 0, 1).getTime() : 0));
         return dateB - dateA;
       }).slice(0,10)
     : [];
-  const movies = allAnime.length > 0 ? allAnime.filter(a => a.type === 'Movie').slice(0,10) : [];
-  const tvSeries = allAnime.length > 0 ? allAnime.filter(a => a.type === 'TV').slice(0,10) : [];
-  const nextSeasonAnime = allAnime.length > 0 ? shuffleArray([...allAnime].filter(a => a.status === 'Upcoming')).slice(0,10) : [];
 
   const topAnimeList = allAnime.length > 0 ? [...allAnime]
     .filter(a => a.averageRating !== undefined && a.averageRating !== null)
@@ -237,7 +234,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen 
-                  className="w-full h-full scale-[2] sm:scale-[1.8] md:scale-[1.5] object-cover" // Adjusted scale for better full coverage
+                  className="w-full h-full scale-[2] sm:scale-[1.8] md:scale-[1.5] object-cover" 
                 ></iframe>
               </div>
             ) : (
@@ -289,7 +286,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
                   </Link>
                 </Button>
                 {playTrailer && youtubeVideoId && (
-                  <div className="ml-auto sm:ml-0 mt-2 sm:mt-0 sm:ml-auto self-center"> {/* Adjusted for better mobile layout */}
+                  <div className="ml-auto sm:ml-0 mt-2 sm:mt-0 sm:ml-auto self-center"> 
                     <Button
                         variant="ghost"
                         size="icon"
@@ -352,9 +349,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
         
         {popularAnime.length > 0 && <AnimeCarousel title="Popular This Season" animeList={popularAnime} />}
         {recentlyAddedAnime.length > 0 && <AnimeCarousel title="Latest Additions" animeList={recentlyAddedAnime} />}
-        {movies.length > 0 && <AnimeCarousel title="Popular Movies" animeList={movies} />}
-        {tvSeries.length > 0 && <AnimeCarousel title="TV Series" animeList={tvSeries} />}
-
+        
         {topAnimeList.length > 0 && (
           <section className="py-6 md:py-8">
             <div className="flex justify-between items-center mb-6">
@@ -372,11 +367,9 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
             </div>
           </section>
         )}
-
-        {nextSeasonAnime.length > 0 && <AnimeCarousel title="Coming Next Season" animeList={nextSeasonAnime} />}
-
         {recommendationsSectionComponent}
       </Container>
     </> 
   );
 }
+

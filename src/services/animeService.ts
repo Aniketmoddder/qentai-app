@@ -27,7 +27,7 @@ import { convertAnimeTimestampsForClient } from '@/lib/animeUtils';
 
 const animesCollection = collection(db, 'animes');
 
-interface QueryFilters {
+export interface QueryFilters { // Exporting QueryFilters
   type?: Anime['type'];
   genre?: string;
   sortBy?: 'averageRating' | 'year' | 'title' | 'createdAt' | 'updatedAt' | 'popularity';
@@ -80,7 +80,7 @@ const formatDate = (dateObj?: { year?: number | null, month?: number | null, day
 };
 
 
-export const addAnimeToFirestore = async (animeData: Omit<Anime, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
+export async function addAnimeToFirestore(animeData: Omit<Anime, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
   try {
     const animeDocRef = doc(animesCollection); 
     
@@ -91,7 +91,7 @@ export const addAnimeToFirestore = async (animeData: Omit<Anime, 'id' | 'created
       aniListId: animeData.aniListId || null, 
       isFeatured: animeData.isFeatured || false, 
       trailerUrl: (animeData.trailerUrl === '' || animeData.trailerUrl === undefined || animeData.trailerUrl === null) ? null : animeData.trailerUrl,
-      popularity: animeData.popularity || 0, // Ensure popularity has a default
+      popularity: animeData.popularity || 0, 
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(), 
       id: animeDocRef.id 
@@ -112,7 +112,7 @@ export const addAnimeToFirestore = async (animeData: Omit<Anime, 'id' | 'created
 };
 
 
-export const getAnimeById = async (id: string): Promise<Anime | undefined> => {
+export async function getAnimeById(id: string): Promise<Anime | undefined> {
   try {
     const docRef = doc(animesCollection, id);
     const docSnap = await getDoc(docRef);
@@ -130,8 +130,7 @@ export const getAnimeById = async (id: string): Promise<Anime | undefined> => {
             animeData.genre = [...new Set([...animeData.genre, ...aniListData.genres])];
           }
           if (aniListData.averageScore) {
-            // animeData.averageScore = aniListData.averageScore; // Keep AniList's 0-100 scale
-            animeData.averageRating = parseFloat((aniListData.averageScore / 10).toFixed(1)); // Also provide 0-10 scale for consistency
+            animeData.averageRating = parseFloat((aniListData.averageScore / 10).toFixed(1)); 
           }
           if (aniListData.trailer?.site === 'youtube' && aniListData.trailer?.id) {
             animeData.trailerUrl = `https://www.youtube.com/watch?v=${aniListData.trailer.id}`;
@@ -140,15 +139,14 @@ export const getAnimeById = async (id: string): Promise<Anime | undefined> => {
           animeData.characters = transformAniListCharacters(aniListData);
           animeData.sourceAdmin = animeData.sourceAdmin === 'tmdb' ? 'tmdb_anilist' : (animeData.sourceAdmin || 'anilist');
 
-          // Map new fields
           animeData.season = aniListData.season || undefined;
-          animeData.seasonYear = aniListData.seasonYear || animeData.year; // Fallback to existing year if seasonYear is null
+          animeData.seasonYear = aniListData.seasonYear || animeData.year; 
           animeData.countryOfOrigin = aniListData.countryOfOrigin || undefined;
           animeData.studios = aniListData.studios?.edges?.map(edge => edge.node).filter(studio => studio.isAnimationStudio) || undefined;
           animeData.source = aniListData.source || undefined;
           animeData.popularity = aniListData.popularity || animeData.popularity || 0;
           animeData.format = aniListData.format || undefined;
-          animeData.duration = aniListData.duration || undefined; // Episode duration
+          animeData.duration = aniListData.duration || undefined; 
           animeData.episodesCount = aniListData.episodes || animeData.episodes?.length || undefined;
           animeData.status = mapAniListStatusToAppStatus(aniListData.status) || animeData.status;
           animeData.type = mapAniListFormatToAppType(aniListData.format) || animeData.type;
@@ -165,13 +163,13 @@ export const getAnimeById = async (id: string): Promise<Anime | undefined> => {
   }
 };
 
-export const getAllAnimes = async ({
+export async function getAllAnimes({
   count = 20, 
   filters = {},
 }: {
   count?: number;
   filters?: QueryFilters;
-} = {}): Promise<Anime[]> => {
+} = {}): Promise<Anime[]> {
   try {
     const queryConstraints: QueryConstraint[] = [];
 
@@ -191,33 +189,23 @@ export const getAllAnimes = async ({
     if (sortBy) {
       queryConstraints.push(orderBy(sortBy, sortOrder));
     } else {
-      // Default sorting logic if no explicit sortBy is provided
       if (filters.featured === true) {
-        // No default orderBy when filtering by 'isFeatured' to avoid complex index requirements.
-        // Results will be unordered unless a 'sortBy' is explicitly provided.
-        // If ordered featured items are needed, provide 'sortBy' and ensure the composite index exists.
-        // e.g., (isFeatured ASC, title ASC) or (isFeatured ASC, popularity DESC).
-        // Consider adding orderBy('updatedAt', 'desc') or another field if a default order is strictly needed,
-        // but be prepared to create the corresponding index.
+        // No default orderBy for general featured listing to avoid index issues.
+        // If a specific order is ALWAYS desired for /browse?filter=featured,
+        // add it here and ensure the index (e.g., isFeatured ASC, popularity DESC) exists.
+        // Example: queryConstraints.push(orderBy('popularity', 'desc'));
       } else if (filters.genre || filters.type) {
-        // For genre/type filters, default to 'popularity' DESC.
-        // This might require an index like (genre ASC, popularity DESC) or (type ASC, popularity DESC)
         queryConstraints.push(orderBy('popularity', 'desc'));
       } else {
-        // General browsing, default to 'updatedAt' DESC. (Requires 'updatedAt' field to exist and be indexed)
         queryConstraints.push(orderBy('updatedAt', 'desc'));
       }
     }
     
     const effectiveCount = count === -1 ? 500 : (count > 0 ? count : 20);
-    // Allow count === 0 to return an empty array without hitting Firestore if needed,
-    // but this should be handled carefully to avoid unexpected empty results.
-    // For this implementation, count === 0 will proceed with limit(0) which Firestore might reject.
-    // Changed to skip query if effectiveCount is 0 and initial count wasn't -1.
     if (effectiveCount === 0 && count !== -1) {
         return [];
     }
-    if (effectiveCount > 0) { // Only add limit if > 0
+    if (effectiveCount > 0) {
         queryConstraints.push(limit(effectiveCount));
     }
     
@@ -231,7 +219,6 @@ export const getAllAnimes = async ({
       let filterDetails = JSON.stringify(filters);
       let sortDetails = filters.sortBy ? `${filters.sortBy} ${filters.sortOrder || (filters.sortBy === 'title' ? 'asc' : 'desc')}` : "default/implicit sort";
       
-      // Refine sortDetails based on actual logic
       if (!filters.sortBy) {
         if (filters.featured === true) {
           sortDetails = "isFeatured filter (no explicit sort)";
@@ -244,35 +231,31 @@ export const getAllAnimes = async ({
 
       console.warn(`Firestore query in getAllAnimes requires a composite index. 
         Query Filters: ${filterDetails}. Effective Sort: ${sortDetails}.
-        This usually means you are filtering by one field AND sorting by another, or using a specific filter without a corresponding sort's index. 
-        Firebase error: ${error.message}. 
-        Please create the required composite index in your Firebase console. 
-        The error message from Firebase often provides a direct link to create the missing index.`);
+        Original error: ${error.message}. 
+        Please create the required composite index in your Firebase console.`);
     }
     throw handleFirestoreError(error, 'getAllAnimes with filters: ' + JSON.stringify(filters));
   }
 };
 
 
-export const searchAnimes = async (searchTerm: string): Promise<Anime[]> => {
+export async function searchAnimes(searchTerm: string): Promise<Anime[]> {
   if (!searchTerm.trim()) return [];
   try {
     const searchTermLower = searchTerm.toLowerCase();
-    // Fetch a larger initial set for client-side filtering if backend search isn't set up.
-    // This is not ideal for large datasets. Consider a dedicated search service (e.g., Algolia, Elasticsearch) for production.
-    const allAnime = await getAllAnimes({ count: 200, filters: {} }); 
+    const allAnime = await getAllAnimes({ count: 200 }); 
     
     return allAnime.filter(anime => 
       anime.title.toLowerCase().includes(searchTermLower) ||
       (anime.genre && anime.genre.some(g => g.toLowerCase().includes(searchTermLower))) ||
       (anime.year && anime.year.toString().includes(searchTermLower))
-    ).slice(0, 50); // Limit client-side results
+    ).slice(0, 50); 
   } catch (error) {
     throw handleFirestoreError(error, `searchAnimes (term: ${searchTerm})`);
   }
 };
 
-export const updateAnimeInFirestore = async (id: string, dataToUpdate: Partial<Omit<Anime, 'id' | 'createdAt'>>): Promise<void> => {
+export async function updateAnimeInFirestore(id: string, dataToUpdate: Partial<Omit<Anime, 'id' | 'createdAt'>>): Promise<void> {
   try {
     const docRef = doc(animesCollection, id);
     const updatePayload: { [key: string]: any } = { ...dataToUpdate, updatedAt: serverTimestamp() };
@@ -285,6 +268,10 @@ export const updateAnimeInFirestore = async (id: string, dataToUpdate: Partial<O
         updatePayload.bannerImage = null; 
     }
     
+    if (updatePayload.hasOwnProperty('aniListId') && (updatePayload.aniListId === '' || updatePayload.aniListId === undefined || updatePayload.aniListId === null) ) {
+        updatePayload.aniListId = null; 
+    }
+
     if (updatePayload.isFeatured === undefined) {
         const currentDoc = await getDoc(docRef);
         if (currentDoc.exists()) {
@@ -307,7 +294,7 @@ export const updateAnimeInFirestore = async (id: string, dataToUpdate: Partial<O
   }
 };
 
-export const updateAnimeEpisode = async (animeId: string, episodeId: string, updatedEpisodeData: Partial<Episode>): Promise<void> => {
+export async function updateAnimeEpisode(animeId: string, episodeId: string, updatedEpisodeData: Partial<Episode>): Promise<void> {
   try {
     const animeRef = doc(animesCollection, animeId);
     const animeSnap = await getDoc(animeRef);
@@ -339,7 +326,7 @@ export const updateAnimeEpisode = async (animeId: string, episodeId: string, upd
 };
 
 
-export const deleteAnimeFromFirestore = async (id: string): Promise<void> => {
+export async function deleteAnimeFromFirestore(id: string): Promise<void> {
   try {
     const docRef = doc(animesCollection, id);
     await deleteDoc(docRef);
@@ -349,7 +336,7 @@ export const deleteAnimeFromFirestore = async (id: string): Promise<void> => {
 };
 
 
-export const addEpisodeToSeason = async (animeId: string, episodeData: Episode): Promise<void> => {
+export async function addEpisodeToSeason(animeId: string, episodeData: Episode): Promise<void> {
     try {
         const animeRef = doc(animesCollection, animeId);
         const animeSnap = await getDoc(animeRef);
@@ -376,7 +363,7 @@ export const addEpisodeToSeason = async (animeId: string, episodeData: Episode):
 const staticAvailableGenres = ['Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Drama', 'Fantasy', 'Historical', 'Horror', 'Isekai', 'Josei', 'Magic', 'Martial Arts', 'Mecha', 'Military', 'Music', 'Mystery', 'Parody', 'Police', 'Psychological', 'Romance', 'Samurai', 'School', 'Sci-Fi', 'Seinen', 'Shoujo', 'Shounen', 'Slice of Life', 'Space', 'Sports', 'Super Power', 'Supernatural', 'Thriller', 'Vampire', 'Game', 'Demons', 'Ecchi', 'Harem'];
 
 
-export const getUniqueGenres = async (): Promise<string[]> => {
+export async function getUniqueGenres(): Promise<string[]> {
   try {
     const snapshot = await getDocs(query(animesCollection, limit(300))); 
     const allGenres = new Set<string>();
@@ -398,7 +385,7 @@ export const getUniqueGenres = async (): Promise<string[]> => {
   }
 };
 
-export const updateAnimeIsFeatured = async (animeId: string, isFeatured: boolean): Promise<void> => {
+export async function updateAnimeIsFeatured(animeId: string, isFeatured: boolean): Promise<void> {
   try {
     const animeRef = doc(animesCollection, animeId);
     await updateDoc(animeRef, { isFeatured, updatedAt: serverTimestamp() });
@@ -407,7 +394,7 @@ export const updateAnimeIsFeatured = async (animeId: string, isFeatured: boolean
   }
 };
 
-export const getAnimesByIds = async (ids: string[]): Promise<Anime[]> => {
+export async function getAnimesByIds(ids: string[]): Promise<Anime[]> {
   if (!ids || ids.length === 0) {
     return [];
   }
@@ -430,9 +417,8 @@ export const getAnimesByIds = async (ids: string[]): Promise<Anime[]> => {
   }
 };
 
-
-export const getFeaturedAnimes = async (options: { count?: number; sortByTitle?: boolean } = {}): Promise<Anime[]> => {
-  const { count = 5, sortByTitle = false } = options;
+export async function getFeaturedAnimes(options: { count?: number; sortBy?: 'title' | 'updatedAt' | 'popularity'; sortOrder?: 'asc' | 'desc'; } = {}): Promise<Anime[]> {
+  const { count = 5, sortBy, sortOrder = 'desc' } = options; // Default sortOrder to 'desc' if sortBy is provided
   try {
     const effectiveCount = count > 0 ? count : 5;
     if (effectiveCount === 0) return [];
@@ -441,17 +427,13 @@ export const getFeaturedAnimes = async (options: { count?: number; sortByTitle?:
         where('isFeatured', '==', true),
     ];
 
-    if (sortByTitle) {
-        queryConstraints.push(orderBy('title', 'asc'));
-        // IMPORTANT: This query (isFeatured == true, orderBy('title', 'asc'))
-        // will require a composite index in Firestore: (animes collection: isFeatured ASC, title ASC)
-    } else {
-        // Defaulting to updatedAt for featured items.
-        // IMPORTANT: This query (isFeatured == true, orderBy('updatedAt', 'desc'))
-        // will likely require a composite index in Firestore.
-        // Please create it: (animes collection: isFeatured ASC, updatedAt DESC)
-         queryConstraints.push(orderBy('updatedAt', 'desc'));
+    if (sortBy) {
+        // If sortBy is 'title', default sortOrder to 'asc', otherwise 'desc'
+        const effectiveSortOrder = sortBy === 'title' && !options.sortOrder ? 'asc' : sortOrder;
+        queryConstraints.push(orderBy(sortBy, effectiveSortOrder));
     }
+    // If no sortBy is provided, animes will be returned in Firestore's default order for 'isFeatured == true'.
+    // This avoids requiring a specific composite index by default.
 
     queryConstraints.push(limit(effectiveCount));
 
@@ -461,12 +443,11 @@ export const getFeaturedAnimes = async (options: { count?: number; sortByTitle?:
     return animes;
   } catch (error) {
     if (error instanceof FirestoreError && error.code === 'failed-precondition') {
-      const sortField = sortByTitle ? 'title' : 'updatedAt';
-      const sortDirection = sortByTitle ? 'ASC' : 'DESC';
-      console.warn(`Firestore query in getFeaturedAnimes requires an index. 
-        Query involves 'isFeatured == true' and sorting by '${sortField}' (${sortDirection}).
-        Original error: ${error.message}. 
-        Please create the required composite index (e.g., isFeatured ASC, ${sortField} ${sortDirection}) in your Firebase console.`);
+      let sortFieldMsg = sortBy ? `${sortBy} (${options.sortOrder || (sortBy === 'title' ? 'asc' : 'desc')})` : "default (no specific sort)";
+      console.warn(`Firestore query in getFeaturedAnimes requires an index.
+        Query involves 'isFeatured == true'${sortBy ? ` and sorting by '${sortFieldMsg}'` : ''}.
+        Original error: ${error.message}.
+        Please create the required composite index (e.g., isFeatured ASC${sortBy ? `, ${sortBy} ${options.sortOrder || (sortBy === 'title' ? 'asc' : 'desc')}` : ''}) in your Firebase console.`);
     }
     throw handleFirestoreError(error, `getFeaturedAnimes`);
   }
