@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Container from '@/components/layout/container';
 import AnimeCarousel from '@/components/anime/anime-carousel';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import FeaturedAnimeCard from '@/components/anime/FeaturedAnimeCard';
 import TopAnimeListItem from '@/components/anime/TopAnimeListItem';
 import { Badge } from '@/components/ui/badge';
 import AnimeCardSkeleton from '@/components/anime/AnimeCardSkeleton';
-import HeroSkeleton from '@/components/home/HeroSkeleton'; 
+import HeroSkeleton from '@/components/home/HeroSkeleton';
 import { Skeleton } from '@/components/ui/skeleton';
 import HomePageGenreSection from './HomePageGenreSection';
 import RecommendationsSection from '../anime/recommendations-section';
@@ -51,21 +51,20 @@ const getYouTubeVideoId = (url?: string): string | null => {
 };
 
 export interface HomeClientProps {
-  initialAllAnimeData: Anime[]; 
-  initialFeaturedAnimes: Anime[];
-  fetchError: string | null; 
+  initialAllAnimeData?: Anime[];
+  initialFeaturedAnimes?: Anime[];
+  fetchError: string | null;
 }
 
-export default function HomeClient({ 
-    initialAllAnimeData = [],
-    initialFeaturedAnimes = [],
-    fetchError: initialFetchError 
+export default function HomeClient({
+    initialAllAnimeData,
+    initialFeaturedAnimes,
+    fetchError: initialFetchError
 }: HomeClientProps) {
-  const [allAnime, setAllAnime] = useState<Anime[]>(initialAllAnimeData);
-  const [featuredAnimesList, setFeaturedAnimesList] = useState<Anime[]>(initialFeaturedAnimes);
-  const [fetchError, setFetchError] = useState<string | null>(initialFetchError);
-  // isLoading is true by default, useEffect will set it to false once props are processed.
-  const [isLoading, setIsLoading] = useState(true); 
+  const [allAnime, setAllAnime] = useState<Anime[]>([]);
+  const [featuredAnimesList, setFeaturedAnimesList] = useState<Anime[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true); // Start as true
 
   const [playTrailer, setPlayTrailer] = useState(false);
   const [isTrailerMuted, setIsTrailerMuted] = useState(true);
@@ -75,29 +74,31 @@ export default function HomeClient({
       setFetchError(initialFetchError);
       setAllAnime([]);
       setFeaturedAnimesList([]);
-      setIsLoading(false); // Stop loading on error
-    } else if (initialAllAnimeData.length > 0 || initialFeaturedAnimes.length > 0) {
+    } else if (initialAllAnimeData && initialFeaturedAnimes) {
       setAllAnime(initialAllAnimeData);
       setFeaturedAnimesList(initialFeaturedAnimes);
       setFetchError(null);
-      setIsLoading(false); // Stop loading if there's data
-    } else if (!initialFetchError && initialAllAnimeData.length === 0 && initialFeaturedAnimes.length === 0) {
-      // Data is empty, no error -> means fetched successfully but no content
+    } else {
+      // Handle cases where props might be undefined but no explicit error
       setAllAnime([]);
       setFeaturedAnimesList([]);
       setFetchError(null);
-      setIsLoading(false); // Stop loading, show "no content" message
     }
-    // If initial props are still undefined or being resolved, isLoading remains true until one of the above conditions is met.
+    setIsLoading(false); // Set loading to false after processing initial props
   }, [initialAllAnimeData, initialFeaturedAnimes, initialFetchError]);
 
 
-  const heroAnime = featuredAnimesList[0] || (allAnime.length > 0 ? shuffleArray([...allAnime])[0] : undefined);
-  const youtubeVideoId = heroAnime?.trailerUrl ? getYouTubeVideoId(heroAnime.trailerUrl) : null;
+  const heroAnime = useMemo(() => {
+    return featuredAnimesList[0] || (allAnime.length > 0 ? shuffleArray([...allAnime])[0] : undefined);
+  }, [featuredAnimesList, allAnime]);
+
+  const youtubeVideoId = useMemo(() => {
+    return heroAnime?.trailerUrl ? getYouTubeVideoId(heroAnime.trailerUrl) : null;
+  }, [heroAnime]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (heroAnime && youtubeVideoId && !playTrailer && !fetchError && !isLoading) { 
+    if (heroAnime && youtubeVideoId && !playTrailer && !fetchError && !isLoading) {
       timer = setTimeout(() => {
         setPlayTrailer(true);
       }, 3000);
@@ -105,35 +106,45 @@ export default function HomeClient({
     return () => clearTimeout(timer);
   }, [heroAnime, youtubeVideoId, playTrailer, fetchError, isLoading]);
 
-  const trendingAnime = allAnime.length > 0 ? shuffleArray([...allAnime]).slice(0, 10) : [];
-  
-  const popularAnime = allAnime.length > 0 
+  const trendingAnime = useMemo(() => {
+    return allAnime.length > 0 ? shuffleArray([...allAnime]).slice(0, 10) : [];
+  }, [allAnime]);
+
+  const popularAnime = useMemo(() => {
+    return allAnime.length > 0
     ? [...allAnime]
-        .filter(a => a.averageRating !== undefined && a.averageRating !== null && a.averageRating >= 7.0) 
+        .filter(a => a.averageRating !== undefined && a.averageRating !== null && a.averageRating >= 7.0)
         .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
         .slice(0, 10)
     : [];
+  }, [allAnime]);
 
-  const recentlyAddedAnime = allAnime.length > 0
+  const recentlyAddedAnime = useMemo(() => {
+    return allAnime.length > 0
     ? [...allAnime].sort((a,b) => {
-        const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : (a.year ? new Date(a.year, 0, 1).getTime() : 0));
-        const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : (b.year ? new Date(b.year, 0, 1).getTime() : 0));
+        const dateAValue = a.updatedAt || a.createdAt || (a.year ? new Date(a.year, 0, 1).toISOString() : '1970-01-01T00:00:00.000Z');
+        const dateBValue = b.updatedAt || b.createdAt || (b.year ? new Date(b.year, 0, 1).toISOString() : '1970-01-01T00:00:00.000Z');
+        const dateA = new Date(dateAValue).getTime();
+        const dateB = new Date(dateBValue).getTime();
         return dateB - dateA;
       }).slice(0,10)
     : [];
-  
-  const topAnimeList = allAnime.length > 0 ? [...allAnime]
+  }, [allAnime]);
+
+  const topAnimeList = useMemo(() => {
+    return allAnime.length > 0 ? [...allAnime]
     .filter(a => a.averageRating !== undefined && a.averageRating !== null)
     .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
     .slice(0, 10) : [];
+  }, [allAnime]);
 
-  if (isLoading && !fetchError) { 
+  if (isLoading && !fetchError) {
     return (
       <>
         <HeroSkeleton />
         <Container className="py-8">
           <div className="mb-8">
-            <Skeleton className="h-8 w-1/3 mb-4 rounded-md bg-muted/50" /> 
+            <Skeleton className="h-8 w-1/3 mb-4 rounded-md bg-muted/50" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <Skeleton className="aspect-[16/10] sm:aspect-[16/9] rounded-xl bg-muted/50" />
                 <Skeleton className="aspect-[16/10] sm:aspect-[16/9] rounded-xl bg-muted/50 hidden md:block" />
@@ -159,6 +170,14 @@ export default function HomeClient({
                 ))}
             </div>
           </div>
+           <div className="mb-8">
+            <Skeleton className="h-8 w-1/3 mb-4 rounded-md bg-muted/50" />
+             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
+                {[...Array(6)].map((_, l) => (
+                    <Skeleton key={`genre-skeleton-${l}`} className="h-[100px] md:h-[120px] rounded-lg bg-muted/50" />
+                ))}
+            </div>
+          </div>
         </Container>
       </>
     );
@@ -180,11 +199,11 @@ export default function HomeClient({
       </Container>
     );
   }
-  
+
   const noContentAvailable = !isLoading && !fetchError && allAnime.length === 0 && featuredAnimesList.length === 0 && !heroAnime;
 
   return (
-    <> 
+    <>
       {heroAnime && (
         <section className="relative h-[65vh] md:h-[80vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] overflow-hidden">
           <div className="absolute inset-0">
@@ -195,8 +214,8 @@ export default function HomeClient({
                   title="YouTube video player"
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen 
-                  className="w-full h-full scale-[2] sm:scale-[1.8] md:scale-[1.5] object-cover" 
+                  allowFullScreen
+                  className="w-full h-full scale-[2] sm:scale-[1.8] md:scale-[1.5] object-cover"
                 ></iframe>
               </div>
             ) : (
@@ -249,7 +268,7 @@ export default function HomeClient({
                   </Link>
                 </Button>
                 {playTrailer && youtubeVideoId && (
-                  <div className="ml-auto sm:ml-0 mt-2 sm:mt-0 sm:ml-auto self-center"> 
+                  <div className="ml-auto sm:ml-0 mt-2 sm:mt-0 sm:ml-auto self-center">
                     <Button
                         variant="ghost"
                         size="icon"
@@ -295,12 +314,12 @@ export default function HomeClient({
         )}
 
         {trendingAnime.length > 0 && <AnimeCarousel title="Trending Now" animeList={trendingAnime} />}
-        
+
         <HomePageGenreSection />
-        
+
         {popularAnime.length > 0 && <AnimeCarousel title="Popular This Season" animeList={popularAnime} />}
         {recentlyAddedAnime.length > 0 && <AnimeCarousel title="Latest Additions" animeList={recentlyAddedAnime} />}
-        
+
         {topAnimeList.length > 0 && (
           <section className="py-6 md:py-8">
             <div className="flex justify-between items-center mb-6">
@@ -318,9 +337,8 @@ export default function HomeClient({
             </div>
           </section>
         )}
-        <RecommendationsSection allAnimesCache={initialAllAnimeData} />
+        <RecommendationsSection allAnimesCache={allAnime} />
       </Container>
-    </> 
+    </>
   );
 }
-
