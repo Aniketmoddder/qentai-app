@@ -10,6 +10,7 @@ import AnimeInteractionControls from '@/components/anime/anime-interaction-contr
 import CharacterCarousel from '@/components/anime/CharacterCarousel'; 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; 
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area'; // Added import for ScrollArea
 
 interface AnimeDetailsPageProps {
   params: {
@@ -234,3 +235,4 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     </div>
   );
 }
+
