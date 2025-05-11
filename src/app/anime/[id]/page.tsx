@@ -83,7 +83,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                 alt={anime.title}
                 fill
                 sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, 25vw"
-                style={{ objectFit: 'cover' }}
+                className="object-cover object-top" // Added object-top to position image towards the top
                 data-ai-hint={`${anime.genre[0] || 'anime'} portrait`}
               />
             </div>
@@ -98,7 +98,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
           </div>
 
           <div className="mt-8 md:mt-0 md:w-2/3 lg:w-3/4 text-foreground">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2">{anime.title}</h1>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2 font-zen-dots">{anime.title}</h1>
             
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground mb-4">
               <div className="flex items-center">
@@ -121,7 +121,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
             </div>
 
             <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-2 text-primary">Genres</h2>
+              <h2 className="text-xl font-semibold mb-2 text-primary font-orbitron">Genres</h2>
               <div className="flex flex-wrap gap-2">
                 {anime.genre.map((g) => (
                   <Badge key={g} variant="outline" className="text-sm">{g}</Badge>
@@ -130,7 +130,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
             </div>
 
             <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-2 text-primary">Synopsis</h2>
+              <h2 className="text-xl font-semibold mb-2 text-primary font-orbitron">Synopsis</h2>
               <p className="text-base leading-relaxed text-muted-foreground whitespace-pre-line">
                 {anime.synopsis}
               </p>
@@ -138,7 +138,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
             
             {anime.episodes && anime.episodes.length > 0 && (
               <div className="mt-8 p-4 sm:p-6 bg-card rounded-lg">
-                <h2 className="text-2xl font-semibold mb-4 text-primary flex items-center">
+                <h2 className="text-2xl font-semibold mb-4 text-primary flex items-center font-orbitron">
                   <List className="mr-2"/> Episodes ({anime.episodes.length})
                 </h2>
                 <div className="max-h-96 overflow-y-auto space-y-2 pr-2 scrollbar-thin">
@@ -172,7 +172,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
             )}
             {(!anime.episodes || anime.episodes.length === 0) && (
                  <div className="mt-8 p-4 sm:p-6 bg-card rounded-lg">
-                    <h2 className="text-2xl font-semibold mb-2 text-primary">Episodes</h2>
+                    <h2 className="text-2xl font-semibold mb-2 text-primary font-orbitron">Episodes</h2>
                     <p className="text-muted-foreground">No episodes listed for this title yet. URLs for episodes might need to be added by an admin.</p>
                  </div>
             )}
