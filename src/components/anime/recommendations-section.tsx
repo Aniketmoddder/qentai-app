@@ -22,11 +22,12 @@ export default function RecommendationsSection() {
 
   const fetchAllAnimesForMatching = useCallback(async () => {
     try {
-      const animesFromDB = await getAllAnimes({ count: 100, filters: {} }); // Fetch a decent number for matching
+      // Fetch a larger number to have a good catalog for the AI
+      const animesFromDB = await getAllAnimes({ count: 200, filters: {} }); 
       setAllAnimesCache(animesFromDB);
     } catch (e) {
       console.error("Failed to fetch all animes for recommendation matching:", e);
-      // Non-critical error, AI can still generate titles
+      setError("Could not load anime catalog for recommendations. Please try again.");
     }
   }, []);
 
@@ -35,44 +36,30 @@ export default function RecommendationsSection() {
   }, [fetchAllAnimesForMatching]);
 
   const fetchRecommendations = async () => {
+    if (allAnimesCache.length === 0) {
+      setError("Anime catalog is not loaded yet. Cannot fetch recommendations.");
+      setIsLoading(false); // Ensure loading stops if catalog is missing
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
-      // Ensure allAnimesCache is populated before generating recommendations that rely on it for matching
-      if (allAnimesCache.length === 0) {
-         await fetchAllAnimesForMatching(); // Ensure cache is populated if empty
-      }
-
-      const result = await generateAnimeRecommendations({ watchHistory: mockWatchHistoryTitles });
+      const availableAnimeTitles = allAnimesCache.map(anime => anime.title);
+      const result = await generateAnimeRecommendations({ 
+        watchHistory: mockWatchHistoryTitles,
+        availableAnimeTitles 
+      });
       
       const detailedRecommendations = result.recommendations
         .map(title => {
-          // Try to find the anime in our existing DB (allAnimesCache)
-          const foundInDB = allAnimesCache.find(anime => 
-            anime.title.toLowerCase() === title.toLowerCase() || 
-            anime.title.toLowerCase().includes(title.toLowerCase()) ||
-            title.toLowerCase().includes(anime.title.toLowerCase())
+          // Find the anime in our existing DB (allAnimesCache)
+          // AI should return exact titles, so direct match is preferred
+          return allAnimesCache.find(anime => 
+            anime.title.toLowerCase() === title.toLowerCase()
           );
-
-          if (foundInDB) return foundInDB;
-          
-          // Create a fallback if not found in the DB
-          return {
-            id: title.replace(/\s+/g, '-').toLowerCase() + `-${Math.random().toString(36).substr(2, 5)}`,
-            title: title,
-            coverImage: `https://picsum.photos/seed/${encodeURIComponent(title)}/300/450`,
-            bannerImage: `https://picsum.photos/seed/${encodeURIComponent(title)}-banner/1200/400`,
-            year: new Date().getFullYear(),
-            genre: ['Recommended'],
-            status: 'Unknown',
-            synopsis: `An exciting anime recommended just for you: ${title}. Details are AI-generated.`,
-            type: 'Unknown',
-            episodes: [],
-            averageRating: parseFloat((Math.random() * (4.9 - 3.5) + 3.5).toFixed(1)),
-            sourceAdmin: 'tmdb', // Assuming AI might pull from TMDB-like knowledge
-          } as Anime;
         })
-        .filter((anime): anime is Anime => anime !== undefined);
+        .filter((anime): anime is Anime => anime !== undefined); // Filter out undefined (not found or AI hallucinated)
 
       setRecommendations(detailedRecommendations.slice(0, 5)); // Show top 5
     } catch (e) {
@@ -83,10 +70,13 @@ export default function RecommendationsSection() {
     }
   };
 
+  // Fetch recommendations once the cache is populated
   useEffect(() => {
-    fetchRecommendations();
+    if (allAnimesCache.length > 0) {
+      fetchRecommendations();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allAnimesCache]); // Re-fetch if cache changes (though it's fetched once)
+  }, [allAnimesCache]); 
 
   return (
     <section className="py-6 md:py-8">
@@ -95,7 +85,7 @@ export default function RecommendationsSection() {
           <Wand2 className="w-7 h-7 mr-2 text-primary" />
           Recommended For You
         </h2>
-        <Button variant="ghost" onClick={fetchRecommendations} disabled={isLoading}>
+        <Button variant="ghost" onClick={fetchRecommendations} disabled={isLoading || allAnimesCache.length === 0}>
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           Refresh
         </Button>
