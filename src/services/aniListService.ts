@@ -4,9 +4,11 @@ import type { AniListMediaData, AniListMedia } from '@/types/anilist';
 
 const ANILIST_GRAPHQL_ENDPOINT = 'https://graphql.anilist.co';
 
+// Removed sort: [IS_MAIN_DESC] from studios connection as it's invalid.
+// The isMain field on the edge is used to determine the main studio.
 const ANILIST_MEDIA_QUERY = `
-query Media($id: Int, $type: MediaType, $idMal: Int, $search: String, $title: String) {
-  Media(id: $id, idMal: $idMal, search: $search, type: $type, title: $title, sort: [POPULARITY_DESC, SCORE_DESC]) {
+query Media($id: Int, $type: MediaType, $idMal: Int, $search: String) {
+  Media(id: $id, idMal: $idMal, search: $search, type: $type, sort: [POPULARITY_DESC, SCORE_DESC]) {
     id
     idMal
     title {
@@ -33,7 +35,7 @@ query Media($id: Int, $type: MediaType, $idMal: Int, $search: String, $title: St
     duration # episode duration
     countryOfOrigin
     source(version: 2) # manga, light novel, original etc.
-    studios(sort: IS_MAIN_DESC) {
+    studios {
       edges {
         isMain
         node {
@@ -96,13 +98,18 @@ query Media($id: Int, $type: MediaType, $idMal: Int, $search: String, $title: St
 export async function fetchAniListMediaDetails(
   identifier: { id: number } | { title: string; type?: 'ANIME' | 'MANGA' }
 ): Promise<AniListMedia | null> {
-  let variables: { id?: number; title?: string; type?: 'ANIME' | 'MANGA' } = {};
-  if ('id' in identifier) {
+  // Ensure that variables are constructed correctly based on the identifier type
+  let variables: { id?: number; search?: string; type?: 'ANIME' | 'MANGA' } = {};
+  
+  if (typeof identifier === 'object' && identifier !== null && 'id' in identifier && typeof identifier.id === 'number') {
     variables.id = identifier.id;
-    variables.type = 'ANIME'; // Assume ANIME if only ID is provided
-  } else {
-    variables.title = identifier.title;
+    variables.type = 'ANIME'; // Default to ANIME if only ID is provided
+  } else if (typeof identifier === 'object' && identifier !== null && 'title' in identifier && typeof identifier.title === 'string') {
+    variables.search = identifier.title; // Use 'search' for title-based queries as per AniList spec for Media query by title
     variables.type = identifier.type || 'ANIME';
+  } else {
+    console.error('Invalid identifier provided to fetchAniListMediaDetails:', identifier);
+    return null;
   }
   
   try {
