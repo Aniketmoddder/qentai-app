@@ -37,6 +37,8 @@
     --border: 227 16% 20%; /* #2A2E3B - Muted Divider Gray */
     --input: 248 25% 12%; /* Slightly lighter than card/surface */
     --ring: 262 89% 71%; /* Lighter primary for focus rings */
+    
+    --highlight: 187 85% 53%; /* #22D3EE - Aqua Glow (from user prompt) */
 
     --radius: 0.75rem;
 
@@ -87,6 +89,8 @@
     --border: 220 13% 91%; /* #E5E7EB */
     --input: 0 0% 100%; /* White input background */
     --ring: 239 78% 72%; /* Lighter primary for focus rings */
+
+    --highlight: 262 84% 72%; /* #A78BFA (Light Purple) */
     
     --radius: 0.75rem;
 
@@ -108,8 +112,60 @@
     --sidebar-ring: 239 78% 72%;
   }
 
+  /* Kawaii Pink Vibe Theme */
+  html[data-theme="kawaii-pink-vibe"] {
+    --background: 287 50% 8%; /* #1A0A1E */
+    --foreground: 287 100% 98%; /* #FDF4FF */
 
-  html[data-theme="vibrant-cyberpunk"] {
+    --card: 287 67% 13%; /* #2B0D35 (Surface) */
+    --card-foreground: 287 100% 98%;
+
+    --popover: 287 50% 6%; /* Darker than background */
+    --popover-foreground: 287 100% 98%;
+
+    --primary: 327 82% 60%; /* #EC4899 */
+    --primary-foreground: 287 100% 98%; 
+    
+    --secondary: 352 96% 71%; /* #FB7185 */
+    --secondary-foreground: 287 50% 8%; /* Dark text for this secondary */
+
+    --muted: 287 60% 11%; /* Darker purple-ish gray */
+    --muted-foreground: 287 30% 60%; /* Lighter gray for muted text */
+
+    --accent: 337 88% 70%; /* #F472B6 */
+    --accent-foreground: 287 50% 8%; /* Dark text for this accent */
+
+    --destructive: 0 70% 55%; /* Standard red */
+    --destructive-foreground: 0 0% 98%; /* Standard light text */
+
+    --border: 287 67% 18%; /* #3F0E4F */
+    --input: 287 67% 11%; /* Slightly darker than card */
+    --ring: 327 82% 65%; /* Lighter primary */
+
+    --highlight: 291 92% 72%; /* #E879F9 (from user prompt) */
+    
+    --radius: 0.75rem;
+
+    /* Chart colors */
+    --chart-1: 327 82% 60%; /* Primary */
+    --chart-2: 352 96% 71%; /* Secondary */
+    --chart-3: 337 88% 70%;  /* Accent */
+    --chart-4: 291 92% 72%;   /* Highlight */
+    --chart-5: 287 30% 60%;     /* Muted Foreground */
+    
+    /* Sidebar colors */
+    --sidebar-background: 287 50% 8%; 
+    --sidebar-foreground: 287 100% 95%;
+    --sidebar-primary: 327 82% 60%; 
+    --sidebar-primary-foreground: 287 100% 98%;
+    --sidebar-accent: 287 67% 13%; /* Card color as accent bg */
+    --sidebar-accent-foreground: 327 82% 60%; /* Primary as text on accent */
+    --sidebar-border: 287 67% 16%;
+    --sidebar-ring: 327 82% 65%;
+  }
+
+
+  html[data-theme="vibrant-cyberpunk"] { /* This was an old theme, keeping it for now */
     --background: 0 0% 4%; /* #0A0A0A */
     --foreground: 320 100% 98%; /* #FDF4FF */
     --card: 0 0% 8%; 
@@ -129,6 +185,8 @@
     --border: 240 4% 26%; /* #3F3F46 */
     --input: 0 0% 7%;
     --ring: 329 100% 70%; /* Lighter primary */
+    --highlight: 45 100% 55%; /* Bright yellow for cyberpunk */
+
 
     --chart-1: 329 100% 65%;
     --chart-2: 195 100% 50%;
@@ -146,7 +204,7 @@
     --sidebar-ring: 329 100% 70%;
   }
 
-  html[data-theme="anime-pastel"] {
+  html[data-theme="anime-pastel"] { /* This was an old theme, keeping it for now */
     --background: 345 100% 97%; /* #FFF1F5 */
     --foreground: 220 26% 19%; /* #1F2937 */
     --card: 0 0% 100%; /* White */
@@ -166,6 +224,8 @@
     --border: 215 28% 90%; /* #E2E8F0 */
     --input: 0 0% 100%; 
     --ring: 352 96% 76%; /* Lighter primary */
+    --highlight: 45 90% 75%; /* Lighter yellow for pastel */
+
 
     --chart-1: 352 96% 71%;
     --chart-2: 188 95% 81%;
@@ -237,12 +297,19 @@
     background: hsl(var(--primary)); 
   }
   html[data-theme="dark-purple-premium"] .btn-primary-gradient,
-  html[data-theme="light-pale-purple"] .btn-primary-gradient {
-    background-image: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
+  html[data-theme="light-pale-purple"] .btn-primary-gradient,
+  html[data-theme="kawaii-pink-vibe"] .btn-primary-gradient,
+  html[data-theme="vibrant-cyberpunk"] .btn-primary-gradient, /* Added for consistency if cyberpunk also uses this gradient */
+  html[data-theme="anime-pastel"] .btn-primary-gradient { /* Added for consistency if pastel also uses this gradient */
+    /* Use primary and highlight for the gradient, if highlight is defined, otherwise secondary */
+    background-image: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--highlight, var(--secondary))) 100%);
     background-size: 150% auto;
   }
    html[data-theme="dark-purple-premium"] .btn-primary-gradient:hover,
-   html[data-theme="light-pale-purple"] .btn-primary-gradient:hover {
+   html[data-theme="light-pale-purple"] .btn-primary-gradient:hover,
+   html[data-theme="kawaii-pink-vibe"] .btn-primary-gradient:hover,
+   html[data-theme="vibrant-cyberpunk"] .btn-primary-gradient:hover,
+   html[data-theme="anime-pastel"] .btn-primary-gradient:hover {
     background-position: right center; 
   }
 

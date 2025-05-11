@@ -4,7 +4,7 @@
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
-export type Theme = 'dark-purple-premium' | 'light-pale-purple' | 'vibrant-cyberpunk' | 'anime-pastel';
+export type Theme = 'dark-purple-premium' | 'light-pale-purple' | 'kawaii-pink-vibe' | 'vibrant-cyberpunk' | 'anime-pastel';
 
 export interface ThemeOption {
   value: Theme;
@@ -23,17 +23,22 @@ export const themes: ThemeOption[] = [
   },
   { 
     value: 'light-pale-purple', 
-    label: 'Elegant Light', // Updated Label
-    colors: { primary: '#6366F1', background: '#F9FAFB'} // Updated colors from prompt
+    label: 'Elegant Light', 
+    colors: { primary: '#6366F1', background: '#F9FAFB'}
+  },
+  {
+    value: 'kawaii-pink-vibe',
+    label: 'Kawaii Pink Vibe',
+    colors: { primary: '#EC4899', background: '#1A0A1E'}
   },
   { 
     value: 'vibrant-cyberpunk', 
-    label: 'Cyberpunk',
+    label: 'Cyberpunk', /* Keeping old theme for now */
     colors: { primary: '#FF4DB8', background: '#0A0A0A'}
   },
   { 
     value: 'anime-pastel', 
-    label: 'Anime Pastel',
+    label: 'Anime Pastel', /* Keeping old theme for now */
     colors: { primary: '#FB7185', background: '#FFF1F5'}
   },
 ];
