@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Using ShadCN Card
-import { BarChart, Users, Film, Tv as TvIcon, Loader2, AlertCircle, Eye, BookmarkPlus } from 'lucide-react';
+import { BarChart, Users, Film, Tv as TvIcon, Loader2, AlertCircle, Eye, BookmarkPlus, LibraryBig } from 'lucide-react';
 import { getAllAnimes } from '@/services/animeService';
 import { getAllAppUsers } from '@/services/appUserService';
 import type { Anime } from '@/types/anime';
@@ -37,7 +37,7 @@ export default function AdminDashboardTab() {
       setError(null);
       try {
         const [animes, appUsers] = await Promise.all([
-          getAllAnimes({ count: -1 }),
+          getAllAnimes({ count: -1, filters: {} }), // Ensure filters object is passed
           getAllAppUsers(-1),
         ]);
 
@@ -177,3 +177,4 @@ function DashboardStatCard({ icon: Icon, title, value, isTextValue }: DashboardS
     </Card>
   );
 }
+
