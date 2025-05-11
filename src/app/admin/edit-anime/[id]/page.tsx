@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -42,7 +43,7 @@ type AnimeFormData = z.infer<typeof animeSchema>;
 const ADMIN_EMAIL = 'ninjax.desi@gmail.com';
 
 export default function EditAnimePage() {
-  const { toast } } = useToast();
+  const { toast } = useToast();
   const router = useRouter();
   const params = useParams();
   const animeId = params.id as string;
