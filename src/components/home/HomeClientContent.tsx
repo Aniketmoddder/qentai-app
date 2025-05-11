@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Container from '@/components/layout/container';
 import AnimeCarousel from '@/components/anime/anime-carousel';
 import { Button } from '@/components/ui/button';
@@ -12,9 +11,9 @@ import type { Anime } from '@/types/anime';
 import FeaturedAnimeCard from '@/components/anime/FeaturedAnimeCard';
 import TopAnimeListItem from '@/components/anime/TopAnimeListItem';
 import { Badge } from '@/components/ui/badge';
-import AnimeCardSkeleton from '@/components/anime/AnimeCardSkeleton';
 import HeroSkeleton from '@/components/home/HeroSkeleton';
 import { Skeleton } from '@/components/ui/skeleton';
+import AnimeCardSkeleton from '@/components/anime/AnimeCardSkeleton';
 import HomePageGenreSection from './HomePageGenreSection';
 import RecommendationsSection from '../anime/recommendations-section';
 
@@ -56,6 +55,8 @@ export interface HomeClientProps {
   fetchError: string | null;
 }
 
+const ARTIFICIAL_SKELETON_DELAY = 750; // milliseconds
+
 export default function HomeClient({
     initialAllAnimeData,
     initialFeaturedAnimes,
@@ -64,7 +65,8 @@ export default function HomeClient({
   const [allAnime, setAllAnime] = useState<Anime[]>([]);
   const [featuredAnimesList, setFeaturedAnimesList] = useState<Anime[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // Start as true
+  const [isLoadingData, setIsLoadingData] = useState(true); // Actual data loading
+  const [isInitialSkeletonPhase, setIsInitialSkeletonPhase] = useState(true); // For artificial delay
 
   const [playTrailer, setPlayTrailer] = useState(false);
   const [isTrailerMuted, setIsTrailerMuted] = useState(true);
@@ -79,13 +81,19 @@ export default function HomeClient({
       setFeaturedAnimesList(initialFeaturedAnimes);
       setFetchError(null);
     } else {
-      // Handle cases where props might be undefined but no explicit error
       setAllAnime([]);
       setFeaturedAnimesList([]);
       setFetchError(null);
     }
-    setIsLoading(false); // Set loading to false after processing initial props
+    setIsLoadingData(false); 
   }, [initialAllAnimeData, initialFeaturedAnimes, initialFetchError]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsInitialSkeletonPhase(false);
+    }, ARTIFICIAL_SKELETON_DELAY);
+    return () => clearTimeout(timer);
+  }, []);
 
 
   const heroAnime = useMemo(() => {
@@ -98,13 +106,13 @@ export default function HomeClient({
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (heroAnime && youtubeVideoId && !playTrailer && !fetchError && !isLoading) {
+    if (heroAnime && youtubeVideoId && !playTrailer && !fetchError && !isLoadingData && !isInitialSkeletonPhase) {
       timer = setTimeout(() => {
         setPlayTrailer(true);
-      }, 3000);
+      }, 3000); // Autoplay trailer after main content is shown and a delay
     }
     return () => clearTimeout(timer);
-  }, [heroAnime, youtubeVideoId, playTrailer, fetchError, isLoading]);
+  }, [heroAnime, youtubeVideoId, playTrailer, fetchError, isLoadingData, isInitialSkeletonPhase]);
 
   const trendingAnime = useMemo(() => {
     return allAnime.length > 0 ? shuffleArray([...allAnime]).slice(0, 10) : [];
@@ -138,7 +146,9 @@ export default function HomeClient({
     .slice(0, 10) : [];
   }, [allAnime]);
 
-  if (isLoading && !fetchError) {
+  const showSkeleton = isInitialSkeletonPhase || (isLoadingData && !fetchError);
+
+  if (showSkeleton) {
     return (
       <>
         <HeroSkeleton />
@@ -200,7 +210,7 @@ export default function HomeClient({
     );
   }
 
-  const noContentAvailable = !isLoading && !fetchError && allAnime.length === 0 && featuredAnimesList.length === 0 && !heroAnime;
+  const noContentAvailable = !isLoadingData && !fetchError && !isInitialSkeletonPhase && allAnime.length === 0 && featuredAnimesList.length === 0 && !heroAnime;
 
   return (
     <>
@@ -289,7 +299,7 @@ export default function HomeClient({
         </section>
       )}
 
-      <Container className="py-8">
+      <Container className="overflow-x-clip py-8"> {/* Added overflow-x-clip here */}
         {noContentAvailable && (
            <div className="my-8 p-6 bg-card border border-border rounded-lg text-center">
             <h3 className="font-semibold text-xl font-orbitron">No Anime Found</h3>
@@ -314,7 +324,7 @@ export default function HomeClient({
         )}
 
         {trendingAnime.length > 0 && <AnimeCarousel title="Trending Now" animeList={trendingAnime} />}
-
+        
         <HomePageGenreSection />
 
         {popularAnime.length > 0 && <AnimeCarousel title="Popular This Season" animeList={popularAnime} />}
@@ -337,7 +347,7 @@ export default function HomeClient({
             </div>
           </section>
         )}
-        <RecommendationsSection allAnimesCache={allAnime} />
+         <RecommendationsSection allAnimesCache={allAnime} />
       </Container>
     </>
   );
