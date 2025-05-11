@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight, AlertTriangle, Play, Plus, Tv, Calendar, ListVideo, Star as StarIcon, Volume2, VolumeX, Loader2 } from 'lucide-react';
-import { getAllAnimes, getFeaturedAnimes } from '@/services/animeService';
+import { getFeaturedAnimes, getAllAnimes } from '@/services/animeService';
 import { convertAnimeTimestampsForClient } from '@/lib/animeUtils';
 import type { Anime } from '@/types/anime';
 import FeaturedAnimeCard from '@/components/anime/FeaturedAnimeCard';
@@ -42,12 +42,13 @@ const getYouTubeVideoId = (url?: string): string | null => {
       }
     }
   } catch (e) {
+    // Invalid URL
     return null;
   }
   return null;
 };
 
-const FETCH_TIMEOUT_MS = 25000;
+const FETCH_TIMEOUT_MS = 25000; // 25 seconds
 
 const promiseWithTimeout = <T,>(promise: Promise<T>, ms: number, timeoutError = new Error('Promise timed out')) => {
   const timeout = new Promise<never>((_, reject) => {
@@ -78,15 +79,16 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
     setFetchError(null);
 
     try {
+      // Changed sortBy for getFeaturedAnimes to 'updatedAt' to potentially avoid index error
       const fetchDataPromises = [
         getAllAnimes({ count: 50, filters: { sortBy: 'updatedAt', sortOrder: 'desc' } }),
-        getFeaturedAnimes({ count: 5, filters: { sortBy: 'popularity', sortOrder: 'desc' } }) 
+        getFeaturedAnimes({ count: 5, filters: { sortBy: 'updatedAt', sortOrder: 'desc' } }) 
       ];
       
       const settledResults = await promiseWithTimeout(
         Promise.allSettled(fetchDataPromises),
         FETCH_TIMEOUT_MS,
-        new Error(`Failed to load homepage data within ${FETCH_TIMEOUT_MS / 1000} seconds. This could be due to network issues or missing Firestore indexes. Please check your Firebase console for index creation suggestions (e.g., on 'updatedAt' or 'isFeatured' fields).`)
+        new Error(`Failed to load homepage data within ${FETCH_TIMEOUT_MS / 1000} seconds. This could be due to network issues or missing Firestore indexes. Please check your Firebase console for index creation suggestions.`)
       );
 
       let generalAnimes: Anime[] = [];
@@ -94,9 +96,9 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
       const errors: string[] = [];
 
       const generalAnimesResult = settledResults[0];
-      if (generalAnimesResult.status === 'fulfilled') {
+      if (generalAnimesResult.status === 'fulfilled' && generalAnimesResult.value) {
         generalAnimes = generalAnimesResult.value.map(a => convertAnimeTimestampsForClient(a)) || [];
-      } else {
+      } else if (generalAnimesResult.status === 'rejected') {
         console.error("HomeClient: Error fetching general animes:", generalAnimesResult.reason);
         let errorMsg = generalAnimesResult.reason?.message || "Failed to load general animes.";
         if (generalAnimesResult.reason instanceof FirestoreError && generalAnimesResult.reason.code === 'failed-precondition') {
@@ -106,14 +108,14 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
       }
 
       const featuredResult = settledResults[1];
-      if (featuredResult.status === 'fulfilled') {
+      if (featuredResult.status === 'fulfilled' && featuredResult.value) {
         let fetchedFeatured = featuredResult.value.map(a => convertAnimeTimestampsForClient(a)) || [];
         featured = fetchedFeatured;
-      } else {
+      } else if (featuredResult.status === 'rejected') {
         console.error("HomeClient: Error fetching featured animes:", featuredResult.reason);
         let errorMsg = featuredResult.reason?.message || "Failed to load featured animes.";
          if (featuredResult.reason instanceof FirestoreError && featuredResult.reason.code === 'failed-precondition') {
-           errorMsg += ` Featured animes query failed. This usually means an index on 'isFeatured' (boolean) and 'popularity' (desc) is missing. Check the Firebase console for index suggestions.`;
+           errorMsg += ` Featured animes query failed. This usually means an index on 'isFeatured' (boolean) and the chosen sort field (e.g. 'updatedAt' DESC) is missing. Check the Firebase console for index suggestions.`;
         }
         errors.push(errorMsg);
       }
@@ -151,13 +153,23 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
     if (heroAnime && youtubeVideoId && !playTrailer) {
       timer = setTimeout(() => {
         setPlayTrailer(true);
-      }, 3000);
+      }, 3000); // Auto-play trailer after 3 seconds
     }
     return () => clearTimeout(timer);
   }, [heroAnime, youtubeVideoId, playTrailer]);
 
+
+  // Carousels Data Preparation
   const trendingAnime = allAnime.length > 0 ? shuffleArray([...allAnime]).slice(0, 10) : [];
-  const popularAnime = allAnime.length > 0 ? shuffleArray([...allAnime].filter(a => a.averageRating && a.averageRating >= 7.0)).slice(0,10) : [];
+  
+  // Corrected popularAnime logic
+  const popularAnime = allAnime.length > 0 
+    ? [...allAnime]
+        .filter(a => a.averageRating !== undefined && a.averageRating !== null && a.averageRating >= 7.0) // Ensure averageRating exists
+        .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0)) // Sort by rating
+        .slice(0, 10)
+    : [];
+
   const recentlyAddedAnime = allAnime.length > 0
     ? [...allAnime].sort((a,b) => {
         const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : (a.year ? new Date(a.year, 0, 1).getTime() : 0));
@@ -165,7 +177,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
         return dateB - dateA;
       }).slice(0,10)
     : [];
-
+  
   const topAnimeList = allAnime.length > 0 ? [...allAnime]
     .filter(a => a.averageRating !== undefined && a.averageRating !== null)
     .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
@@ -173,7 +185,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
 
   if (isLoading && !heroAnime && !fetchError) {
     return (
-      <div>
+      <>
         <section className="relative h-[65vh] md:h-[80vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] bg-muted/30">
           <div className="absolute inset-0">
              <Skeleton className="w-full h-full opacity-40" />
@@ -198,7 +210,6 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
           </Container>
         </section>
         <Container className="py-8">
-          {/* Placeholder for carousels */}
           {[...Array(3)].map((_, i) => (
             <div key={i} className="mb-8">
               <Skeleton className="h-8 w-1/3 mb-4 rounded-md" />
@@ -214,7 +225,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
             </div>
           ))}
         </Container>
-      </div>
+      </>
     );
   }
 
