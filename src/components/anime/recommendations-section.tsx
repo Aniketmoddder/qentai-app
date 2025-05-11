@@ -9,40 +9,23 @@ import AnimeCardSkeleton from './AnimeCardSkeleton';
 import { Button } from '@/components/ui/button';
 import { Loader2, Wand2, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { getAllAnimes } from '@/services/animeService'; // To find existing anime
+// Removed: import { getAllAnimes } from '@/services/animeService';
 
 // Simulate user watch history - replace with actual user data in a real app
 const mockWatchHistoryTitles = ['Attack on Titan', 'Solo Leveling', 'One Punch Man']; // Titles the user has watched
 
-export default function RecommendationsSection() {
+interface RecommendationsSectionProps {
+  allAnimesCache: Anime[]; // Accept pre-fetched anime list as a prop
+}
+
+export default function RecommendationsSection({ allAnimesCache }: RecommendationsSectionProps) {
   const [recommendations, setRecommendations] = useState<Anime[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [allAnimesCache, setAllAnimesCache] = useState<Anime[]>([]);
-
-  const fetchAllAnimesForMatching = useCallback(async () => {
-    setIsLoading(true); // Set loading true when starting to fetch cache
-    setError(null);
-    try {
-      const animesFromDB = await getAllAnimes({ count: 200, filters: {} }); 
-      setAllAnimesCache(animesFromDB);
-    } catch (e) {
-      console.error("Failed to fetch all animes for recommendation matching:", e);
-      setError("Could not load anime catalog for recommendations. Please try again.");
-      setAllAnimesCache([]); // Ensure cache is empty on error
-    } finally {
-      setIsLoading(false); // Set loading false after cache fetch attempt
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchAllAnimesForMatching();
-  }, [fetchAllAnimesForMatching]);
 
   const fetchRecommendations = useCallback(async () => {
-    if (allAnimesCache.length === 0) {
-      // Avoid setting error if cache is just not loaded yet and not due to an error
-      if (!isLoading) setError("Anime catalog is not loaded yet. Cannot fetch recommendations.");
+    if (!allAnimesCache || allAnimesCache.length === 0) {
+      if (!isLoading) setError("Anime catalog is not available to generate recommendations.");
       setIsLoading(false); 
       return;
     }
@@ -83,15 +66,14 @@ export default function RecommendationsSection() {
     } finally {
       setIsLoading(false);
     }
-  }, [allAnimesCache, isLoading]); // Added isLoading to dependencies
+  }, [allAnimesCache, isLoading]); // Added isLoading
 
-  // Fetch recommendations once the cache is populated and not already loading recommendations
   useEffect(() => {
-    if (allAnimesCache.length > 0 && recommendations.length === 0 && !isLoading && !error) { 
+    if (allAnimesCache && allAnimesCache.length > 0 && recommendations.length === 0 && !error && !isLoading) { 
       fetchRecommendations();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allAnimesCache, recommendations.length, error]); // Removed fetchRecommendations from dep array as it causes loop with isLoading
+  }, [allAnimesCache, recommendations.length, error]); // Removed fetchRecommendations and isLoading from dep array
 
   return (
     <section className="py-6 md:py-8">
@@ -100,7 +82,11 @@ export default function RecommendationsSection() {
           <Wand2 className="w-7 h-7 mr-2 text-primary" />
           Recommended For You
         </h2>
-        <Button variant="ghost" onClick={fetchRecommendations} disabled={isLoading || allAnimesCache.length === 0}>
+        <Button 
+          variant="ghost" 
+          onClick={fetchRecommendations} 
+          disabled={isLoading || !allAnimesCache || allAnimesCache.length === 0}
+        >
           {isLoading && recommendations.length === 0 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} 
           Refresh
         </Button>
@@ -122,12 +108,19 @@ export default function RecommendationsSection() {
         </div>
       )}
 
-      {!isLoading && recommendations.length === 0 && !error && (
+      {!isLoading && recommendations.length === 0 && !error && allAnimesCache && allAnimesCache.length > 0 && (
          <div className="text-center py-8 text-muted-foreground">
           <p>No recommendations available right now. Watch some anime to get personalized suggestions!</p>
           <p className="text-xs mt-1">(Or ensure the recommendation AI is working correctly and the anime catalog is loaded.)</p>
         </div>
       )}
+      
+      {!isLoading && !allAnimesCache && !error && (
+         <div className="text-center py-8 text-muted-foreground">
+          <p>Loading anime catalog to generate recommendations...</p>
+        </div>
+      )}
+
 
       {recommendations.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-4 sm:gap-x-4 place-items-center sm:place-items-stretch">
@@ -139,3 +132,5 @@ export default function RecommendationsSection() {
     </section>
   );
 }
+
+    

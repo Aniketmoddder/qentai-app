@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight, AlertTriangle, Play, Plus, Tv, Calendar, ListVideo, Star as StarIcon, Volume2, VolumeX, Loader2 } from 'lucide-react';
-import { getFeaturedAnimes, getAllAnimes } from '@/services/animeService';
+// Removed: import { getFeaturedAnimes, getAllAnimes } from '@/services/animeService';
 import { convertAnimeTimestampsForClient } from '@/lib/animeUtils';
 import type { Anime } from '@/types/anime';
 import FeaturedAnimeCard from '@/components/anime/FeaturedAnimeCard';
@@ -48,102 +49,35 @@ const getYouTubeVideoId = (url?: string): string | null => {
   return null;
 };
 
-const FETCH_TIMEOUT_MS = 25000; // 25 seconds
-
-const promiseWithTimeout = <T,>(promise: Promise<T>, ms: number, timeoutError = new Error('Promise timed out')) => {
-  const timeout = new Promise<never>((_, reject) => {
-    const id = setTimeout(() => {
-      clearTimeout(id);
-      reject(timeoutError);
-    }, ms);
-  });
-  return Promise.race<T | never>([promise, timeout]);
-};
 
 export interface HomeClientProps {
   homePageGenreSectionComponent: React.ReactNode;
   recommendationsSectionComponent: React.ReactNode;
+  initialAllAnimeData?: Anime[]; 
+  initialFeaturedAnimes?: Anime[];
 }
 
-export default function HomeClient({ homePageGenreSectionComponent, recommendationsSectionComponent }: HomeClientProps) {
-  const [allAnime, setAllAnime] = useState<Anime[]>([]);
-  const [featuredAnimesList, setFeaturedAnimesList] = useState<Anime[]>([]);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export default function HomeClient({ 
+    homePageGenreSectionComponent, 
+    recommendationsSectionComponent,
+    initialAllAnimeData = [], // Provide default empty array
+    initialFeaturedAnimes = [] // Provide default empty array
+}: HomeClientProps) {
+  // Use the props directly instead of fetching inside HomeClientContent
+  const [allAnime, setAllAnime] = useState<Anime[]>(initialAllAnimeData.map(a => convertAnimeTimestampsForClient(a)) as Anime[]);
+  const [featuredAnimesList, setFeaturedAnimesList] = useState<Anime[]>(initialFeaturedAnimes.map(a => convertAnimeTimestampsForClient(a)) as Anime[]);
+  const [fetchError, setFetchError] = useState<string | null>(null); // Can be set by parent if initial fetch fails
+  const [isLoading, setIsLoading] = useState(false); // True if parent is still fetching, or if HomeClientContent does its own loading
 
   const [playTrailer, setPlayTrailer] = useState(false);
   const [isTrailerMuted, setIsTrailerMuted] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    setFetchError(null);
-
-    try {
-      // Changed sortBy for getFeaturedAnimes to 'updatedAt' to potentially avoid index error
-      const fetchDataPromises = [
-        getAllAnimes({ count: 50, filters: { sortBy: 'updatedAt', sortOrder: 'desc' } }),
-        getFeaturedAnimes({ count: 5, filters: { sortBy: 'updatedAt', sortOrder: 'desc' } }) 
-      ];
-      
-      const settledResults = await promiseWithTimeout(
-        Promise.allSettled(fetchDataPromises),
-        FETCH_TIMEOUT_MS,
-        new Error(`Failed to load homepage data within ${FETCH_TIMEOUT_MS / 1000} seconds. This could be due to network issues or missing Firestore indexes. Please check your Firebase console for index creation suggestions.`)
-      );
-
-      let generalAnimes: Anime[] = [];
-      let featured: Anime[] = [];
-      const errors: string[] = [];
-
-      const generalAnimesResult = settledResults[0];
-      if (generalAnimesResult.status === 'fulfilled' && generalAnimesResult.value) {
-        generalAnimes = generalAnimesResult.value.map(a => convertAnimeTimestampsForClient(a)) || [];
-      } else if (generalAnimesResult.status === 'rejected') {
-        console.error("HomeClient: Error fetching general animes:", generalAnimesResult.reason);
-        let errorMsg = generalAnimesResult.reason?.message || "Failed to load general animes.";
-        if (generalAnimesResult.reason instanceof FirestoreError && generalAnimesResult.reason.code === 'failed-precondition') {
-           errorMsg += ` General animes query failed. Ensure required Firestore indexes (e.g., on 'updatedAt' DESC) are created.`;
-        }
-        errors.push(errorMsg);
-      }
-
-      const featuredResult = settledResults[1];
-      if (featuredResult.status === 'fulfilled' && featuredResult.value) {
-        let fetchedFeatured = featuredResult.value.map(a => convertAnimeTimestampsForClient(a)) || [];
-        featured = fetchedFeatured;
-      } else if (featuredResult.status === 'rejected') {
-        console.error("HomeClient: Error fetching featured animes:", featuredResult.reason);
-        let errorMsg = featuredResult.reason?.message || "Failed to load featured animes.";
-         if (featuredResult.reason instanceof FirestoreError && featuredResult.reason.code === 'failed-precondition') {
-           errorMsg += ` Featured animes query failed. This usually means an index on 'isFeatured' (boolean) and the chosen sort field (e.g. 'updatedAt' DESC) is missing. Check the Firebase console for index suggestions.`;
-        }
-        errors.push(errorMsg);
-      }
-
-      setAllAnime(generalAnimes);
-      setFeaturedAnimesList(featured);
-
-      if (errors.length > 0) {
-        setFetchError(errors.join(' | '));
-      }
-
-    } catch (error) {
-      let message = "Could not load anime data due to an unexpected issue. Please try again later.";
-      if (error instanceof Error) {
-        message = error.message;
-         if (error.message.includes("index") || (error instanceof FirestoreError && error.code === 'failed-precondition')) {
-            message += " This is often due to missing Firestore indexes. Please check your Firebase console for index creation suggestions.";
-        }
-      }
-      setFetchError(message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
+  // Effect to handle prop updates if they change after initial load (though typically they won't for initial data)
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    setAllAnime(initialAllAnimeData.map(a => convertAnimeTimestampsForClient(a)) as Anime[]);
+    setFeaturedAnimesList(initialFeaturedAnimes.map(a => convertAnimeTimestampsForClient(a)) as Anime[]);
+  }, [initialAllAnimeData, initialFeaturedAnimes]);
+
 
   const heroAnime = featuredAnimesList[0] || (allAnime.length > 0 ? shuffleArray([...allAnime])[0] : undefined);
   const youtubeVideoId = heroAnime?.trailerUrl ? getYouTubeVideoId(heroAnime.trailerUrl) : null;
@@ -162,18 +96,17 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
   // Carousels Data Preparation
   const trendingAnime = allAnime.length > 0 ? shuffleArray([...allAnime]).slice(0, 10) : [];
   
-  // Corrected popularAnime logic
   const popularAnime = allAnime.length > 0 
     ? [...allAnime]
-        .filter(a => a.averageRating !== undefined && a.averageRating !== null && a.averageRating >= 7.0) // Ensure averageRating exists
-        .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0)) // Sort by rating
+        .filter(a => a.averageRating !== undefined && a.averageRating !== null && a.averageRating >= 7.0) 
+        .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0)) 
         .slice(0, 10)
     : [];
 
   const recentlyAddedAnime = allAnime.length > 0
     ? [...allAnime].sort((a,b) => {
         const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : (a.year ? new Date(a.year, 0, 1).getTime() : 0));
-        const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : (b.year ? new Date(b.year, 0, 1).getTime() : 0));
+        const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : (b.year ? new Date(b.year, 0, 1).getTime() : 0));
         return dateB - dateA;
       }).slice(0,10)
     : [];
@@ -183,7 +116,10 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
     .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
     .slice(0, 10) : [];
 
-  if (isLoading && !heroAnime && !fetchError) {
+   // If parent indicates loading (e.g., by passing empty arrays while it fetches), show skeleton
+   // Or if HomeClientContent is set to loading for some other reason.
+   // This check ensures skeleton shows if initial data isn't ready.
+  if (isLoading || (initialAllAnimeData.length === 0 && initialFeaturedAnimes.length === 0 && !fetchError)) {
     return (
       <>
         <section className="relative h-[65vh] md:h-[80vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] bg-muted/30">
@@ -193,18 +129,18 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
           </div>
            <Container className="relative z-10 pb-12 md:pb-20 text-foreground">
             <div className="max-w-2xl">
-              <Skeleton className="h-6 w-24 mb-3 rounded-md" /> {/* Badge skeleton */}
-              <Skeleton className="h-12 md:h-16 w-3/4 mb-4 rounded-md" /> {/* Title skeleton */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mb-5"> {/* Meta info skeletons */}
+              <Skeleton className="h-6 w-24 mb-3 rounded-md" /> 
+              <Skeleton className="h-12 md:h-16 w-3/4 mb-4 rounded-md" /> 
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mb-5"> 
                 <Skeleton className="h-4 w-20 rounded-md" />
                 <Skeleton className="h-4 w-24 rounded-md" />
                 <Skeleton className="h-4 w-16 rounded-md" />
               </div>
-              <Skeleton className="h-5 w-full mb-2 rounded-md" /> {/* Synopsis line 1 */}
-              <Skeleton className="h-5 w-5/6 mb-6 rounded-md" /> {/* Synopsis line 2 */}
+              <Skeleton className="h-5 w-full mb-2 rounded-md" /> 
+              <Skeleton className="h-5 w-5/6 mb-6 rounded-md" /> 
               <div className="flex flex-wrap gap-3 sm:gap-4">
-                <Skeleton className="h-12 w-36 rounded-full" /> {/* Button skeleton */}
-                <Skeleton className="h-12 w-36 rounded-full" /> {/* Button skeleton */}
+                <Skeleton className="h-12 w-36 rounded-full" /> 
+                <Skeleton className="h-12 w-36 rounded-full" /> 
               </div>
             </div>
           </Container>
@@ -252,7 +188,8 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
                 src={heroAnime.bannerImage || `https://picsum.photos/seed/${heroAnime.id}-hero/1600/900`}
                 alt={`${heroAnime.title} banner`}
                 fill
-                className="object-cover opacity-40"
+                style={{ objectFit: 'cover' }}
+                className="opacity-40"
                 priority
                 data-ai-hint="anime landscape epic"
               />
@@ -324,9 +261,7 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
             <div>
               <h3 className="font-semibold font-orbitron text-lg">Error Loading Content</h3>
               <p className="text-sm whitespace-pre-line">{fetchError}</p>
-              <Button variant="link" size="sm" onClick={fetchData} className="mt-2 px-0 text-destructive hover:text-destructive/80">
-                <Loader2 className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin': ''}`} /> Try reloading
-              </Button>
+              {/* Removed fetchData button as HomeClientContent no longer fetches directly */}
             </div>
           </div>
         )}
@@ -382,3 +317,5 @@ export default function HomeClient({ homePageGenreSectionComponent, recommendati
     </> 
   );
 }
+
+    
