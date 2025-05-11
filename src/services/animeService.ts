@@ -64,65 +64,77 @@ export async function getAllAnimes(
 
   let effectiveSortBy = filters.sortBy;
   let effectiveSortOrder = filters.sortOrder || (filters.sortBy === 'title' ? 'asc' : 'desc');
-  let hasSpecificDefaultSortApplied = false;
+  let hasSpecificDefaultSortApplied = false; // Tracks if a filter implies a default sort
 
   if (filters.searchQuery && filters.searchQuery.trim() !== '') {
     const searchTerm = filters.searchQuery.trim();
+    // For search, we might only order by title and rely on startAt/endAt for prefix matching.
+    // Or, if using a search index service, this logic would be different.
+    // For now, basic title prefix search.
     queryConstraints.push(orderBy('title'));
     queryConstraints.push(startAt(searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1).toLowerCase()));
     queryConstraints.push(endAt(searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1).toLowerCase() + '\uf8ff'));
-    effectiveSortBy = undefined; 
+    effectiveSortBy = undefined; // Search implies its own ordering, override other sorts
   } else {
+    // Apply filters
     if (filters.genre) {
       queryConstraints.push(where('genre', 'array-contains', filters.genre));
-       if (!effectiveSortBy) { 
-         effectiveSortBy = 'updatedAt'; // Default to updatedAt for genre to match existing enabled index
-         effectiveSortOrder = 'desc';
-         hasSpecificDefaultSortApplied = true;
-       }
+      if (!effectiveSortBy) { // If no explicit sort, genre filter implies sort by popularity
+        effectiveSortBy = 'popularity';
+        effectiveSortOrder = 'desc';
+        hasSpecificDefaultSortApplied = true;
+      }
     }
     if (filters.type) {
       queryConstraints.push(where('type', '==', filters.type));
-        if (!effectiveSortBy && !hasSpecificDefaultSortApplied) {
-         effectiveSortBy = 'popularity'; 
-         effectiveSortOrder = 'desc';
-         hasSpecificDefaultSortApplied = true;
-       }
+      if (!effectiveSortBy) { // If no explicit sort, type filter implies sort by popularity
+        effectiveSortBy = 'popularity';
+        effectiveSortOrder = 'desc';
+        hasSpecificDefaultSortApplied = true;
+      }
     }
     if (filters.status) {
       queryConstraints.push(where('status', '==', filters.status));
+      if (!effectiveSortBy) { 
+        effectiveSortBy = 'updatedAt';
+        effectiveSortOrder = 'desc';
+        hasSpecificDefaultSortApplied = true;
+      }
     }
     if (filters.year) {
       queryConstraints.push(where('year', '==', filters.year));
+       if (!effectiveSortBy) { 
+        effectiveSortBy = 'popularity';
+        effectiveSortOrder = 'desc';
+        hasSpecificDefaultSortApplied = true;
+      }
     }
     if (filters.featured !== undefined) {
       queryConstraints.push(where('isFeatured', '==', filters.featured));
-       if (!effectiveSortBy && !hasSpecificDefaultSortApplied) { 
-         effectiveSortBy = 'popularity'; // Relies on the isFeatured+popularity index (currently building)
-         effectiveSortOrder = 'desc';
-         hasSpecificDefaultSortApplied = true;
-       }
+      if (!effectiveSortBy) { // For featured, usually sort by popularity or a specific featured order
+        effectiveSortBy = 'popularity'; 
+        effectiveSortOrder = 'desc';
+        hasSpecificDefaultSortApplied = true;
+      }
     }
 
+    // Apply sorting
     if (effectiveSortBy) {
       queryConstraints.push(orderBy(effectiveSortBy, effectiveSortOrder));
     } else if (!hasSpecificDefaultSortApplied) {
-      // Absolute default sort if no filters dictated a default and not a search query
-      queryConstraints.push(orderBy('popularity', 'desc')); // General default - relies on popularity index
-      queryConstraints.push(orderBy('updatedAt', 'desc')); // Secondary general default
+      // Absolute default sort when no filters imply a sort and no explicit sort is given
+      // This is often used for general admin listings or a default browse view.
+      queryConstraints.push(orderBy('updatedAt', 'desc')); // Default to latest updated
     }
   }
   
   const effectiveCount = count === -1 ? 1000 : (count > 0 ? count : 20);
-  if (count !== -1 && effectiveCount > 0) { // Ensure effectiveCount is positive
+  if (count !== -1 && effectiveCount > 0) {
     queryConstraints.push(limit(effectiveCount));
-  } else if (count === 0) { // Handle count === 0 explicitly if it means "no limit but also no items"
-    // This case might be an error or intentional. For now, return empty.
-    // If you want to interpret 0 as 'fetch all available', remove this block and handle effectiveCount = -1 logic.
+  } else if (count === 0) {
      console.warn("getAllAnimes called with count: 0. Returning empty array.");
      return [];
   }
-
 
   const q = query(animesCollection, ...queryConstraints);
 
@@ -131,18 +143,18 @@ export async function getAllAnimes(
     return querySnapshot.docs.map(docSnap => convertAnimeTimestampsForClient(docSnap.data() as Anime));
   } catch (error) {
      if (error instanceof FirestoreError && error.code === 'failed-precondition' && error.message.includes("index")) {
-      const specificIndexMessage = `Firestore query in getAllAnimes requires an index. Details: ${error.message}. Query based on Filters: ${JSON.stringify(filters)}, SortBy: ${effectiveSortBy}, SortOrder: ${effectiveSortOrder}. You can create this index in the Firebase console.`;
+      const specificIndexMessage = `Firestore query in getAllAnimes requires an index. Details: ${error.message}. Query based on Filters: ${JSON.stringify(filters)}, SortBy: ${effectiveSortBy || 'default (updatedAt or title)'}, SortOrder: ${effectiveSortOrder}. You can create this index in the Firebase console.`;
       console.warn(specificIndexMessage);
-      throw handleFirestoreError(error, `getAllAnimes (Index Required) - Filters: ${JSON.stringify(filters)}, SortBy: ${effectiveSortBy}, SortOrder: ${effectiveSortOrder}. Message: ${specificIndexMessage}`);
+      throw handleFirestoreError(error, `getAllAnimes (Index Required) - Filters: ${JSON.stringify(filters)}, SortBy: ${effectiveSortBy || 'default (updatedAt or title)'}, SortOrder: ${effectiveSortOrder}. Message: ${specificIndexMessage}`);
     }
-    throw handleFirestoreError(error, `getAllAnimes - Filters: ${JSON.stringify(filters)}, SortBy: ${effectiveSortBy}, SortOrder: ${effectiveSortOrder}`);
+    throw handleFirestoreError(error, `getAllAnimes - Filters: ${JSON.stringify(filters)}, SortBy: ${effectiveSortBy || 'default (updatedAt or title)'}, SortOrder: ${effectiveSortOrder}`);
   }
 }
 
 export async function getFeaturedAnimes(
   options: {
     count?: number;
-    sortBy?: 'popularity' | 'updatedAt'; // Explicitly allow sorting for featured
+    sortBy?: 'popularity' | 'updatedAt' | 'title'; // Added title as an option
     sortOrder?: 'asc' | 'desc';
   } = {}
 ): Promise<Anime[]> {
@@ -154,7 +166,7 @@ export async function getFeaturedAnimes(
   ];
   
   const effectiveCount = count === -1 ? 25 : (count > 0 ? count : 5);
-   if (count !== -1 && effectiveCount > 0) { // Ensure effectiveCount is positive
+   if (count !== -1 && effectiveCount > 0) {
      queryConstraints.push(limit(effectiveCount));
    } else if (count === 0) {
      console.warn("getFeaturedAnimes called with count: 0. Returning empty array.");
@@ -170,13 +182,30 @@ export async function getFeaturedAnimes(
      if (error instanceof FirestoreError && error.code === 'failed-precondition' && error.message.includes("index")) {
       const specificIndexMessage = `Firestore query for getFeaturedAnimes requires an index. Details: ${error.message}. Query: isFeatured == true, orderBy ${sortBy} ${sortOrder}. You can create this index in the Firebase console.`;
       console.warn(specificIndexMessage);
-      // Attempt fallback to isFeatured + updatedAt if popularity fails and is the sort key
       if (sortBy === 'popularity') {
         console.warn("getFeaturedAnimes: Falling back to sort by updatedAt due to missing popularity index for featured items.");
         try {
           const fallbackQueryConstraints: QueryConstraint[] = [
             where('isFeatured', '==', true),
-            orderBy('updatedAt', 'desc') // Fallback sort
+            orderBy('updatedAt', 'desc') 
+          ];
+          if (count !== -1 && effectiveCount > 0) {
+            fallbackQueryConstraints.push(limit(effectiveCount));
+          }
+          const fallbackQuery = query(animesCollection, ...fallbackQueryConstraints);
+          const fallbackSnapshot = await getDocs(fallbackQuery);
+          return fallbackSnapshot.docs.map(docSnap => convertAnimeTimestampsForClient(docSnap.data() as Anime));
+        } catch (fallbackError) {
+          console.error("Fallback query for getFeaturedAnimes (sorted by updatedAt) also failed:", fallbackError);
+          throw handleFirestoreError(fallbackError, `getFeaturedAnimes (fallback after index error) - Original Error: ${specificIndexMessage}`);
+        }
+      } else if (sortBy === 'title') { // Fallback if title sort fails
+         console.warn("getFeaturedAnimes: Falling back to sort by updatedAt due to missing title index for featured items.");
+         // Same fallback as above
+         try {
+          const fallbackQueryConstraints: QueryConstraint[] = [
+            where('isFeatured', '==', true),
+            orderBy('updatedAt', 'desc') 
           ];
           if (count !== -1 && effectiveCount > 0) {
             fallbackQueryConstraints.push(limit(effectiveCount));
@@ -233,9 +262,9 @@ export async function getAnimesByIds(ids: string[]): Promise<Anime[]> {
       });
     } catch (error) {
       console.error(`Error fetching batch of animes by IDs (batch starting with ${batchIds[0]}):`, error);
-      // Decide if to throw or continue. For robustness, continue and log.
     }
   }
+  // Preserve original order of IDs
   ids.forEach(id => {
     if(fetchedAnimesMap.has(id)){
       results.push(fetchedAnimesMap.get(id)!);
@@ -258,6 +287,7 @@ export async function addAnimeToFirestore(animeData: Omit<Anime, 'id' | 'created
     updatedAt: serverTimestamp(),
   };
 
+  // Ensure nullable fields are set to null if undefined or empty, not removed
   dataToSave.trailerUrl = animeData.trailerUrl || null;
   dataToSave.bannerImage = animeData.bannerImage || null;
   dataToSave.averageRating = animeData.averageRating === undefined ? null : animeData.averageRating;
@@ -266,12 +296,13 @@ export async function addAnimeToFirestore(animeData: Omit<Anime, 'id' | 'created
   dataToSave.aniListId = animeData.aniListId || null;
   dataToSave.episodes = animeData.episodes || []; 
 
+  // Additional AniList fields, ensuring they default to null or appropriate empty values if not provided
   dataToSave.season = animeData.season || null;
-  dataToSave.seasonYear = animeData.seasonYear || (animeData.year || null);
+  dataToSave.seasonYear = animeData.seasonYear || (animeData.year || null); // Fallback to main year
   dataToSave.countryOfOrigin = animeData.countryOfOrigin || null;
   dataToSave.studios = animeData.studios || [];
   dataToSave.source = animeData.source || null;
-  dataToSave.format = animeData.format || animeData.type || null;
+  dataToSave.format = animeData.format || animeData.type || null; // Fallback to type if format not present
   dataToSave.duration = animeData.duration || null;
   dataToSave.airedFrom = animeData.airedFrom || null;
   dataToSave.airedTo = animeData.airedTo || null;
@@ -282,9 +313,8 @@ export async function addAnimeToFirestore(animeData: Omit<Anime, 'id' | 'created
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       console.warn(`Anime with slug "${slug}" already exists. Updating existing document.`);
-      // Ensure existing fields like episodes are not accidentally overwritten if not provided in animeData
       const existingData = docSnap.data();
-      const updatePayload = { ...existingData, ...dataToSave }; // Merge to preserve fields not in dataToSave
+      const updatePayload = { ...existingData, ...dataToSave };
       await updateDoc(docRef, updatePayload);
     } else {
       dataToSave.createdAt = serverTimestamp();
@@ -304,7 +334,7 @@ export async function updateAnimeInFirestore(id: string, animeData: Partial<Omit
   try {
     const updatePayload: { [key: string]: any } = { ...animeData, updatedAt: serverTimestamp() };
 
-
+    // Explicitly handle fields that should be null if empty/undefined
     if (animeData.hasOwnProperty('trailerUrl')) {
       updatePayload.trailerUrl = animeData.trailerUrl || null;
     }
@@ -314,15 +344,13 @@ export async function updateAnimeInFirestore(id: string, animeData: Partial<Omit
     if (animeData.hasOwnProperty('aniListId')) {
       updatePayload.aniListId = animeData.aniListId || null;
     }
-     if (animeData.hasOwnProperty('averageRating') && animeData.averageRating === undefined) {
+    if (animeData.hasOwnProperty('averageRating') && animeData.averageRating === undefined) {
       updatePayload.averageRating = null;
     }
-    if (animeData.hasOwnProperty('popularity') && animeData.popularity === undefined) {
-       // Default to 0 if popularity is explicitly set to undefined in the update
+     if (animeData.hasOwnProperty('popularity') && animeData.popularity === undefined) {
        updatePayload.popularity = 0;
     }
-    if (animeData.hasOwnProperty('isFeatured') && animeData.isFeatured === undefined) {
-       // Default to false if isFeatured is explicitly set to undefined
+     if (animeData.hasOwnProperty('isFeatured') && animeData.isFeatured === undefined) {
        updatePayload.isFeatured = false;
     }
     
@@ -367,11 +395,12 @@ export async function updateAnimeEpisode(animeId: string, episodeId: string, epi
       throw new Error(`Episode with ID ${episodeId} not found in anime ${animeId}.`);
     }
 
+    // Update the specific episode, ensuring undefined/empty strings become null for URLs/thumbnails
     episodes[episodeIndex] = {
       ...episodes[episodeIndex],
       ...episodeData,
-      url: episodeData.url === '' ? undefined : (episodeData.url !== undefined ? episodeData.url : episodes[episodeIndex].url),
-      thumbnail: episodeData.thumbnail === '' ? undefined : (episodeData.thumbnail !== undefined ? episodeData.thumbnail : episodes[episodeIndex].thumbnail),
+      url: episodeData.url === '' ? null : (episodeData.url !== undefined ? episodeData.url : episodes[episodeIndex].url),
+      thumbnail: episodeData.thumbnail === '' ? null : (episodeData.thumbnail !== undefined ? episodeData.thumbnail : episodes[episodeIndex].thumbnail),
     };
 
     await updateDoc(animeRef, { episodes: episodes, updatedAt: serverTimestamp() });
@@ -391,6 +420,8 @@ export async function updateAnimeIsFeatured(animeId: string, isFeatured: boolean
 
 export async function getUniqueGenres(): Promise<string[]> {
   try {
+    // Fetch a larger sample or all documents if feasible, or implement a separate genres collection.
+    // For now, fetching up to 1000 documents to build the genre list.
     const q = query(animesCollection, limit(1000)); 
     const querySnapshot = await getDocs(q);
     const genresSet = new Set<string>();
@@ -405,7 +436,8 @@ export async function getUniqueGenres(): Promise<string[]> {
       }
     });
     if (genresSet.size === 0) {
-      console.warn("getUniqueGenres: No genres found. Returning a comprehensive default list.");
+      console.warn("getUniqueGenres: No genres found in the first 1000 animes. Returning a comprehensive default list.");
+      // Fallback to a predefined list if no genres are found
       return ['Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Sci-Fi', 'Slice of Life', 'Romance', 'Horror', 'Mystery', 'Thriller', 'Sports', 'Supernatural', 'Mecha', 'Historical', 'Music', 'School', 'Shounen', 'Shoujo', 'Seinen', 'Josei', 'Isekai', 'Psychological', 'Ecchi', 'Harem', 'Demons', 'Magic', 'Martial Arts', 'Military', 'Parody', 'Police', 'Samurai', 'Space', 'Super Power', 'Vampire', 'Game', 'Animation', 'Crime', 'Family', 'Kids', 'Reality', 'Soap', 'Talk', 'War & Politics', 'Western' ].sort();
     }
     return Array.from(genresSet).sort();
@@ -426,11 +458,7 @@ export async function searchAnimes(searchTerm: string, count: number = 20): Prom
   try {
     const searchTermCapitalized = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1).toLowerCase();
     
-    // Firestore does not support case-insensitive search or "contains" directly in a scalable way without 3rd party tools (e.g. Algolia)
-    // A common workaround is to store a lowercased version of the title or keywords for searching.
-    // For simplicity, we'll fetch based on prefix and then filter client-side, which is not ideal for large datasets.
-    // A more robust solution would involve dedicated search services.
-    
+    // Query for titles starting with the capitalized search term
     const titleQueryConstraints: QueryConstraint[] = [
         orderBy('title'), 
         startAt(searchTermCapitalized),
@@ -441,13 +469,15 @@ export async function searchAnimes(searchTerm: string, count: number = 20): Prom
     const titleSnapshot = await getDocs(titleQuery);
     let results = titleSnapshot.docs.map(docSnap => convertAnimeTimestampsForClient(docSnap.data() as Anime));
 
-    // Client-side filtering for actual "contains" and genre match
+    // Client-side filtering for "contains" and genre match.
+    // This is not ideal for large datasets but works for smaller ones.
+    // For larger datasets, a dedicated search service (e.g., Algolia, Elasticsearch) is recommended.
     results = results.filter(anime =>
       anime.title.toLowerCase().includes(lowerSearchTerm) ||
       anime.genre.some(g => g.toLowerCase().includes(lowerSearchTerm))
     );
 
-    // Re-sort based on relevance (exact match, startsWith, then popularity)
+    // Re-sort based on relevance: exact match > startsWith > popularity > alphabetical
     results.sort((a, b) => {
         const aTitleLower = a.title.toLowerCase();
         const bTitleLower = b.title.toLowerCase();
@@ -462,7 +492,6 @@ export async function searchAnimes(searchTerm: string, count: number = 20): Prom
         if (aStartsWith && !bStartsWith) return -1;
         if (!aStartsWith && bStartsWith) return 1;
         
-        // Fallback to popularity then title if no strong relevance difference
         if ((b.popularity || 0) !== (a.popularity || 0)) {
             return (b.popularity || 0) - (a.popularity || 0);
         }
@@ -472,19 +501,16 @@ export async function searchAnimes(searchTerm: string, count: number = 20): Prom
     return results.slice(0, effectiveCount);
 
   } catch (error) {
-    // If prefix search fails due to missing index (orderBy title is basic, but combined with other implicit things might need one)
     if (error instanceof FirestoreError && error.code === 'failed-precondition') {
         console.warn("Search by title prefix failed due to missing index. Attempting broader client-side search for:", searchTerm, error.message);
-        // Fallback to fetching more data (e.g., recently updated or popular) and filtering client-side
+        // Fallback to fetching a broader set of data (e.g., recently updated or popular) and filtering client-side.
         try {
-            // Fetching a broader set of data, e.g., 200 most popular/recent animes
             const allAnimes = await getAllAnimes({ count: 200, filters: { sortBy: 'popularity', sortOrder: 'desc'} }); 
             let filtered = allAnimes.filter(anime =>
                 anime.title.toLowerCase().includes(lowerSearchTerm) ||
                 anime.genre.some(g => g.toLowerCase().includes(lowerSearchTerm))
             );
-            // Re-sort as above
-            filtered.sort((a, b) => {
+            filtered.sort((a, b) => { // Re-sort logic as above
                 const aTitleLower = a.title.toLowerCase();
                 const bTitleLower = b.title.toLowerCase();
                 if (aTitleLower.startsWith(lowerSearchTerm) && !bTitleLower.startsWith(lowerSearchTerm)) return -1;
@@ -512,3 +538,5 @@ export async function getTotalAnimeCount(): Promise<number> {
     throw handleFirestoreError(error, 'getTotalAnimeCount');
   }
 }
+
+export { convertAnimeTimestampsForClient };
