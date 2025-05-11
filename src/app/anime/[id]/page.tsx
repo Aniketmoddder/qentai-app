@@ -5,7 +5,7 @@ import Container from '@/components/layout/container';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Star, PlayCircle, CalendarDays, Tv, Film, ListVideo, List, ChevronRight, AlertTriangle, Users, ShieldCheck, Info, ExternalLink, Tag as GenreIcon, Clapperboard, UserSquare2, BookOpen, History as HistoryIcon, Globe2, Loader2 } from 'lucide-react';
+import { Star, PlayCircle, CalendarDays, Tv, Film, ListVideo, List, ChevronRight, AlertTriangle, Users, ShieldCheck, Info, ExternalLink, Tag as GenreIcon, Clapperboard, UserSquare2, BookOpen, History as HistoryIcon, Globe2, Loader2, RefreshCw, ArrowUpDown, Settings2, LayoutGrid } from 'lucide-react';
 import Link from 'next/link';
 import AnimeInteractionControls from '@/components/anime/anime-interaction-controls'; 
 import CharacterCarousel from '@/components/anime/CharacterCarousel';
@@ -15,7 +15,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import React, { Suspense } from 'react';
 import Logo from '@/components/common/logo';
 import ReadMoreSynopsis from '@/components/anime/ReadMoreSynopsis';
-import { Skeleton } from '@/components/ui/skeleton'; // Added import for Skeleton
+import { Skeleton } from '@/components/ui/skeleton';
+import EpisodeListSection from '@/components/anime/EpisodeListSection';
 
 interface AnimeDetailsPageProps {
   params: {
@@ -117,7 +118,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
         <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-transparent to-transparent md:hidden" />
       </section>
 
-      <Container className="relative z-10 -mt-[20vh] sm:-mt-[25vh] md:-mt-[220px] lg:-mt-[280px] pb-16">
+      <Container className="relative z-10 -mt-[20vh] sm:-mt-[25vh] md:-mt-[280px] lg:-mt-[320px] pb-16">
         <div className="md:grid md:grid-cols-12 md:gap-8">
           <div className="md:col-span-4 lg:col-span-3">
             <div className="sticky top-[calc(var(--header-height,4rem)+2rem)] max-w-[280px] sm:max-w-xs mx-auto md:mx-0">
@@ -137,7 +138,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
           <div className="md:col-span-8 lg:col-span-9 mt-8 md:mt-0">
             {/* Title and Action Buttons Section */}
             <div className="flex flex-col items-center sm:items-start space-y-4 mb-6">
-              <h1 className="text-3xl sm:text-4xl font-bold text-foreground font-zen-dots leading-tight text-center sm:text-left">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground font-zen-dots leading-tight text-center sm:text-left">
                 {anime.title}
               </h1>
               
@@ -196,7 +197,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
 
             <Tabs defaultValue="overview" className="w-full">
               <TabsList className="flex space-x-1 border-b border-border/40 pb-0 mb-6">
-                {['Overview', 'Episodes', 'Characters', 'Relations', 'Artwork'].map(tabName => (
+                {['Overview', 'Characters', 'Relations', 'Artwork'].map(tabName => (
                   <TabsTrigger
                     key={tabName}
                     value={tabName.toLowerCase()}
@@ -230,7 +231,9 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                   <ReadMoreSynopsis text={anime.synopsis || "No synopsis available."} />
                 </div>
 
-                <div>
+                <EpisodeListSection anime={anime} />
+
+                <div className="mt-8"> {/* Added margin top to separate from episodes */}
                   <h3 className="text-xl font-semibold text-foreground font-orbitron mb-2">Details</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 border-t border-border/20">
                     <DetailItem label="Type" value={anime.format || anime.type} icon={typeIconMap[anime.format || anime.type || 'Unknown'] ? undefined : Info } >
@@ -260,37 +263,6 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                 </div>
               </TabsContent>
 
-              <TabsContent value="episodes" className="bg-card/50 p-4 sm:p-6 rounded-lg border border-border/20 shadow-inner">
-                 <h3 className="text-xl font-semibold text-foreground font-orbitron mb-3">Episodes ({anime.episodes?.length || 0})</h3>
-                  {!anime.episodes || anime.episodes.length === 0 ? (
-                     <p className="text-muted-foreground text-center py-6">No episodes listed for this title yet.</p>
-                  ) : (
-                    <ScrollArea className="max-h-96 pr-3 -mr-3">
-                      <div className="space-y-2">
-                        {anime.episodes.map((episode: Episode) => (
-                          <Button
-                            key={episode.id}
-                            variant="ghost"
-                            className="w-full justify-start text-left h-auto py-2.5 px-3 hover:bg-primary/10 group"
-                            asChild
-                          >
-                            <Link href={`/play/${anime.id}?episode=${episode.id}`}>
-                              <PlayCircle className="w-5 h-5 mr-3 text-muted-foreground group-hover:text-primary transition-colors" />
-                              <div className="flex-grow">
-                                <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">
-                                  Ep {episode.episodeNumber}: {episode.title}
-                                </p>
-                                {episode.duration && <p className="text-xs text-muted-foreground">{episode.duration}</p>}
-                              </div>
-                              <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary transition-colors opacity-70 group-hover:opacity-100" />
-                            </Link>
-                          </Button>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  )}
-              </TabsContent>
-
               <TabsContent value="characters" className="bg-card/50 p-1 sm:p-2 rounded-lg border border-border/20 shadow-inner">
                 <h3 className="text-xl font-semibold mb-1 mt-3 ml-3 text-foreground flex items-center font-orbitron">
                     <Users className="mr-2 h-5 w-5"/> Characters & Voice Actors
@@ -316,6 +288,3 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     </div>
   );
 }
-
-
-    
