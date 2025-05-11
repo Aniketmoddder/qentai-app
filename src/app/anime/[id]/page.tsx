@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import React, { Suspense } from 'react';
 import Logo from '@/components/common/logo';
-import ReadMoreSynopsis from '@/components/anime/ReadMoreSynopsis'; // Import the new client component
+import ReadMoreSynopsis from '@/components/anime/ReadMoreSynopsis'; 
 
 interface AnimeDetailsPageProps {
   params: {
@@ -40,12 +40,16 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
   let fetchError: string | null = null;
 
   try {
+    // getAnimeById now internally handles fetching and merging TMDB & AniList data
     anime = await getAnimeById(params.id); 
   } catch (error) {
     console.error(`Failed to fetch anime details for ID ${params.id}:`, error);
     if (error instanceof Error && error.message.includes("index")) {
          fetchError = `Could not load anime details. A required database index might be missing or the data source is unavailable. Details: ${error.message}`;
-    } else {
+    } else if (error instanceof Error) {
+        fetchError = `Error fetching details: ${error.message}`;
+    }
+     else {
         fetchError = "Could not load anime details. Please try again later.";
     }
   }
@@ -86,7 +90,9 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     Unknown: <Info className="w-4 h-4 mr-1.5" />, 
   };
   
+  // Prioritize AniList banner if available, then TMDB, then placeholder
   const primaryImageSrc = anime.bannerImage || `https://picsum.photos/seed/${anime.id}-banner/1600/600`;
+  // Prioritize AniList cover (extraLarge or large) if available, then TMDB, then placeholder
   const coverImageSrc = anime.coverImage || `https://picsum.photos/seed/${anime.id}-cover/400/600`;
   const firstEpisodeId = anime.episodes?.[0]?.id || '';
 
@@ -99,7 +105,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
   return (
     <div className="min-h-screen text-foreground">
       <section 
-        className="relative h-[30vh] md:h-[40vh] lg:h-[45vh] w-full -mt-[calc(var(--header-height,4rem)+1px)] bg-card"
+        className="relative h-[35vh] md:h-[45vh] lg:h-[50vh] w-full -mt-[calc(var(--header-height,4rem)+1px)] bg-card"
       >
         <Image
           src={primaryImageSrc}
@@ -113,10 +119,10 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
         <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-transparent to-transparent md:hidden" />
       </section>
 
-      <Container className="relative z-10 -mt-[120px] md:-mt-[150px] lg:-mt-[180px] pb-16">
+      <Container className="relative z-10 -mt-[150px] md:-mt-[180px] lg:-mt-[220px] pb-16"> {/* Adjusted negative margin */}
         <div className="md:grid md:grid-cols-12 md:gap-8">
           <div className="md:col-span-4 lg:col-span-3">
-            <div className="sticky top-[calc(var(--header-height,4rem)+1.5rem)]">
+            <div className="sticky top-[calc(var(--header-height,4rem)+2rem)]"> {/* Adjusted sticky top */}
               <div className="aspect-[2/3] relative rounded-xl overflow-hidden shadow-2xl border-2 border-border/20 bg-card">
                 <Image
                   src={coverImageSrc}
@@ -141,7 +147,9 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                     <PlayCircle className="mr-2 h-5 w-5" /> Watch Now
                   </Link>
                 </Button>
-                <AnimeInteractionControls anime={anime} />
+                <Suspense fallback={<div className="w-full h-24 bg-card rounded-md animate-pulse"></div>}>
+                    <AnimeInteractionControls anime={anime} />
+                </Suspense>
               </div>
             </div>
             
@@ -149,7 +157,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
               {anime.format && <div className="flex items-center">{typeIconMap[anime.format] || <Info className="w-4 h-4 mr-1.5" />} <span className="font-medium">{anime.format}</span></div>}
               {anime.format && <span className="opacity-50">•</span>}
               <div className="flex items-center"><CalendarDays className="w-4 h-4 mr-1.5" /> <span className="font-medium">{anime.seasonYear || anime.year}</span></div>
-              {anime.averageRating !== undefined && (
+              {anime.averageRating !== undefined && anime.averageRating !== null && (
                 <>
                   <span className="opacity-50">•</span>
                   <div className="flex items-center">
@@ -169,14 +177,14 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                   (anime.status === 'Upcoming' || anime.status === 'Not Yet Aired') && 'bg-amber-500/20 text-amber-600 border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/40',
                 )}
               >
-                {anime.status === 'Completed' || anime.status === 'FINISHED' && <ShieldCheck className="w-3 h-3 mr-1" />}
+                {(anime.status === 'Completed' || anime.status === 'FINISHED') && <ShieldCheck className="w-3 h-3 mr-1" />}
                 {anime.status}
               </Badge>
             </div>
 
             <Tabs defaultValue="overview" className="w-full">
               <TabsList className="flex space-x-1 border-b border-border/40 pb-0 mb-6">
-                {['Overview', 'Relations', 'Characters', 'Artwork'].map(tabName => (
+                {['Overview', 'Episodes', 'Characters', 'Relations', 'Artwork'].map(tabName => (
                   <TabsTrigger
                     key={tabName}
                     value={tabName.toLowerCase()}
@@ -196,12 +204,10 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
               <TabsContent value="overview" className="bg-transparent p-0">
                 <div className="mb-8">
                 <div className="flex items-center gap-x-3 mb-3"> 
-                    <h3 className="text-xl font-semibold text-foreground font-orbitron flex items-center">
-                      <Logo iconSize={20} className="mr-2 opacity-80 filter grayscale contrast-200 brightness-200"/>
-                       Description
-                    </h3>
+                    <Logo iconSize={20} className="opacity-80 filter grayscale contrast-200 brightness-200 mr-1"/>
+                    <h3 className="text-xl font-semibold text-foreground font-orbitron">Description</h3>
                     {anime.trailerUrl && (
-                        <Button variant="outline" size="sm" asChild className="border-border/50 hover:border-primary hover:text-primary">
+                        <Button variant="outline" size="sm" asChild className="border-border/50 hover:border-primary hover:text-primary ml-auto">
                             <Link href={anime.trailerUrl} target="_blank" rel="noopener noreferrer" className="flex items-center">
                                 <Film className="w-4 h-4 mr-1.5" /> Trailer
                                 <ExternalLink size={12} className="ml-1 opacity-70"/>
@@ -215,12 +221,14 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                 <div>
                   <h3 className="text-xl font-semibold text-foreground font-orbitron mb-2">Details</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 border-t border-border/20">
-                    <DetailItem label="Type" value={anime.format || anime.type} icon={typeIconMap[anime.format || anime.type || 'Unknown'] ? undefined : Info } />
+                    <DetailItem label="Type" value={anime.format || anime.type} icon={typeIconMap[anime.format || anime.type || 'Unknown'] ? undefined : Info } >
+                        {typeIconMap[anime.format || anime.type || 'Unknown']} <span className="ml-1">{anime.format || anime.type || 'N/A'}</span>
+                    </DetailItem>
                     <DetailItem label="Episodes" value={anime.episodesCount || anime.episodes?.length || 'N/A'} icon={List} />
                     <DetailItem label="Genres" icon={GenreIcon}>
                       <div className="flex flex-wrap gap-1.5 justify-end">
-                        {anime.genre.map(g => <Badge key={g} variant="secondary" className="text-xs">{g}</Badge>)}
-                        {anime.genre.length === 0 && 'N/A'}
+                        {anime.genre?.map(g => <Badge key={g} variant="secondary" className="text-xs">{g}</Badge>)}
+                        {(!anime.genre || anime.genre.length === 0) && 'N/A'}
                       </div>
                     </DetailItem>
                     <DetailItem label="Aired" value={airedDateString || 'N/A'} icon={CalendarDays} />
@@ -240,16 +248,49 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                 </div>
               </TabsContent>
 
-              <TabsContent value="relations" className="bg-card/50 p-4 sm:p-6 rounded-lg border border-border/20 shadow-inner">
-                 <h3 className="text-xl font-semibold text-foreground font-orbitron mb-3">Relations</h3>
-                 <p className="text-muted-foreground">Related anime information will be displayed here.</p>
+              <TabsContent value="episodes" className="bg-card/50 p-4 sm:p-6 rounded-lg border border-border/20 shadow-inner">
+                 <h3 className="text-xl font-semibold text-foreground font-orbitron mb-3">Episodes ({anime.episodes?.length || 0})</h3>
+                  {!anime.episodes || anime.episodes.length === 0 ? (
+                     <p className="text-muted-foreground text-center py-6">No episodes listed for this title yet.</p>
+                  ) : (
+                    <ScrollArea className="max-h-96 pr-3 -mr-3">
+                      <div className="space-y-2">
+                        {anime.episodes.map((episode: Episode) => (
+                          <Button
+                            key={episode.id}
+                            variant="ghost"
+                            className="w-full justify-start text-left h-auto py-2.5 px-3 hover:bg-primary/10 group"
+                            asChild
+                          >
+                            <Link href={`/play/${anime.id}?episode=${episode.id}`}>
+                              <PlayCircle className="w-5 h-5 mr-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                              <div className="flex-grow">
+                                <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">
+                                  Ep {episode.episodeNumber}: {episode.title}
+                                </p>
+                                {episode.duration && <p className="text-xs text-muted-foreground">{episode.duration}</p>}
+                              </div>
+                              <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary transition-colors opacity-70 group-hover:opacity-100" />
+                            </Link>
+                          </Button>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  )}
               </TabsContent>
 
               <TabsContent value="characters" className="bg-card/50 p-1 sm:p-2 rounded-lg border border-border/20 shadow-inner">
                 <h3 className="text-xl font-semibold mb-1 mt-3 ml-3 text-foreground flex items-center font-orbitron">
                     <Users className="mr-2 h-5 w-5"/> Characters & Voice Actors
                 </h3>
-                <CharacterCarousel characters={anime.characters} />
+                <Suspense fallback={<div className="h-48 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
+                  <CharacterCarousel characters={anime.characters} />
+                </Suspense>
+              </TabsContent>
+
+              <TabsContent value="relations" className="bg-card/50 p-4 sm:p-6 rounded-lg border border-border/20 shadow-inner">
+                 <h3 className="text-xl font-semibold text-foreground font-orbitron mb-3">Relations</h3>
+                 <p className="text-muted-foreground">Related anime information will be displayed here.</p>
               </TabsContent>
 
               <TabsContent value="artwork" className="bg-card/50 p-4 sm:p-6 rounded-lg border border-border/20 shadow-inner">

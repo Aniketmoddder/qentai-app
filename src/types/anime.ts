@@ -21,22 +21,10 @@ export interface CharacterNode { // From AniList structure
   } | null;
 }
 
-export interface AniListStudioEdge {
-  node: {
-    id: number;
-    name: string;
-    isAnimationStudio: boolean;
-  };
-}
-export interface AniListStudioConnection {
-  edges: AniListStudioEdge[];
-}
-
-
 export interface CharacterEdge { // From AniList structure
   node: CharacterNode;
   role?: 'MAIN' | 'SUPPORTING' | 'BACKGROUND'; // Role of the character in the media
-  voiceActors?: { // Directly use AniList's voice actor structure
+  voiceActors?: { 
     id: number;
     name: {
       full: string | null;
@@ -47,52 +35,52 @@ export interface CharacterEdge { // From AniList structure
       large: string | null;
       medium?: string | null;
     } | null;
-    languageV2?: string; // e.g. Japanese, English
+    languageV2?: string; 
   }[];
 }
 
 
 export interface Character {
-  id: number; // AniList character ID
+  id: number; 
   name: string | null;
-  role?: 'MAIN' | 'SUPPORTING' | 'BACKGROUND' | string; // Allow string for flexibility
-  image: string | null; // URL to anime character image
-  voiceActors?: VoiceActor[]; // Parsed Voice Actors
+  role?: 'MAIN' | 'SUPPORTING' | 'BACKGROUND' | string; 
+  image: string | null; 
+  voiceActors?: VoiceActor[]; 
 }
 
 export interface Anime {
-  id: string; // Firestore document ID (now a slug derived from title)
+  id: string; 
   tmdbId?: string;
   aniListId?: number;
   title: string;
-  coverImage: string;
-  bannerImage?: string;
+  coverImage: string; // Prioritize AniList large/extraLarge, then TMDB poster
+  bannerImage?: string; // Prioritize AniList banner, then TMDB backdrop
   year: number;
   genre: string[];
-  status: 'Ongoing' | 'Completed' | 'Upcoming' | 'Unknown' | 'Airing' | 'Not Yet Aired' | 'Cancelled' | 'Hiatus';
+  status: 'Ongoing' | 'Completed' | 'Upcoming' | 'Unknown' | 'Airing' | 'Not Yet Aired' | 'Cancelled' | 'Hiatus'; // Expanded for AniList statuses
   synopsis: string;
-  averageRating?: number;
-  averageScore?: number;
+  averageRating?: number; // TMDB: 0-10, AniList: 0-10 (derived from 0-100)
   episodes?: Episode[];
-  type?: 'TV' | 'Movie' | 'OVA' | 'Special' | 'Unknown' | 'ONA' | 'Music';
-  sourceAdmin?: 'tmdb' | 'manual' | 'tmdb_anilist';
+  type?: 'TV' | 'Movie' | 'OVA' | 'Special' | 'Unknown' | 'ONA' | 'Music'; // Consistent with Firestore enum
+  sourceAdmin?: 'tmdb' | 'manual' | 'tmdb_anilist' | 'anilist';
   isFeatured?: boolean;
-  trailerUrl?: string;
+  trailerUrl?: string; // YouTube URL
   characters?: Character[];
   createdAt?: string; // ISO string on client
   updatedAt?: string; // ISO string on client
   
-  season?: string;
+  // Fields enriched or primarily from AniList
+  season?: 'WINTER' | 'SPRING' | 'SUMMER' | 'FALL' | string | null; // AniList specific season, allow string for flexibility
   seasonYear?: number;
-  countryOfOrigin?: string;
+  countryOfOrigin?: string | null; // ISO 3166-1 alpha-2 code
   studios?: { id: number; name: string; isAnimationStudio: boolean; }[];
-  source?: string;
+  source?: 'ORIGINAL' | 'MANGA' | 'LIGHT_NOVEL' | 'VISUAL_NOVEL' | 'VIDEO_GAME' | 'OTHER' | 'NOVEL' | 'DOUJINSHI' | 'ANIME' | 'WEB_NOVEL' | 'LIVE_ACTION' | 'GAME' | 'COMIC' | 'MULTIMEDIA_PROJECT' | 'PICTURE_BOOK' | string | null; // Allow string
   popularity?: number;
-  format?: string;
-  duration?: number;
-  airedFrom?: string; // ISO date string
-  airedTo?: string; // ISO date string
-  episodesCount?: number;
+  format?: 'TV' | 'TV_SHORT' | 'MOVIE' | 'SPECIAL' | 'OVA' | 'ONA' | 'MUSIC' | 'MANGA' | 'NOVEL' | 'ONE_SHOT' | string | null; // From AniList, allow string
+  duration?: number | null; // Episode duration in minutes
+  airedFrom?: string | null; // ISO date string (YYYY-MM-DD)
+  airedTo?: string | null; // ISO date string (YYYY-MM-DD)
+  episodesCount?: number | null; // Total number of episodes from AniList/TMDB
 }
 
 export interface Episode {
@@ -102,12 +90,14 @@ export interface Episode {
   episodeNumber: number;
   seasonNumber: number;
   thumbnail?: string;
-  duration?: string | number;
-  url?: string;
-  airDate?: string; // ISO date string
+  duration?: string | number; // Can be string like "24min" or number of minutes
+  url?: string | null; // Ensure it can be null
+  airDate?: string | null; // ISO date string (YYYY-MM-DD)
   overview?: string;
 }
 
+// Season type might not be directly stored if episodes array contains all info.
+// Kept for potential future structure or TMDB direct season mapping.
 export interface Season {
   id: string;
   tmdbSeasonId?: number;
