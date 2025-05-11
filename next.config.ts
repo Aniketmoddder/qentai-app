@@ -28,6 +28,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 's4.anilist.co', // Added for AniList images
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   typescript: {
