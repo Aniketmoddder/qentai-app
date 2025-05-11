@@ -16,7 +16,6 @@ export interface AniListCharacterNode {
   id: number;
   name: AniListName | null;
   image: AniListImage | null;
-  role?: 'MAIN' | 'SUPPORTING' | 'BACKGROUND';
 }
 
 export interface AniListVoiceActorNode {
@@ -50,19 +49,56 @@ export interface AniListMediaCoverImage {
   color?: string | null;
 }
 
+export interface AniListStudioNode {
+    id: number;
+    name: string;
+    isAnimationStudio: boolean;
+}
+
+export interface AniListStudioEdge {
+    id?: number; // Edge ID if available
+    isMain: boolean;
+    node: AniListStudioNode;
+}
+export interface AniListStudioConnection {
+    edges: AniListStudioEdge[];
+}
+
+export interface AniListTrailer {
+    id: string | null; // YouTube ID or similar
+    site: string | null; // e.g., "youtube"
+    thumbnail: string | null; // URL
+}
+
+export interface AniListDate {
+    year: number | null;
+    month: number | null; // 1-12
+    day: number | null; // 1-31
+}
+
 export interface AniListMedia {
   id: number;
+  idMal?: number | null; // MyAnimeList ID
   title?: AniListMediaTitle | null;
   bannerImage?: string | null;
   coverImage?: AniListMediaCoverImage | null;
   characters?: AniListCharacterConnection | null;
-  // Add other fields from AniList Media object as needed
-  description?: string | null; // For synopsis if TMDB is missing
+  description?: string | null; 
   genres?: string[] | null;
-  status?: 'FINISHED' | 'RELEASING' | 'NOT_YET_RELEASED' | 'CANCELLED' | 'HIATUS' | null; // AniList status values
+  status?: 'FINISHED' | 'RELEASING' | 'NOT_YET_RELEASED' | 'CANCELLED' | 'HIATUS' | null; 
   averageScore?: number | null; // 0-100 scale
+  popularity?: number | null;
+  season?: 'WINTER' | 'SPRING' | 'SUMMER' | 'FALL' | null;
   seasonYear?: number | null;
-  format?: 'TV' | 'TV_SHORT' | 'MOVIE' | 'SPECIAL' | 'OVA' | 'ONA' | 'MUSIC' | 'MANGA' | 'NOVEL' | 'ONE_SHOT' | null; // AniList format
+  format?: 'TV' | 'TV_SHORT' | 'MOVIE' | 'SPECIAL' | 'OVA' | 'ONA' | 'MUSIC' | 'MANGA' | 'NOVEL' | 'ONE_SHOT' | null; 
+  duration?: number | null; // episode duration in minutes
+  countryOfOrigin?: string | null; // ISO 3166-1 alpha-2 code
+  source?: 'ORIGINAL' | 'MANGA' | 'LIGHT_NOVEL' | 'VISUAL_NOVEL' | 'VIDEO_GAME' | 'OTHER' | 'NOVEL' | 'DOUJINSHI' | 'ANIME' | 'WEB_NOVEL' | 'LIVE_ACTION' | 'GAME' | 'COMIC' | 'MULTIMEDIA_PROJECT' | 'PICTURE_BOOK' | null; // AniList source type
+  studios?: AniListStudioConnection | null;
+  episodes?: number | null; // Total number of episodes
+  trailer?: AniListTrailer | null;
+  startDate?: AniListDate | null;
+  endDate?: AniListDate | null;
 }
 
 export interface AniListGraphQLResponse<T> {

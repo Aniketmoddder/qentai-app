@@ -18,8 +18,19 @@ export interface CharacterNode { // From AniList structure
     large: string | null;
     medium?: string | null;
   } | null;
-  role?: 'MAIN' | 'SUPPORTING' | 'BACKGROUND'; // AniList character role
 }
+
+export interface AniListStudioEdge {
+  node: {
+    id: number;
+    name: string;
+    isAnimationStudio: boolean;
+  };
+}
+export interface AniListStudioConnection {
+  edges: AniListStudioEdge[];
+}
+
 
 export interface CharacterEdge { // From AniList structure
   node: CharacterNode;
@@ -57,17 +68,31 @@ export interface Anime {
   bannerImage?: string; // URL to backdrop image (can be from TMDB or AniList)
   year: number;
   genre: string[];
-  status: 'Ongoing' | 'Completed' | 'Upcoming' | 'Unknown';
+  status: 'Ongoing' | 'Completed' | 'Upcoming' | 'Unknown' | 'Airing' | 'Not Yet Aired' | 'Cancelled' | 'Hiatus';
   synopsis: string;
-  averageRating?: number; // Optional, 0-10 scale
+  averageRating?: number; // Optional, 0-10 scale (usually from TMDB)
+  averageScore?: number; // Optional, 0-100 scale (from AniList)
   episodes?: Episode[]; // Optional, especially for movies or if episodes are added later
-  type?: 'TV' | 'Movie' | 'OVA' | 'Special' | 'Unknown';
+  type?: 'TV' | 'Movie' | 'OVA' | 'Special' | 'Unknown' | 'ONA' | 'Music';
   sourceAdmin?: 'tmdb' | 'manual' | 'tmdb_anilist'; // To track how it was added/enriched
   isFeatured?: boolean; // To mark anime as featured
   trailerUrl?: string; // Optional YouTube video URL for trailer
   characters?: Character[]; // Enriched character data from AniList
   createdAt?: string; // Firestore Timestamp for when the document was created, converted to ISO string
   updatedAt?: string; // Firestore Timestamp for when the document was last updated, converted to ISO string
+  
+  // New fields from AniList/TMDB for details section
+  season?: string; // e.g., "WINTER", "SPRING", "SUMMER", "FALL"
+  seasonYear?: number; // Year the season aired
+  countryOfOrigin?: string; // e.g., "JP"
+  studios?: { id: number; name: string; isAnimationStudio: boolean; }[]; // List of production studios
+  source?: string; // e.g., "MANGA", "ORIGINAL", "LIGHT_NOVEL"
+  popularity?: number; // AniList popularity score
+  format?: string; // AniList media format (TV, MOVIE, OVA, etc.)
+  duration?: number; // Episode duration in minutes
+  airedFrom?: string; // ISO date string
+  airedTo?: string; // ISO date string
+  episodesCount?: number; // Total number of episodes from AniList/TMDB
 }
 
 export interface Episode {
@@ -77,9 +102,9 @@ export interface Episode {
   episodeNumber: number;
   seasonNumber: number; // Explicitly part of Episode
   thumbnail?: string; // URL
-  duration?: string; // e.g., "24min" or number of minutes
+  duration?: string | number; // e.g., "24min" or number of minutes
   url?: string; // Video source URL, to be added by admin
-  airDate?: string; // From TMDB
+  airDate?: string; // From TMDB/AniList (ISO date string)
   overview?: string; // From TMDB
 }
 

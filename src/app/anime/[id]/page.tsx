@@ -1,22 +1,58 @@
+
 import { getAnimeById } from '@/services/animeService';
 import type { Anime, Episode } from '@/types/anime';
 import Container from '@/components/layout/container';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Star, PlayCircle, CalendarDays, Tv, Film, ListVideo, List, ChevronRight, AlertTriangle, Users, ShieldCheck, Info } from 'lucide-react';
+import { Star, PlayCircle, CalendarDays, Tv, Film, ListVideo, List, ChevronRight, AlertTriangle, Users, ShieldCheck, Info, ExternalLink, Tag as GenreIcon, Clapperboard, UserSquare2, TowerPylon, History as HistoryIcon, Globe2 } from 'lucide-react';
 import Link from 'next/link';
 import AnimeInteractionControls from '@/components/anime/anime-interaction-controls';
 import CharacterCarousel from '@/components/anime/CharacterCarousel'; 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; 
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area'; // Added import for ScrollArea
+import { ScrollArea } from '@/components/ui/scroll-area';
+import React, { Suspense } from 'react';
+import Logo from '@/components/common/logo';
 
 interface AnimeDetailsPageProps {
   params: {
     id: string;
   };
 }
+
+const DetailItem: React.FC<{ label: string; value?: string | number | null; icon?: React.ElementType; children?: React.ReactNode }> = ({ label, value, icon: Icon, children }) => {
+  if (!value && !children) return null;
+  return (
+    <div className="flex justify-between items-start py-2.5 text-sm">
+      <span className="text-muted-foreground font-medium flex items-center">
+        {Icon && <Icon className="w-4 h-4 mr-2 opacity-80" />}
+        {label}
+      </span>
+      {children ? <div className="text-right text-foreground">{children}</div> : <span className="text-right text-foreground">{value}</span>}
+    </div>
+  );
+};
+
+const ReadMoreSynopsis: React.FC<{ text: string; maxLength?: number }> = ({ text, maxLength = 250 }) => {
+  const [isExpanded, setIsExpanded] = React.useState(false);
+
+  if (text.length <= maxLength) {
+    return <p className="text-base leading-relaxed text-muted-foreground whitespace-pre-line selection:bg-primary/20 selection:text-primary">{text}</p>;
+  }
+
+  return (
+    <div>
+      <p className="text-base leading-relaxed text-muted-foreground whitespace-pre-line selection:bg-primary/20 selection:text-primary">
+        {isExpanded ? text : `${text.substring(0, maxLength)}...`}
+      </p>
+      <Button variant="link" onClick={() => setIsExpanded(!isExpanded)} className="px-0 text-primary hover:text-primary/80 text-sm mt-1">
+        {isExpanded ? 'Read Less' : 'Read More'}
+      </Button>
+    </div>
+  );
+};
+
 
 export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps) {
   let anime: Anime | undefined;
@@ -59,11 +95,13 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     );
   }
 
-  const iconMap: Record<NonNullable<Anime['type']>, JSX.Element> = {
+  const typeIconMap: Record<string, JSX.Element> = {
     TV: <Tv className="w-4 h-4 mr-1.5" />,
     Movie: <Film className="w-4 h-4 mr-1.5" />,
     OVA: <ListVideo className="w-4 h-4 mr-1.5" />,
     Special: <ListVideo className="w-4 h-4 mr-1.5" />,
+    ONA: <ListVideo className="w-4 h-4 mr-1.5" />,
+    Music: <Film className="w-4 h-4 mr-1.5" />, // Placeholder, use Music icon if available
     Unknown: <Info className="w-4 h-4 mr-1.5" />, 
   };
   
@@ -71,12 +109,16 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
   const coverImageSrc = anime.coverImage || `https://picsum.photos/seed/${anime.id}-cover/400/600`;
   const firstEpisodeId = anime.episodes?.[0]?.id || '';
 
+  const airedDateString = [
+    anime.airedFrom ? new Date(anime.airedFrom).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
+    anime.airedTo ? new Date(anime.airedTo).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null
+  ].filter(Boolean).join(' to ');
+
 
   return (
     <div className="min-h-screen text-foreground">
-      {/* Banner Section */}
       <section 
-        className="relative h-[45vh] md:h-[55vh] lg:h-[60vh] w-full -mt-[calc(var(--header-height,4rem)+1px)] bg-card"
+        className="relative h-[30vh] md:h-[40vh] lg:h-[45vh] w-full -mt-[calc(var(--header-height,4rem)+1px)] bg-card"
       >
         <Image
           src={primaryImageSrc}
@@ -90,10 +132,8 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
         <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-transparent to-transparent md:hidden" />
       </section>
 
-      {/* Content Section */}
-      <Container className="relative z-10 -mt-24 md:-mt-32 lg:-mt-48 pb-16">
+      <Container className="relative z-10 -mt-[120px] md:-mt-[150px] lg:-mt-[180px] pb-16">
         <div className="md:grid md:grid-cols-12 md:gap-8">
-          {/* Left Column: Cover Image & Actions */}
           <div className="md:col-span-4 lg:col-span-3">
             <div className="sticky top-[calc(var(--header-height,4rem)+1.5rem)]">
               <div className="aspect-[2/3] relative rounded-xl overflow-hidden shadow-2xl border-2 border-border/20 bg-card">
@@ -103,11 +143,19 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                   fill
                   sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                   className="object-cover" 
-                  data-ai-hint={`${anime.genre[0] || 'anime'} portrait`}
+                  data-ai-hint={`${anime.genre?.[0] || 'anime'} portrait`}
                 />
               </div>
-              <div className="mt-5 space-y-2.5">
-                <Button asChild size="lg" className="w-full btn-primary-gradient font-semibold text-base py-3">
+            </div>
+          </div>
+
+          <div className="md:col-span-8 lg:col-span-9 mt-8 md:mt-0">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground font-zen-dots leading-tight">
+                {anime.title}
+              </h1>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Button asChild size="lg" className="btn-primary-gradient font-semibold text-base py-2.5 px-5 rounded-full">
                   <Link href={`/play/${anime.id}${firstEpisodeId ? `?episode=${firstEpisodeId}` : ''}`}>
                     <PlayCircle className="mr-2 h-5 w-5" /> Watch Now
                   </Link>
@@ -115,18 +163,11 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                 <AnimeInteractionControls anime={anime} />
               </div>
             </div>
-          </div>
-
-          {/* Right Column: Details & Tabs */}
-          <div className="md:col-span-8 lg:col-span-9 mt-8 md:mt-0">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-2 font-zen-dots leading-tight">
-              {anime.title}
-            </h1>
             
-            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 text-sm text-muted-foreground mb-5">
-              {anime.type && <div className="flex items-center">{iconMap[anime.type]} <span className="font-medium">{anime.type}</span></div>}
-              {anime.type && <span className="opacity-50">•</span>}
-              <div className="flex items-center"><CalendarDays className="w-4 h-4 mr-1.5" /> <span className="font-medium">{anime.year}</span></div>
+            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 text-sm text-muted-foreground mb-6">
+              {anime.format && <div className="flex items-center">{typeIconMap[anime.format] || <Info className="w-4 h-4 mr-1.5" />} <span className="font-medium">{anime.format}</span></div>}
+              {anime.format && <span className="opacity-50">•</span>}
+              <div className="flex items-center"><CalendarDays className="w-4 h-4 mr-1.5" /> <span className="font-medium">{anime.seasonYear || anime.year}</span></div>
               {anime.averageRating !== undefined && (
                 <>
                   <span className="opacity-50">•</span>
@@ -139,87 +180,90 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
               )}
               <span className="opacity-50">•</span>
               <Badge 
-                variant={anime.status === 'Completed' ? 'default' : 'secondary'} 
+                variant={anime.status === 'Completed' || anime.status === 'FINISHED' ? 'default' : 'secondary'} 
                 className={cn(
                   "text-xs font-medium",
-                  anime.status === 'Completed' && 'bg-green-500/20 text-green-600 border-green-500/30 dark:bg-green-500/15 dark:text-green-400 dark:border-green-500/40',
-                  anime.status === 'Ongoing' && 'bg-sky-500/20 text-sky-600 border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-400 dark:border-sky-500/40',
-                  anime.status === 'Upcoming' && 'bg-amber-500/20 text-amber-600 border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/40',
+                  (anime.status === 'Completed' || anime.status === 'FINISHED') && 'bg-green-500/20 text-green-600 border-green-500/30 dark:bg-green-500/15 dark:text-green-400 dark:border-green-500/40',
+                  (anime.status === 'Ongoing' || anime.status === 'Airing' || anime.status === 'RELEASING') && 'bg-sky-500/20 text-sky-600 border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-400 dark:border-sky-500/40',
+                  (anime.status === 'Upcoming' || anime.status === 'Not Yet Aired') && 'bg-amber-500/20 text-amber-600 border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/40',
                 )}
               >
-                {anime.status === 'Completed' && <ShieldCheck className="w-3 h-3 mr-1" />}
+                {anime.status === 'Completed' || anime.status === 'FINISHED' && <ShieldCheck className="w-3 h-3 mr-1" />}
                 {anime.status}
               </Badge>
             </div>
 
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold mb-2 text-primary font-orbitron">Genres</h2>
-              <div className="flex flex-wrap gap-2">
-                {anime.genre.map((g) => (
-                  <Badge key={g} variant="outline" className="text-xs sm:text-sm border-border/50 hover:bg-primary/10 hover:border-primary/40 transition-colors">
-                    {g}
-                  </Badge>
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="flex space-x-1 border-b border-border/40 pb-0 mb-6">
+                {['Overview', 'Relations', 'Characters', 'Artwork'].map(tabName => (
+                  <TabsTrigger
+                    key={tabName}
+                    value={tabName.toLowerCase()}
+                    className={cn(
+                      "relative px-1 pb-3 pt-2 -mb-[1px] text-sm font-medium text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background",
+                      "hover:text-foreground data-[state=active]:text-primary data-[state=active]:font-semibold",
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-transparent after:transition-transform after:duration-300 after:ease-in-out",
+                      "data-[state=active]:after:bg-primary data-[state=active]:after:scale-x-100 hover:after:bg-muted-foreground/30 hover:after:scale-x-100",
+                       "data-[state=inactive]:after:scale-x-0 data-[state=inactive]:hover:after:scale-x-100" 
+                    )}
+                  >
+                    {tabName}
+                  </TabsTrigger>
                 ))}
-                {anime.genre.length === 0 && <p className="text-sm text-muted-foreground">No genres listed.</p>}
-              </div>
-            </div>
-
-            <Tabs defaultValue="synopsis" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-5 bg-card/80 border border-border/40 rounded-lg shadow-sm p-1">
-                <TabsTrigger value="synopsis" className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-md rounded-md text-sm font-medium py-2">Synopsis</TabsTrigger>
-                <TabsTrigger value="episodes" className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-md rounded-md text-sm font-medium py-2">Episodes</TabsTrigger>
-                <TabsTrigger value="characters" className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-md rounded-md text-sm font-medium py-2">Characters</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="synopsis" className="bg-card/50 p-4 sm:p-6 rounded-lg border border-border/20 shadow-inner">
-                <h3 className="text-xl font-semibold mb-3 text-foreground font-orbitron">Synopsis</h3>
-                <p className="text-base leading-relaxed text-muted-foreground whitespace-pre-line selection:bg-primary/20 selection:text-primary">
-                  {anime.synopsis || "No synopsis available."}
-                </p>
-              </TabsContent>
-
-              <TabsContent value="episodes" className="bg-card/50 p-4 sm:p-6 rounded-lg border border-border/20 shadow-inner">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-semibold text-foreground flex items-center font-orbitron">
-                      <List className="mr-2 h-5 w-5"/> Episodes ({anime.episodes?.length || 0})
-                  </h3>
-                  {anime.episodes && anime.episodes.length > 0 && (
-                    <Button asChild variant="link" size="sm" className="text-primary hover:text-primary/80">
-                      <Link href={`/play/${anime.id}${firstEpisodeId ? `?episode=${firstEpisodeId}` : ''}`}>
-                        Go to Player <ChevronRight className="w-4 h-4 ml-1" />
-                      </Link>
-                    </Button>
-                  )}
+              <TabsContent value="overview" className="bg-transparent p-0">
+                <div className="mb-8">
+                <div className="flex items-center gap-x-3 mb-3"> {/* Changed from justify-between */}
+                    <h3 className="text-xl font-semibold text-foreground font-orbitron flex items-center">
+                      <Logo iconSize={20} className="mr-2 opacity-80 filter grayscale contrast-200 brightness-200"/>
+                       Description
+                    </h3>
+                    {/* Placeholder for potential AniList Icon if trailer comes from there */}
+                    {/* {anime.trailerUrl && anime.sourceAdmin?.includes('anilist') && <AnilistIcon className="w-5 h-5 text-blue-400" />} */}
+                    {anime.trailerUrl && (
+                        <Button variant="outline" size="sm" asChild className="border-border/50 hover:border-primary hover:text-primary">
+                            <Link href={anime.trailerUrl} target="_blank" rel="noopener noreferrer" className="flex items-center">
+                                <Film className="w-4 h-4 mr-1.5" /> Trailer
+                                <ExternalLink size={12} className="ml-1 opacity-70"/>
+                            </Link>
+                        </Button>
+                    )}
+                  </div>
+                  <ReadMoreSynopsis text={anime.synopsis || "No synopsis available."} />
                 </div>
 
-                {(!anime.episodes || anime.episodes.length === 0) ? (
-                     <p className="text-muted-foreground text-center py-6">No episodes listed for this title yet.</p>
-                  ) : (
-                    <ScrollArea className="max-h-96 pr-3 -mr-3">
-                      <div className="space-y-2">
-                        {anime.episodes.map((episode: Episode) => (
-                          <Button
-                            key={episode.id}
-                            asChild
-                            variant="ghost"
-                            className="w-full justify-start text-left h-auto py-2.5 px-3.5 hover:bg-primary/10 rounded-md group/ep-item transition-colors"
-                          >
-                            <Link href={`/play/${anime.id}?episode=${episode.id}`}>
-                              <div className="flex items-center justify-between w-full">
-                                  <div className="flex-grow min-w-0">
-                                      <span className="text-sm font-medium text-foreground block group-hover/ep-item:text-primary truncate" title={`Episode ${episode.episodeNumber}: ${episode.title}`}>
-                                        Ep {episode.episodeNumber}: {episode.title}
-                                      </span>
-                                      {episode.duration && <span className="text-xs text-muted-foreground">{episode.duration}</span>}
-                                  </div>
-                                  <PlayCircle className="w-5 h-5 text-primary ml-2 flex-shrink-0 opacity-0 group-hover/ep-item:opacity-100 transition-opacity" />
-                              </div>
-                            </Link>
-                          </Button>
-                        ))}
+                <div>
+                  <h3 className="text-xl font-semibold text-foreground font-orbitron mb-2">Details</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 border-t border-border/20">
+                    <DetailItem label="Type" value={anime.format || anime.type} icon={typeIconMap[anime.format || anime.type || 'Unknown'] ? undefined : Info } />
+                    <DetailItem label="Episodes" value={anime.episodesCount || anime.episodes?.length || 'N/A'} icon={List} />
+                    <DetailItem label="Genres" icon={GenreIcon}>
+                      <div className="flex flex-wrap gap-1.5 justify-end">
+                        {anime.genre.map(g => <Badge key={g} variant="secondary" className="text-xs">{g}</Badge>)}
+                        {anime.genre.length === 0 && 'N/A'}
                       </div>
-                    </ScrollArea>
-                  )}
+                    </DetailItem>
+                    <DetailItem label="Aired" value={airedDateString || 'N/A'} icon={CalendarDays} />
+                    <DetailItem label="Status" value={anime.status} icon={ShieldCheck} />
+                    <DetailItem label="Season" value={`${anime.season || ''} ${anime.seasonYear || anime.year}`} icon={Clapperboard} />
+                    <DetailItem label="Country" value={anime.countryOfOrigin} icon={Globe2} />
+                    <DetailItem label="Studios" icon={UserSquare2}>
+                       <div className="flex flex-wrap gap-1 justify-end">
+                          {anime.studios?.map(s => <Badge key={s.id} variant="outline" className="text-xs">{s.name}</Badge>)}
+                          {(!anime.studios || anime.studios.length === 0) && 'N/A'}
+                        </div>
+                    </DetailItem>
+                    <DetailItem label="Source" value={anime.source} icon={TowerPylon} />
+                    <DetailItem label="Duration" value={anime.duration ? `${anime.duration} min/ep` : 'N/A'} icon={HistoryIcon} />
+                    <DetailItem label="Popularity" value={anime.popularity?.toLocaleString()} icon={Users} />
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="relations" className="bg-card/50 p-4 sm:p-6 rounded-lg border border-border/20 shadow-inner">
+                 <h3 className="text-xl font-semibold text-foreground font-orbitron mb-3">Relations</h3>
+                 <p className="text-muted-foreground">Related anime information will be displayed here.</p>
               </TabsContent>
 
               <TabsContent value="characters" className="bg-card/50 p-1 sm:p-2 rounded-lg border border-border/20 shadow-inner">
@@ -227,6 +271,11 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                     <Users className="mr-2 h-5 w-5"/> Characters & Voice Actors
                 </h3>
                 <CharacterCarousel characters={anime.characters} />
+              </TabsContent>
+
+              <TabsContent value="artwork" className="bg-card/50 p-4 sm:p-6 rounded-lg border border-border/20 shadow-inner">
+                <h3 className="text-xl font-semibold text-foreground font-orbitron mb-3">Artwork</h3>
+                <p className="text-muted-foreground">Artwork, posters, and fan art will be displayed here.</p>
               </TabsContent>
             </Tabs>
           </div>
