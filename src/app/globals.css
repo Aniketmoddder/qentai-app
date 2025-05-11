@@ -8,9 +8,9 @@
 
 
 @layer base {
-  /* New Default Theme (Premium Anime Dark) - Replaces Dark Purple Premium */
+  /* Default Theme (Premium Anime Dark) */
   :root, html[data-theme="dark-purple-premium"] {
-    --background: 240 23% 6%; /* #0A0A13 - Rich Night Black */
+    --background: 240 23% 5%; /* #0A0A13 - Rich Night Black */
     --foreground: 220 13% 96%; /* #F4F4F5 - Soft Light Gray */
 
     --card: 248 25% 14%; /* #1E1B2E - Deep UI Card Color (Surface) */
@@ -58,42 +58,56 @@
     --sidebar-ring: 262 89% 71%;
   }
 
+  /* Light Theme (Elegant Light) */
   html[data-theme="light-pale-purple"] {
     --background: 220 60% 98%; /* #F9FAFB */
     --foreground: 222 47% 11%; /* #111827 */
-    --card: 0 0% 100%; /* White */
-    --card-foreground: 222 47% 11%;
-    --popover: 0 0% 100%; /* White */
-    --popover-foreground: 222 47% 11%;
-    --primary: 263 84% 56%; /* #7C3AED */
-    --primary-foreground: 0 0% 100%; /* White */
-    --secondary: 231 100% 95%; /* #E0E7FF */
-    --secondary-foreground: 263 84% 50%; /* Darker primary */
-    --muted: 220 14% 93%; /* Light gray */
-    --muted-foreground: 220 10% 45%; /* Darker gray */
-    --accent: 276 93% 75%; /* #C084FC */
-    --accent-foreground: 222 47% 11%; /* Dark text */
-    --destructive: 0 84% 60%; /* Standard red */
-    --destructive-foreground: 0 0% 100%; /* White */
-    --border: 220 14% 90%; /* #E5E7EB */
-    --input: 0 0% 100%; /* White */
-    --ring: 263 84% 61%; /* Lighter primary */
-
-    --chart-1: 263 84% 56%;
-    --chart-2: 276 93% 75%;
-    --chart-3: 337 88% 76%; 
-    --chart-4: 45 90% 55%;
-    --chart-5: 220 10% 65%;
     
+    --card: 0 0% 100%; /* #FFFFFF (Surface) */
+    --card-foreground: 222 47% 11%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    
+    --primary: 239 78% 67%; /* #6366F1 */
+    --primary-foreground: 0 0% 100%; /* White */
+    
+    --secondary: 172 80% 43%; /* #14B8A6 */
+    --secondary-foreground: 0 0% 100%; /* White */
+    
+    --muted: 220 14% 93%; /* Standard light gray for muted backgrounds */
+    --muted-foreground: 220 10% 45%; /* Darker gray for muted text */
+    
+    --accent: 352 96% 71%; /* #FB7185 */
+    --accent-foreground: 0 0% 100%; /* White text for on-accent */
+    
+    --destructive: 0 84% 60%; /* Standard red for destructive actions */
+    --destructive-foreground: 0 0% 100%; /* White */
+    
+    --border: 220 13% 91%; /* #E5E7EB */
+    --input: 0 0% 100%; /* White input background */
+    --ring: 239 78% 72%; /* Lighter primary for focus rings */
+    
+    --radius: 0.75rem;
+
+    /* Chart colors for Elegant Light theme */
+    --chart-1: 239 78% 67%; /* Primary */
+    --chart-2: 172 80% 43%; /* Secondary */
+    --chart-3: 352 96% 71%; /* Accent */
+    --chart-4: 262 84% 72%; /* Highlight: #A78BFA (Light Purple) */
+    --chart-5: 220 10% 65%; /* Muted Gray for charts */
+    
+    /* Sidebar colors for Elegant Light theme */
     --sidebar-background: 220 30% 96%; 
     --sidebar-foreground: 222 47% 15%;
-    --sidebar-primary: 263 84% 56%; 
+    --sidebar-primary: 239 78% 67%; 
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 231 100% 92%;
-    --sidebar-accent-foreground: 263 84% 56%; 
+    --sidebar-accent: 231 100% 92%; /* Lighter version of primary or secondary */
+    --sidebar-accent-foreground: 239 78% 67%; 
     --sidebar-border: 220 14% 85%;
-    --sidebar-ring: 263 84% 61%;
+    --sidebar-ring: 239 78% 72%;
   }
+
 
   html[data-theme="vibrant-cyberpunk"] {
     --background: 0 0% 4%; /* #0A0A0A */
@@ -218,12 +232,21 @@
 
 @layer utilities {
   .btn-primary-gradient {
-    @apply bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--secondary))] text-primary-foreground transition-all duration-300 ease-in-out shadow-md hover:shadow-primary/50;
-    background-size: 150% auto; 
+    @apply text-primary-foreground transition-all duration-300 ease-in-out shadow-md hover:shadow-primary/50;
+    /* Default to primary solid color if gradient not specified by theme */
+    background: hsl(var(--primary)); 
   }
-  .btn-primary-gradient:hover {
+  html[data-theme="dark-purple-premium"] .btn-primary-gradient,
+  html[data-theme="light-pale-purple"] .btn-primary-gradient {
+    background-image: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
+    background-size: 150% auto;
+  }
+   html[data-theme="dark-purple-premium"] .btn-primary-gradient:hover,
+   html[data-theme="light-pale-purple"] .btn-primary-gradient:hover {
     background-position: right center; 
   }
+
+
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--muted)) transparent; 

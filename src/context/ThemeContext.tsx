@@ -18,13 +18,13 @@ export interface ThemeOption {
 export const themes: ThemeOption[] = [
   { 
     value: 'dark-purple-premium', 
-    label: 'Premium Anime Dark', // Updated Label
-    colors: { primary: '#8B5CF6', background: '#0A0A13'} // Updated colors from prompt
+    label: 'Premium Anime Dark',
+    colors: { primary: '#8B5CF6', background: '#0A0A13'}
   },
   { 
     value: 'light-pale-purple', 
-    label: 'Pale Purple',
-    colors: { primary: '#7C3AED', background: '#F9FAFB'}
+    label: 'Elegant Light', // Updated Label
+    colors: { primary: '#6366F1', background: '#F9FAFB'} // Updated colors from prompt
   },
   { 
     value: 'vibrant-cyberpunk', 
@@ -38,7 +38,7 @@ export const themes: ThemeOption[] = [
   },
 ];
 
-const DEFAULT_THEME: Theme = 'dark-purple-premium'; // This theme is now "Premium Anime Dark"
+const DEFAULT_THEME: Theme = 'dark-purple-premium';
 
 interface ThemeContextType {
   theme: Theme;
