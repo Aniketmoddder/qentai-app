@@ -12,7 +12,7 @@ import FeaturedAnimeCard from '@/components/anime/FeaturedAnimeCard';
 import TopAnimeListItem from '@/components/anime/TopAnimeListItem';
 import { Badge } from '@/components/ui/badge';
 import AnimeCardSkeleton from '@/components/anime/AnimeCardSkeleton';
-import HeroSkeleton from '@/components/home/HeroSkeleton'; // Import HeroSkeleton
+import HeroSkeleton from '@/components/home/HeroSkeleton'; 
 
 
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -81,9 +81,7 @@ export default function HomeClient({
       setFetchError(null);
       setIsLoading(false);
     } else if (!initialFetchError && initialAllAnimeData.length === 0 && initialFeaturedAnimes.length === 0) {
-      // This case means data fetching completed but returned empty, not necessarily an error itself
-      // It could be that there's no data yet.
-      setIsLoading(false); // Stop loading if there's no error and data is confirmed empty
+      setIsLoading(false); 
       setFetchError(null);
     }
   }, [initialAllAnimeData, initialFeaturedAnimes, initialFetchError]);
@@ -129,18 +127,38 @@ export default function HomeClient({
       <>
         <HeroSkeleton />
         <Container className="py-8">
+          {/* Skeleton for Featured Anime Section (if applicable) */}
+          <div className="mb-8">
+            <div className="h-8 w-1/3 mb-4 rounded-md bg-muted/50 animate-pulse" /> 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <Skeleton className="aspect-[16/10] sm:aspect-[16/9] rounded-xl bg-muted/50" />
+                <Skeleton className="aspect-[16/10] sm:aspect-[16/9] rounded-xl bg-muted/50 hidden md:block" />
+            </div>
+          </div>
+
+          {/* Skeletons for Anime Carousels */}
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="mb-8">
-              <div className="h-8 w-1/3 mb-4 rounded-md bg-muted animate-pulse" /> {/* Carousel Title Skeleton */}
+            <div key={`carousel-skeleton-${i}`} className="mb-8">
+              <div className="h-8 w-1/3 mb-4 rounded-md bg-muted/50 animate-pulse" /> {/* Carousel Title Skeleton */}
               <div className="flex overflow-x-auto pb-4 gap-3 sm:gap-4 md:gap-x-5 scrollbar-hide">
                 {[...Array(5)].map((_, j) => (
-                  <div key={j} className="flex-shrink-0">
+                  <div key={`card-skeleton-${i}-${j}`} className="flex-shrink-0">
                     <AnimeCardSkeleton />
                   </div>
                 ))}
               </div>
             </div>
           ))}
+
+          {/* Skeleton for Top Anime List */}
+           <div className="mb-8">
+            <div className="h-8 w-1/3 mb-6 rounded-md bg-muted/50 animate-pulse" />
+            <div className="space-y-3">
+                {[...Array(5)].map((_, k) => (
+                    <Skeleton key={`top-item-skeleton-${k}`} className="h-28 w-full rounded-lg bg-muted/50" />
+                ))}
+            </div>
+          </div>
         </Container>
       </>
     );
@@ -310,3 +328,4 @@ export default function HomeClient({
     </> 
   );
 }
+
