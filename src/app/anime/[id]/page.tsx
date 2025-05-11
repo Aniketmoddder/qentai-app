@@ -40,7 +40,6 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
   let fetchError: string | null = null;
 
   try {
-    // getAnimeById now internally handles fetching and merging TMDB & AniList data
     anime = await getAnimeById(params.id);
   } catch (error) {
     console.error(`Failed to fetch anime details for ID ${params.id}:`, error);
@@ -90,9 +89,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     Unknown: <Info className="w-4 h-4 mr-1.5" />, 
   };
   
-  // Prioritize AniList banner if available, then TMDB, then placeholder
   const primaryImageSrc = anime.bannerImage || `https://picsum.photos/seed/${anime.id}-banner/1600/600`;
-  // Prioritize AniList cover (extraLarge or large) if available, then TMDB, then placeholder
   const coverImageSrc = anime.coverImage || `https://picsum.photos/seed/${anime.id}-cover/400/600`;
   const firstEpisodeId = anime.episodes?.[0]?.id || '';
 
@@ -119,16 +116,16 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
         <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-transparent to-transparent md:hidden" />
       </section>
 
-      <Container className="relative z-10 -mt-[180px] md:-mt-[220px] lg:-mt-[280px] pb-16">
+      <Container className="relative z-10 -mt-[20vh] sm:-mt-[25vh] md:-mt-[220px] lg:-mt-[280px] pb-16">
         <div className="md:grid md:grid-cols-12 md:gap-8">
           <div className="md:col-span-4 lg:col-span-3">
-            <div className="sticky top-[calc(var(--header-height,4rem)+2rem)]">
+            <div className="sticky top-[calc(var(--header-height,4rem)+2rem)] max-w-[280px] sm:max-w-xs mx-auto md:mx-0">
               <div className="aspect-[2/3] relative rounded-xl overflow-hidden shadow-2xl border-2 border-border/20 bg-card">
                 <Image
                   src={coverImageSrc}
                   alt={anime.title}
                   fill
-                  sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                  sizes="(max-width: 768px) 70vw, (max-width: 1024px) 33vw, 25vw"
                   className="object-cover" 
                   data-ai-hint={`${anime.genre?.[0] || 'anime'} portrait`}
                 />
@@ -137,29 +134,43 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
           </div>
 
           <div className="md:col-span-8 lg:col-span-9 mt-8 md:mt-0">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground font-zen-dots leading-tight">
+            {/* Title and Action Buttons Section */}
+            <div className="flex flex-col items-center sm:items-start space-y-4 mb-6">
+              <h1 className="text-3xl sm:text-4xl font-bold text-foreground font-zen-dots leading-tight text-center sm:text-left">
                 {anime.title}
               </h1>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <Button asChild size="lg" className="btn-primary-gradient font-semibold text-base py-2.5 px-5 rounded-full">
+              
+              <div className="w-full max-w-sm sm:max-w-md md:max-w-none mx-auto sm:mx-0 flex flex-col sm:flex-row gap-3">
+                <Button 
+                  asChild 
+                  size="lg" 
+                  className="w-full sm:flex-1 btn-primary-gradient font-semibold py-3 rounded-lg"
+                >
                   <Link href={`/play/${anime.id}${firstEpisodeId ? `?episode=${firstEpisodeId}` : ''}`}>
                     <PlayCircle className="mr-2 h-5 w-5" /> Watch Now
                   </Link>
                 </Button>
-                <Suspense fallback={<div className="w-full h-24 bg-card rounded-md animate-pulse"></div>}>
-                    <AnimeInteractionControls anime={anime} />
+                
+                <Suspense fallback={
+                  <div className="w-full sm:w-auto flex flex-row sm:flex-col gap-3">
+                    <Skeleton className="h-12 w-full sm:w-40 rounded-lg" />
+                    <Skeleton className="h-12 w-full sm:w-40 rounded-lg" />
+                  </div>
+                }>
+                   {/* AnimeInteractionControls will now handle its internal button layout for responsiveness */}
+                  <AnimeInteractionControls anime={anime} />
                 </Suspense>
               </div>
             </div>
             
-            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 text-sm text-muted-foreground mb-6">
+            {/* Meta Info Section */}
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3.5 gap-y-2 text-sm text-muted-foreground mb-6">
               {anime.format && <div className="flex items-center">{typeIconMap[anime.format] || <Info className="w-4 h-4 mr-1.5" />} <span className="font-medium">{anime.format}</span></div>}
-              {anime.format && <span className="opacity-50">•</span>}
+              {anime.format && <span className="opacity-50 hidden sm:inline">•</span>}
               <div className="flex items-center"><CalendarDays className="w-4 h-4 mr-1.5" /> <span className="font-medium">{anime.seasonYear || anime.year}</span></div>
               {anime.averageRating !== undefined && anime.averageRating !== null && (
                 <>
-                  <span className="opacity-50">•</span>
+                  <span className="opacity-50 hidden sm:inline">•</span>
                   <div className="flex items-center">
                     <Star className="w-4 h-4 mr-1.5 text-yellow-400 fill-yellow-400" />
                     <span className="font-semibold text-foreground">{anime.averageRating.toFixed(1)}</span>
@@ -167,7 +178,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                   </div>
                 </>
               )}
-              <span className="opacity-50">•</span>
+              <span className="opacity-50 hidden sm:inline">•</span>
               <Badge 
                 variant={anime.status === 'Completed' || anime.status === 'FINISHED' ? 'default' : 'secondary'} 
                 className={cn(
@@ -305,3 +316,5 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
   );
 }
 
+
+    

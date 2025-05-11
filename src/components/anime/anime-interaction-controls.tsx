@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Anime } from '@/types/anime';
@@ -15,12 +16,15 @@ import {
   isInWishlist,
 } from '@/services/userDataService';
 import { FirestoreError } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 interface AnimeInteractionControlsProps {
   anime: Anime;
+  className?: string;
 }
 
-export default function AnimeInteractionControls({ anime }: AnimeInteractionControlsProps) {
+export default function AnimeInteractionControls({ anime, className }: AnimeInteractionControlsProps) {
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -148,79 +152,93 @@ export default function AnimeInteractionControls({ anime }: AnimeInteractionCont
     }
   };
   
+  const commonButtonClasses = "w-full py-3 rounded-lg text-base sm:w-auto sm:flex-1 md:flex-initial"; // sm:flex-1 makes them share space on sm+
+  const skeletonClasses = "h-12 w-full sm:w-auto sm:flex-1 md:flex-initial rounded-lg";
+
+
   if (isCheckingInitialStatus) {
     return (
-        <div className="mt-4 space-y-2">
-            <Button variant="outline" size="lg" className="w-full" disabled>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading Status...
-            </Button>
-            <Button variant="outline" size="lg" className="w-full" disabled>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading Status...
-            </Button>
+        <div className={cn("flex flex-col sm:flex-row gap-3", className)}>
+            <Skeleton className={skeletonClasses} />
+            <Skeleton className={skeletonClasses} />
         </div>
     );
   }
 
   if (initialStatusError) {
     return (
-      <div className="mt-4 space-y-3 p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
-        <div className="flex items-start text-destructive">
+      <div className={cn("p-4 bg-destructive/10 border border-destructive/30 rounded-lg", className)}>
+        <div className="flex items-start text-destructive mb-2">
           <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-semibold">Error Loading Status</p>
-            <p className="text-sm">{initialStatusError}</p>
+            <p className="font-semibold text-sm">Error Loading Status</p>
+            <p className="text-xs">{initialStatusError}</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={checkStatus} className="w-full border-destructive text-destructive hover:bg-destructive/20">
-          <RotateCcw className="mr-2 h-4 w-4" /> Retry
+        <Button variant="outline" size="sm" onClick={checkStatus} className="w-full mt-2 border-destructive text-destructive hover:bg-destructive/20">
+          <RotateCcw className="mr-2 h-3 w-3" /> Retry
         </Button>
       </div>
     );
   }
 
-   if (!user) {
+   if (!user) { // Buttons for non-logged in users
     return (
-      <div className="mt-4 space-y-2">
-        <Button variant="outline" size="lg" className="w-full" onClick={() => toast({ title: 'Login Required', description: 'Please log in to manage your favorites.'})}>
-          <Heart className="mr-2" /> Add to Favorites
+      <div className={cn("flex flex-col sm:flex-row gap-3", className)}>
+        <Button 
+          variant="outline" 
+          size="lg" 
+          className={cn(commonButtonClasses, "bg-card hover:bg-card/80 text-card-foreground border-border/50")}
+          onClick={() => toast({ title: 'Login Required', description: 'Please log in to manage your favorites.'})}
+        >
+          <Heart className="mr-2 h-5 w-5" /> Add to Favorites
         </Button>
-        <Button variant="outline" size="lg" className="w-full" onClick={() => toast({ title: 'Login Required', description: 'Please log in to manage your wishlist.'})}>
-          <Bookmark className="mr-2" /> Add to Wishlist
+        <Button 
+          variant="outline" 
+          size="lg" 
+          className={cn(commonButtonClasses, "bg-card hover:bg-card/80 text-card-foreground border-border/50")}
+          onClick={() => toast({ title: 'Login Required', description: 'Please log in to manage your wishlist.'})}
+        >
+          <Bookmark className="mr-2 h-5 w-5" /> Add to Wishlist
         </Button>
       </div>
     );
   }
 
+  // Buttons for logged-in users
   return (
-    <div className="mt-4 space-y-2">
+    <div className={cn("flex flex-col sm:flex-row gap-3", className)}>
       <Button
         variant="outline"
         size="lg"
-        className="w-full"
+        className={cn(commonButtonClasses, "bg-card hover:bg-card/80 text-card-foreground border-border/50")}
         onClick={handleFavoriteToggle}
         disabled={loadingFavoriteToggle || isCheckingInitialStatus}
       >
         {loadingFavoriteToggle ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
         ) : (
-          <Heart className={`mr-2 ${isFavorited ? 'fill-destructive text-destructive' : ''}`} />
+          <Heart className={cn("mr-2 h-5 w-5", isFavorited ? 'fill-destructive text-destructive' : '')} />
         )}
-        {isFavorited ? 'Remove from Favorites' : 'Add to Favorites'}
+        {isFavorited ? 'In Favorites' : 'Add to Favorites'}
       </Button>
       <Button
         variant="outline"
         size="lg"
-        className="w-full"
+        className={cn(commonButtonClasses, "bg-card hover:bg-card/80 text-card-foreground border-border/50")}
         onClick={handleWishlistToggle}
         disabled={loadingWishlistToggle || isCheckingInitialStatus}
       >
         {loadingWishlistToggle ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
         ) : (
-          <Bookmark className={`mr-2 ${isInWishlisted ? 'fill-primary text-primary' : ''}`} />
+          <Bookmark className={cn("mr-2 h-5 w-5", isInWishlisted ? 'fill-primary text-primary' : '')} />
         )}
-        {isInWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
+        {isInWishlisted ? 'In Wishlist' : 'Add to Wishlist'}
       </Button>
     </div>
   );
 }
+
+
+    
