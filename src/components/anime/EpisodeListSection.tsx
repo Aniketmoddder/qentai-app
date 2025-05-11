@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -72,7 +71,7 @@ export default function EpisodeListSection({ anime }: EpisodeListSectionProps) {
         <ScrollArea 
             className={cn(
                 "rounded-lg border border-border/30 bg-card/50 shadow-inner",
-                viewMode === 'detailed' ? "max-h-[500px]" : "max-h-[400px]"
+                viewMode === 'detailed' ? "max-h-[60vh]" : "max-h-[50vh]" // Using vh units for responsiveness
             )}
         >
           <div className={cn("p-3 sm:p-4 space-y-2", viewMode === 'simple' && 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2')}>
@@ -109,6 +108,7 @@ const DetailedEpisodeItem: React.FC<EpisodeItemProps> = ({ episode, animeId }) =
   return (
     <Link
       href={`/play/${animeId}?episode=${episode.id}`}
+      passHref legacyBehavior={false}
       className="group flex items-center p-2.5 bg-card hover:bg-primary/10 rounded-lg shadow-sm transition-all duration-200 ease-in-out border border-transparent hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-background"
     >
       <div className="relative w-28 h-16 sm:w-32 sm:h-[72px] rounded-md overflow-hidden flex-shrink-0 border border-border/20">
@@ -143,6 +143,7 @@ const SimpleEpisodeItem: React.FC<EpisodeItemProps> = ({ episode, animeId }) => 
   return (
     <Link
       href={`/play/${animeId}?episode=${episode.id}`}
+      passHref legacyBehavior={false}
       className="group flex items-center p-2.5 bg-card hover:bg-primary/10 rounded-md shadow-sm transition-all duration-200 ease-in-out border border-transparent hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-background"
     >
       <GripVertical className="w-4 h-4 mr-2 text-muted-foreground group-hover:text-primary flex-shrink-0" />
