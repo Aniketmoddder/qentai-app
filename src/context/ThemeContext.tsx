@@ -1,8 +1,9 @@
+
 'use client';
 
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { getDefaultSiteTheme } from '@/services/siteSettingsService'; // New Import
+import { getDefaultSiteTheme } from '@/services/siteSettingsService'; 
 
 export type Theme = 'dark-purple-premium' | 'light-pale-purple' | 'kawaii-pink-vibe' | 'futuristic-cyberpunk';
 
@@ -12,33 +13,55 @@ export interface ThemeOption {
   colors: {
     primary: string;
     background: string;
+    secondary?: string; // Optional, for themes that define it explicitly for gradients etc.
+    highlight?: string; // Optional
   };
 }
 
 export const themes: ThemeOption[] = [
   { 
     value: 'dark-purple-premium', 
-    label: 'Premium Anime Dark',
-    colors: { primary: '#8B5CF6', background: '#0A0A13'} // Original Default
+    label: 'Premium Anime Dark', // Label can be updated if desired
+    colors: { 
+      primary: '#A064FF', // New Primary
+      background: '#0E0E10', // New Background
+      secondary: '#8B5CF6', // New Secondary (old primary)
+      highlight: '#4F46E5' // New Highlight
+    }
   },
   { 
     value: 'light-pale-purple', 
     label: 'Elegant Light', 
-    colors: { primary: '#6366F1', background: '#F9FAFB'} // Updated primary
+    colors: { 
+      primary: '#6366F1', 
+      background: '#F9FAFB',
+      secondary: '#14B8A6', // Teal for button gradient
+      highlight: '#A78BFA'
+    }
   },
   {
     value: 'kawaii-pink-vibe',
     label: 'Kawaii Pink Vibe',
-    colors: { primary: '#EC4899', background: '#1A0A1E'}
+    colors: { 
+      primary: '#EC4899', 
+      background: '#1A0A1E',
+      secondary: '#FB7185', // Secondary used in gradient or as fallback
+      highlight: '#E879F9'  // Highlight for gradient
+    }
   },
   { 
     value: 'futuristic-cyberpunk', 
     label: 'Futuristic Cyberpunk',
-    colors: { primary: '#00FFFF', background: '#0F0F1A'}
+    colors: { 
+      primary: '#00FFFF', 
+      background: '#0F0F1A',
+      secondary: '#FF00FF', // Used in gradient
+      highlight: '#7C3AED' 
+    }
   },
 ];
 
-const FALLBACK_DEFAULT_THEME: Theme = 'dark-purple-premium'; // Used if Firestore fetch fails or no default is set
+const FALLBACK_DEFAULT_THEME: Theme = 'dark-purple-premium'; 
 
 interface ThemeContextType {
   theme: Theme;
@@ -53,7 +76,6 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [isInitialThemeLoaded, setIsInitialThemeLoaded] = useState(false);
 
   useEffect(() => {
-    // This effect runs once on mount to determine the initial theme
     const determineInitialTheme = async () => {
       let initialTheme = FALLBACK_DEFAULT_THEME;
       if (typeof window !== 'undefined') {
@@ -62,10 +84,13 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
         if (storedUserTheme && themes.some(t => t.value === storedUserTheme)) {
           initialTheme = storedUserTheme;
         } else {
-          // No user preference, fetch site default
-          const siteDefaultTheme = await getDefaultSiteTheme();
-          if (siteDefaultTheme && themes.some(t => t.value === siteDefaultTheme)) {
-            initialTheme = siteDefaultTheme;
+          try {
+            const siteDefaultTheme = await getDefaultSiteTheme();
+            if (siteDefaultTheme && themes.some(t => t.value === siteDefaultTheme)) {
+              initialTheme = siteDefaultTheme;
+            }
+          } catch (error) {
+            console.error("Failed to fetch site default theme, using fallback:", error);
           }
         }
       }
@@ -78,13 +103,11 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
 
   useEffect(() => {
-    // This effect applies the theme once it's determined (either initially or by user change)
-    if (!isInitialThemeLoaded) return; // Don't run if initial theme isn't set yet
+    if (!isInitialThemeLoaded) return; 
 
     const root = window.document.documentElement;
     root.setAttribute('data-theme', theme);
     
-    // Update user's local preference if they changed it (not just applying fetched default)
     const storedUserTheme = localStorage.getItem('qentai-theme') as Theme | null;
     if (storedUserTheme !== theme) {
       localStorage.setItem('qentai-theme', theme);
@@ -106,22 +129,15 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const setTheme = useCallback((newTheme: Theme) => {
     if (themes.some(t => t.value === newTheme)) {
       setThemeState(newTheme);
-      // User explicitly sets theme, so store it as their preference
       if (typeof window !== 'undefined') {
         localStorage.setItem('qentai-theme', newTheme);
       }
     } else {
       console.warn(`Attempted to set invalid theme: ${newTheme}`);
-      // Potentially revert to a known default or the current theme if invalid
-      // For simplicity, we'll just log and not change if invalid.
     }
   }, []);
 
   if (!isInitialThemeLoaded) {
-    // You can return a loading state here if the theme switch causes a flash
-    // For example: return <div style={{ visibility: 'hidden' }}>{children}</div>;
-    // Or a full-page loader if preferred. However, usually the FALLBACK_DEFAULT_THEME
-    // provides a decent enough initial render.
     return null; 
   }
 
