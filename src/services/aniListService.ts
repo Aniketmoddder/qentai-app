@@ -1,6 +1,6 @@
+'use server';
 
-import type { AniListMediaData, AniListMedia, AniListStudioConnection } from '@/types/anilist';
-import type { Anime } from '@/types/anime'; // For mapping
+import type { AniListMediaData, AniListMedia } from '@/types/anilist';
 
 const ANILIST_GRAPHQL_ENDPOINT = 'https://graphql.anilist.co';
 
@@ -127,36 +127,6 @@ export async function fetchAniListMediaDetails(aniListId: number): Promise<AniLi
     console.error(`Network error fetching from AniList for ID ${aniListId}:`, error);
     return null;
   }
-}
-
-export function mapAniListStatusToAppStatus(aniListStatus: AniListMedia['status']): Anime['status'] {
-  switch (aniListStatus) {
-    case 'FINISHED':
-      return 'Completed';
-    case 'RELEASING':
-      return 'Ongoing'; // Or 'Airing'
-    case 'NOT_YET_RELEASED':
-      return 'Upcoming';
-    case 'CANCELLED':
-      return 'Cancelled'; // Consider if you need a 'Cancelled' status in your app
-    case 'HIATUS':
-      return 'Hiatus'; // Consider if you need a 'Hiatus' status
-    default:
-      return 'Unknown';
-  }
-}
-
-export function mapAniListFormatToAppType(aniListFormat: AniListMedia['format']): Anime['type'] {
-    switch (aniListFormat) {
-        case 'TV': return 'TV';
-        case 'TV_SHORT': return 'TV'; // Or 'Special' / 'OVA' depending on preference
-        case 'MOVIE': return 'Movie';
-        case 'SPECIAL': return 'Special';
-        case 'OVA': return 'OVA';
-        case 'ONA': return 'OVA'; // Often similar to OVA in distribution
-        case 'MUSIC': return 'Music'; // Or 'Special'
-        default: return 'Unknown';
-    }
 }
 
 // Helper interface for GraphQL response structure

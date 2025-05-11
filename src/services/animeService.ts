@@ -1,40 +1,32 @@
-'use server';
+'use server'; 
+
 import { db } from '@/lib/firebase';
-import type { Anime, Episode, Character, VoiceActor, CharacterEdge, AniListStudioConnection, AniListStudioEdge } from '@/types/anime';
-import type { AniListMedia } from '@/types/anilist';
-import { fetchAniListMediaDetails, mapAniListStatusToAppStatus, mapAniListFormatToAppType } from './aniListService';
+import type { Anime, Episode, Season } from '@/types/anime';
 import {
   collection,
   doc,
-  setDoc,
-  getDoc,
-  getDocs,
   addDoc,
+  getDocs,
+  getDoc,
   updateDoc,
   deleteDoc,
   query,
   where,
-  limit,
   orderBy,
+  limit,
+  writeBatch,
   Timestamp,
+  documentId,
+  QueryConstraint,
   FirestoreError,
   serverTimestamp,
-  writeBatch,
-  QueryConstraint,
-  documentId,
+  getCountFromServer,
 } from 'firebase/firestore';
-import { convertAnimeTimestampsForClient } from '@/lib/animeUtils';
+import { fetchAniListMediaDetails } from './aniListService'; 
+import { convertAnimeTimestampsForClient, mapAniListStatusToAppStatus, mapAniListFormatToAppType } from '@/lib/animeUtils';
+
 
 const animesCollection = collection(db, 'animes');
-
-export interface QueryFilters {
-  type?: Anime['type'];
-  genre?: string;
-  sortBy?: 'averageRating' | 'year' | 'title' | 'createdAt' | 'updatedAt' | 'popularity';
-  sortOrder?: 'asc' | 'desc';
-  featured?: boolean;
-}
-
 
 const handleFirestoreError = (error: unknown, context: string): FirestoreError => {
   console.error(`Firestore Error in ${context}:`, error);
@@ -43,116 +35,132 @@ const handleFirestoreError = (error: unknown, context: string): FirestoreError =
   }
   const genericError = new FirestoreError('unknown', `An unknown error occurred in ${context}.`);
   if (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string') {
-    (genericError as any).message = error.message;
+    (genericError as any).message = error.message; // Type assertion for message property
   }
   return genericError;
 };
 
-// Helper function to transform AniList character data to our app's Character type
-function transformAniListCharacters(aniListMedia: AniListMedia): Character[] {
-  if (!aniListMedia.characters?.edges) {
-    return [];
-  }
-  return aniListMedia.characters.edges.map((edge: CharacterEdge) => {
-    const voiceActors: VoiceActor[] = (edge.voiceActors || []).map(vaNode => ({
-      id: vaNode.id,
-      name: vaNode.name?.userPreferred || vaNode.name?.full || null,
-      image: vaNode.image?.large || null,
-      language: vaNode.languageV2 || undefined,
-    }));
-
-    return {
-      id: edge.node.id,
-      name: edge.node.name?.userPreferred || edge.node.name?.full || null,
-      image: edge.node.image?.large || null,
-      role: edge.role || undefined,
-      voiceActors: voiceActors.length > 0 ? voiceActors : undefined,
+export async function getAllAnimes(
+  options: {
+    count?: number;
+    filters?: {
+      genre?: string;
+      type?: Anime['type'];
+      sortBy?: 'averageRating' | 'year' | 'title' | 'createdAt' | 'updatedAt' | 'popularity';
+      sortOrder?: 'asc' | 'desc';
+      featured?: boolean;
+      // No direct title search here, searchAnimes handles that
     };
-  }).filter(char => char.name && char.image); // Ensure character has a name and image
-}
+  } = { count: 20, filters: {} }
+): Promise<Anime[]> {
+  const { count = 20, filters = {} } = options;
+  const { genre, type, sortBy, sortOrder = 'desc', featured } = filters;
 
-const formatDate = (dateObj?: { year?: number | null, month?: number | null, day?: number | null }): string | undefined => {
-  if (!dateObj || dateObj.year == null) return undefined;
-  const year = dateObj.year;
-  const month = dateObj.month ? String(dateObj.month).padStart(2, '0') : '01'; // Default to January if month missing
-  const day = dateObj.day ? String(dateObj.day).padStart(2, '0') : '01';   // Default to 1st if day missing
-  return `${year}-${month}-${day}`;
-};
+  const queryConstraints: QueryConstraint[] = [];
+
+  if (genre) {
+    queryConstraints.push(where('genre', 'array-contains', genre));
+  }
+  if (type) {
+    queryConstraints.push(where('type', '==', type));
+  }
+  if (featured !== undefined) {
+    queryConstraints.push(where('isFeatured', '==', featured));
+  }
+
+  if (sortBy) {
+    queryConstraints.push(orderBy(sortBy, sortOrder));
+  } else {
+    // Default sorting logic if sortBy is not provided
+    if (featured === true) {
+        // For featured, a common sort might be by popularity or a manual order field if you add one.
+        // If no specific featured sort, Firestore's default or by 'updatedAt' might be okay.
+        queryConstraints.push(orderBy('popularity', 'desc')); // Example: sort featured by popularity
+    } else if (genre) {
+        // For genre pages, default to sorting by popularity or averageRating.
+        queryConstraints.push(orderBy('popularity', 'desc')); 
+    } else if (type) {
+        // For type-specific pages, default to sorting by popularity or year.
+        queryConstraints.push(orderBy('popularity', 'desc')); 
+    } else {
+        // Absolute default for "Browse All" or if no other filters specify sort
+        queryConstraints.push(orderBy('updatedAt', 'desc'));
+    }
+  }
+   // Always add a tie-breaker sort by title if not already sorting by title to ensure consistent pagination
+  if (sortBy !== 'title') {
+    queryConstraints.push(orderBy('title', 'asc'));
+  }
 
 
-export async function addAnimeToFirestore(animeData: Omit<Anime, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  if (count > 0) {
+    queryConstraints.push(limit(count));
+  } else if (count === -1) { // Fetch all, up to Firestore limits or a reasonable max
+    queryConstraints.push(limit(500)); // Example: Max 500 for "all"
+  }
+
+
   try {
-    const animeDocRef = doc(animesCollection); 
-    
-    const newAnimeDataForDb: Anime = { 
-      ...animeData,
-      episodes: animeData.episodes || [], 
-      tmdbId: animeData.tmdbId,
-      aniListId: animeData.aniListId || undefined, 
-      isFeatured: animeData.isFeatured || false, 
-      trailerUrl: (animeData.trailerUrl === '' || animeData.trailerUrl === undefined || animeData.trailerUrl === null) ? undefined : animeData.trailerUrl,
-      popularity: animeData.popularity || 0, 
-      createdAt: serverTimestamp() as any, // Will be Timestamp on server
-      updatedAt: serverTimestamp() as any, // Will be Timestamp on server
-      id: animeDocRef.id 
-    };
-
-    const cleanedAnimeData: { [key: string]: any } = { ...newAnimeDataForDb };
-    Object.keys(cleanedAnimeData).forEach(key => {
-      if (cleanedAnimeData[key] === undefined) {
-         delete cleanedAnimeData[key]; 
-      }
-    });
-    
-    await setDoc(animeDocRef, cleanedAnimeData);
-    return animeDocRef.id;
+    const q = query(animesCollection, ...queryConstraints);
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => convertAnimeTimestampsForClient(doc.data() as Anime) as Anime);
   } catch (error) {
-    throw handleFirestoreError(error, 'addAnimeToFirestore');
+    if (error instanceof FirestoreError && error.code === 'failed-precondition' && error.message.includes("index")) {
+        console.warn(`Firestore query requires an index. Firestore error: ${error.message}. Please check the Firebase console for index creation suggestions based on your query: Filters used: ${JSON.stringify(filters)}, SortBy: ${sortBy}, SortOrder: ${sortOrder}`);
+    }
+    throw handleFirestoreError(error, `getAllAnimes with options: ${JSON.stringify(options)}`);
   }
-};
+}
 
 
 export async function getAnimeById(id: string): Promise<Anime | undefined> {
+  const docRef = doc(db, 'animes', id);
   try {
-    const docRef = doc(animesCollection, id);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      let animeData = convertAnimeTimestampsForClient(docSnap.data() as Anime); 
-
-      if (animeData.aniListId) {
-        const aniListData = await fetchAniListMediaDetails(animeData.aniListId);
-        if (aniListData) {
-          animeData.title = aniListData.title?.userPreferred || aniListData.title?.english || aniListData.title?.romaji || animeData.title;
-          animeData.bannerImage = aniListData.bannerImage || animeData.bannerImage;
-          animeData.coverImage = aniListData.coverImage?.extraLarge || aniListData.coverImage?.large || animeData.coverImage;
-          animeData.synopsis = aniListData.description || animeData.synopsis;
-          if (aniListData.genres && aniListData.genres.length > 0) {
-            animeData.genre = [...new Set([...animeData.genre, ...aniListData.genres])];
-          }
-          if (aniListData.averageScore) {
-            animeData.averageRating = parseFloat((aniListData.averageScore / 10).toFixed(1)); 
-          }
-          if (aniListData.trailer?.site === 'youtube' && aniListData.trailer?.id) {
-            animeData.trailerUrl = `https://www.youtube.com/watch?v=${aniListData.trailer.id}`;
-          }
+      let animeData = convertAnimeTimestampsForClient(docSnap.data() as Anime) as Anime;
+      
+      // If AniList ID exists and basic AniList data might be missing, fetch/enrich it
+      if (animeData.aniListId && (!animeData.characters || !animeData.bannerImage || !animeData.averageScore)) {
+        const aniListDetails = await fetchAniListMediaDetails(animeData.aniListId);
+        if (aniListDetails) {
+          const updatedDetails: Partial<Anime> = {
+            bannerImage: aniListDetails.bannerImage || animeData.bannerImage, // Prefer AniList if available
+            coverImage: aniListDetails.coverImage?.extraLarge || aniListDetails.coverImage?.large || animeData.coverImage,
+            averageScore: aniListDetails.averageScore || animeData.averageScore,
+            synopsis: aniListDetails.description || animeData.synopsis, // Prefer AniList synopsis if available
+            genre: aniListDetails.genres || animeData.genre,
+            status: mapAniListStatusToAppStatus(aniListDetails.status) || animeData.status,
+            type: mapAniListFormatToAppType(aniListDetails.format) || animeData.type,
+            season: aniListDetails.season || animeData.season,
+            seasonYear: aniListDetails.seasonYear || animeData.seasonYear,
+            countryOfOrigin: aniListDetails.countryOfOrigin || animeData.countryOfOrigin,
+            studios: aniListDetails.studios?.edges.map(edge => edge.node) || animeData.studios,
+            source: aniListDetails.source || animeData.source,
+            popularity: aniListDetails.popularity || animeData.popularity,
+            format: aniListDetails.format || animeData.format,
+            duration: aniListDetails.duration || animeData.duration,
+            airedFrom: aniListDetails.startDate ? new Date(aniListDetails.startDate.year!, aniListDetails.startDate.month! -1, aniListDetails.startDate.day!).toISOString() : animeData.airedFrom,
+            airedTo: aniListDetails.endDate ? new Date(aniListDetails.endDate.year!, aniListDetails.endDate.month! -1, aniListDetails.endDate.day!).toISOString() : animeData.airedTo,
+            episodesCount: aniListDetails.episodes || animeData.episodesCount,
+            trailerUrl: aniListDetails.trailer?.site === 'youtube' && aniListDetails.trailer.id ? `https://www.youtube.com/watch?v=${aniListDetails.trailer.id}` : animeData.trailerUrl,
+            characters: aniListDetails.characters?.edges?.map(edge => ({
+              id: edge.node.id,
+              name: edge.node.name?.userPreferred || edge.node.name?.full || null,
+              role: edge.role || 'SUPPORTING',
+              image: edge.node.image?.large || null,
+              voiceActors: edge.voiceActors?.map(va => ({
+                id: va.id,
+                name: va.name?.userPreferred || va.name?.full || null,
+                image: va.image?.large || null,
+                language: va.languageV2 || undefined
+              })) || []
+            })) || animeData.characters,
+          };
           
-          animeData.characters = transformAniListCharacters(aniListData);
-          animeData.sourceAdmin = animeData.sourceAdmin === 'tmdb' ? 'tmdb_anilist' : (animeData.sourceAdmin || 'anilist');
-
-          animeData.season = aniListData.season || undefined;
-          animeData.seasonYear = aniListData.seasonYear || animeData.year; 
-          animeData.countryOfOrigin = aniListData.countryOfOrigin || undefined;
-          animeData.studios = aniListData.studios?.edges?.map(edge => edge.node).filter(studio => studio.isAnimationStudio) || undefined;
-          animeData.source = aniListData.source || undefined;
-          animeData.popularity = aniListData.popularity || animeData.popularity || 0;
-          animeData.format = aniListData.format || undefined;
-          animeData.duration = aniListData.duration || undefined; 
-          animeData.episodesCount = aniListData.episodes || animeData.episodes?.length || undefined;
-          animeData.status = mapAniListStatusToAppStatus(aniListData.status) || animeData.status;
-          animeData.type = mapAniListFormatToAppType(aniListData.format) || animeData.type;
-
-          animeData.airedFrom = formatDate(aniListData.startDate);
-          animeData.airedTo = formatDate(aniListData.endDate);
+          // Merge and update in Firestore (non-blocking for the current request)
+          updateAnimeInFirestore(id, updatedDetails).catch(err => console.error("Error auto-updating anime with AniList data:", err));
+          animeData = { ...animeData, ...updatedDetails };
         }
       }
       return animeData;
@@ -161,307 +169,230 @@ export async function getAnimeById(id: string): Promise<Anime | undefined> {
   } catch (error) {
     throw handleFirestoreError(error, `getAnimeById (id: ${id})`);
   }
-};
+}
 
-export async function getAllAnimes({
-  count = 20, 
-  filters = {},
-}: {
-  count?: number;
-  filters?: QueryFilters;
-} = {}): Promise<Anime[]> {
+export async function addAnimeToFirestore(animeData: Omit<Anime, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
   try {
-    const queryConstraints: QueryConstraint[] = [];
-
-    if (filters.type) {
-      queryConstraints.push(where('type', '==', filters.type));
-    }
-    if (filters.genre) {
-      queryConstraints.push(where('genre', 'array-contains', filters.genre));
-    }
-    if (typeof filters.featured === 'boolean') {
-      queryConstraints.push(where('isFeatured', '==', filters.featured));
-    }
-
-    const sortBy = filters.sortBy;
-    // Default sortOrder to 'asc' if sortBy is 'title', otherwise 'desc'.
-    // This is only applied if sortBy is actually set.
-    const sortOrder = filters.sortOrder || (sortBy === 'title' ? 'asc' : 'desc');
-
-    if (sortBy) {
-      queryConstraints.push(orderBy(sortBy, sortOrder));
-    } else {
-      // Default sorting logic if sortBy is not provided in filters
-      if (filters.featured === true) {
-        queryConstraints.push(orderBy('popularity', 'desc')); // Default sort for featured
-      } else if (filters.genre) { // If filtering by genre
-        queryConstraints.push(orderBy('title', 'asc'));   // Default sort by title for genre pages
-      } else if (filters.type) { // If filtering by type (and not genre)
-        queryConstraints.push(orderBy('popularity', 'desc')); // Default sort by popularity for type pages
-      } else { // General default if no specific filters for sorting are met
-        queryConstraints.push(orderBy('updatedAt', 'desc'));
-      }
-    }
-    
-    const effectiveCount = count === -1 ? 500 : (count > 0 ? count : 20);
-    if (effectiveCount > 0) { // Only add limit if it's positive
-        queryConstraints.push(limit(effectiveCount));
-    } else if (count !== -1 && count === 0) { // Explicitly asked for 0
-        return [];
-    }
-    
-    const q = query(animesCollection, ...queryConstraints);
-    const querySnapshot = await getDocs(q);
-    const animes = querySnapshot.docs.map(doc => convertAnimeTimestampsForClient(doc.data() as Anime));
-    return animes;
-
+    const dataWithTimestamps = {
+      ...animeData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+       // Ensure episodes are at least an empty array if not provided
+      episodes: animeData.episodes || [],
+      // Ensure trailerUrl is undefined if empty string, otherwise use the value
+      trailerUrl: animeData.trailerUrl === '' ? undefined : animeData.trailerUrl,
+      // Ensure bannerImage is undefined if empty string
+      bannerImage: animeData.bannerImage === '' ? undefined : animeData.bannerImage,
+      // Ensure aniListId is number or undefined
+      aniListId: animeData.aniListId ? Number(animeData.aniListId) : undefined,
+    };
+    const docRef = await addDoc(animesCollection, dataWithTimestamps);
+    return docRef.id;
   } catch (error) {
-    if (error instanceof FirestoreError && error.code === 'failed-precondition') {
-      let filterDetails = JSON.stringify(filters);
-      let sortDetails = filters.sortBy ? `${filters.sortBy} ${filters.sortOrder || (filters.sortBy === 'title' ? 'asc' : 'desc')}` : "default/implicit sort";
-      
-      if (!filters.sortBy) {
-        if (filters.featured === true) {
-          sortDetails = "popularity (desc) as default for featured";
-        } else if (filters.genre) {
-          sortDetails = "title (asc) as default for genre";
-        } else if (filters.type) {
-          sortDetails = "popularity (desc) as default for type";
-        } else {
-          sortDetails = "updatedAt (desc) as general default";
-        }
-      }
-
-      console.warn(`Firestore query in getAllAnimes requires a composite index. 
-        Query Filters: ${filterDetails}. Effective Sort: ${sortDetails}.
-        Original error: ${error.message}. 
-        Please create the required composite index in your Firebase console. The error message from Firestore often contains a direct link to create it.`);
-    }
-    throw handleFirestoreError(error, 'getAllAnimes with filters: ' + JSON.stringify(filters));
+    throw handleFirestoreError(error, 'addAnimeToFirestore');
   }
-};
+}
 
-
-export async function searchAnimes(searchTerm: string): Promise<Anime[]> {
-  if (!searchTerm.trim()) return [];
+export async function updateAnimeInFirestore(id: string, animeData: Partial<Omit<Anime, 'id' | 'createdAt'>>): Promise<void> {
+  const docRef = doc(db, 'animes', id);
   try {
-    const searchTermLower = searchTerm.toLowerCase();
-    // Fetch a larger set for client-side filtering in a simple search.
-    // For production, consider Firestore text search extensions or Algolia/Typesense.
-    const allAnime = await getAllAnimes({ count: 200, filters: { sortBy: 'popularity', sortOrder: 'desc'} }); 
-    
-    return allAnime.filter(anime => 
-      anime.title.toLowerCase().includes(searchTermLower) ||
-      (anime.genre && anime.genre.some(g => g.toLowerCase().includes(searchTermLower))) ||
-      (anime.year && anime.year.toString().includes(searchTermLower))
-    ).slice(0, 50); // Limit client-side results
-  } catch (error) {
-    throw handleFirestoreError(error, `searchAnimes (term: ${searchTerm})`);
-  }
-};
+    const dataToUpdate: { [key: string]: any } = {
+      ...animeData,
+      updatedAt: serverTimestamp(),
+    };
 
-export async function updateAnimeInFirestore(id: string, dataToUpdate: Partial<Omit<Anime, 'id' | 'createdAt'>>): Promise<void> {
-  try {
-    const docRef = doc(animesCollection, id);
-    const updatePayload: { [key: string]: any } = { ...dataToUpdate, updatedAt: serverTimestamp() };
-
-    if (updatePayload.hasOwnProperty('trailerUrl')) {
-      updatePayload.trailerUrl = (updatePayload.trailerUrl === '' || updatePayload.trailerUrl === undefined || updatePayload.trailerUrl === null) ? null : updatePayload.trailerUrl;
+    // Handle optional fields to ensure they are correctly set or removed
+    if (animeData.hasOwnProperty('trailerUrl')) {
+      dataToUpdate.trailerUrl = animeData.trailerUrl === '' ? undefined : animeData.trailerUrl;
     }
-    
-    if (updatePayload.hasOwnProperty('bannerImage') && (updatePayload.bannerImage === '' || updatePayload.bannerImage === undefined || updatePayload.bannerImage === null) ) {
-        updatePayload.bannerImage = null; 
+    if (animeData.hasOwnProperty('bannerImage')) {
+      dataToUpdate.bannerImage = animeData.bannerImage === '' ? undefined : animeData.bannerImage;
     }
-    
-    if (updatePayload.hasOwnProperty('aniListId') && (updatePayload.aniListId === '' || updatePayload.aniListId === undefined || updatePayload.aniListId === null) ) {
-        updatePayload.aniListId = null; 
+     if (animeData.hasOwnProperty('aniListId')) {
+      dataToUpdate.aniListId = animeData.aniListId ? Number(animeData.aniListId) : undefined;
+    }
+    if (animeData.hasOwnProperty('averageRating')) {
+      dataToUpdate.averageRating = animeData.averageRating === null || animeData.averageRating === undefined ? undefined : Number(animeData.averageRating);
     }
 
-    if (updatePayload.isFeatured === undefined) {
-        const currentDoc = await getDoc(docRef);
-        if (currentDoc.exists()) {
-            const currentData = currentDoc.data() as Anime;
-            updatePayload.isFeatured = currentData.isFeatured || false; 
-        } else {
-            updatePayload.isFeatured = false; 
-        }
-    }
-        
-    Object.keys(updatePayload).forEach(key => {
-      if (updatePayload[key] === undefined && key !== 'trailerUrl' && key !== 'bannerImage' && key !== 'aniListId') { 
-         delete updatePayload[key]; 
+
+    // Remove undefined keys from the update payload to avoid Firestore errors, except for those intentionally set to undefined (like trailerUrl)
+    Object.keys(dataToUpdate).forEach(key => {
+      if (dataToUpdate[key] === undefined && !['trailerUrl', 'bannerImage', 'aniListId', 'averageRating'].includes(key)) {
+        delete dataToUpdate[key];
       }
     });
-
-    await updateDoc(docRef, updatePayload);
+    
+    await updateDoc(docRef, dataToUpdate);
   } catch (error) {
     throw handleFirestoreError(error, `updateAnimeInFirestore (id: ${id})`);
   }
-};
-
-export async function updateAnimeEpisode(animeId: string, episodeId: string, updatedEpisodeData: Partial<Episode>): Promise<void> {
-  try {
-    const animeRef = doc(animesCollection, animeId);
-    const animeSnap = await getDoc(animeRef);
-
-    if (!animeSnap.exists()) {
-      throw new Error(`Anime with ID ${animeId} not found.`);
-    }
-
-    const animeData = convertAnimeTimestampsForClient(animeSnap.data() as Anime) as Anime;
-    let episodes = [...(animeData.episodes || [])]; 
-    
-    const episodeIndex = episodes.findIndex(ep => ep.id === episodeId);
-
-    if (episodeIndex === -1) {
-       if (animeData.type === 'Movie' && episodes.length === 1 && updatedEpisodeData.url) {
-         episodes[0] = { ...episodes[0], ...updatedEpisodeData }; 
-       } else {
-         console.warn(`Episode with ID ${episodeId} not found in anime ${animeId}. Cannot update.`);
-         throw new Error(`Episode with ID ${episodeId} not found for update in anime ${animeId}.`);
-       }
-    } else {
-      episodes[episodeIndex] = { ...episodes[episodeIndex], ...updatedEpisodeData };
-    }
-    
-    await updateDoc(animeRef, { episodes: episodes, updatedAt: serverTimestamp() });
-  } catch (error) {
-    throw handleFirestoreError(error, `updateAnimeEpisode (animeId: ${animeId}, episodeId: ${episodeId})`);
-  }
-};
-
+}
 
 export async function deleteAnimeFromFirestore(id: string): Promise<void> {
+  const docRef = doc(db, 'animes', id);
   try {
-    const docRef = doc(animesCollection, id);
     await deleteDoc(docRef);
   } catch (error) {
     throw handleFirestoreError(error, `deleteAnimeFromFirestore (id: ${id})`);
   }
-};
+}
 
+export async function updateAnimeEpisode(animeId: string, episodeId: string, episodeData: Partial<Episode>): Promise<void> {
+  const animeRef = doc(db, 'animes', animeId);
+  try {
+    const animeSnap = await getDoc(animeRef);
+    if (animeSnap.exists()) {
+      const anime = animeSnap.data() as Anime;
+      const episodes = anime.episodes ? [...anime.episodes] : [];
+      const episodeIndex = episodes.findIndex(ep => ep.id === episodeId);
 
-export async function addEpisodeToSeason(animeId: string, episodeData: Episode): Promise<void> {
-    try {
-        const animeRef = doc(animesCollection, animeId);
-        const animeSnap = await getDoc(animeRef);
-
-        if (!animeSnap.exists()) {
-            throw new Error(`Anime with ID ${animeId} not found.`);
-        }
-        const anime = convertAnimeTimestampsForClient(animeSnap.data() as Anime) as Anime;
-        
-        const newEpisodeId = episodeData.id || 
-                             `${animeId}-s${episodeData.seasonNumber || 1}e${episodeData.episodeNumber}-${Date.now()}`.toLowerCase().replace(/\s+/g, '-');
-
-        const newEpisode: Episode = {
-            ...episodeData,
-            id: newEpisodeId
+      if (episodeIndex > -1) {
+        // Ensure URL is properly handled (set to undefined if empty string)
+        const updatedEpisodeSpecificData = {
+          ...episodeData,
+          url: episodeData.url === '' ? undefined : episodeData.url,
+          thumbnail: episodeData.thumbnail === '' ? undefined : episodeData.thumbnail,
+          overview: episodeData.overview === '' ? undefined : episodeData.overview,
+          duration: episodeData.duration === '' ? undefined : episodeData.duration,
         };
-        const updatedEpisodes = [...(anime.episodes || []), newEpisode];
-        await updateDoc(animeRef, { episodes: updatedEpisodes, updatedAt: serverTimestamp() });
-    } catch (error) {
-        throw handleFirestoreError(error, `addEpisodeToSeason (animeId: ${animeId})`);
+
+        episodes[episodeIndex] = { ...episodes[episodeIndex], ...updatedEpisodeSpecificData };
+        await updateDoc(animeRef, { episodes: episodes, updatedAt: serverTimestamp() });
+      } else {
+        throw new Error(`Episode with ID ${episodeId} not found in anime ${animeId}.`);
+      }
+    } else {
+      throw new Error(`Anime with ID ${animeId} not found.`);
     }
-};
-
-const staticAvailableGenres = ['Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Drama', 'Fantasy', 'Historical', 'Horror', 'Isekai', 'Josei', 'Magic', 'Martial Arts', 'Mecha', 'Military', 'Music', 'Mystery', 'Parody', 'Police', 'Psychological', 'Romance', 'Samurai', 'School', 'Sci-Fi', 'Seinen', 'Shoujo', 'Shounen', 'Slice of Life', 'Space', 'Sports', 'Super Power', 'Supernatural', 'Thriller', 'Vampire', 'Game', 'Demons', 'Ecchi', 'Harem'];
-
+  } catch (error) {
+    throw handleFirestoreError(error, `updateAnimeEpisode (animeId: ${animeId}, episodeId: ${episodeId})`);
+  }
+}
 
 export async function getUniqueGenres(): Promise<string[]> {
   try {
-    // Fetch a limited number of documents to scan for genres.
-    // This is a sample-based approach, not exhaustive for very large datasets.
-    const snapshot = await getDocs(query(animesCollection, orderBy('updatedAt', 'desc'), limit(300))); 
-    const allGenres = new Set<string>();
-    snapshot.docs.forEach(doc => {
-      const anime = doc.data() as Partial<Anime>; 
-      if (anime.genre && Array.isArray(anime.genre)) { 
-        anime.genre.forEach(g => {
-          if (typeof g === 'string' && g.trim() !== '') { 
-            allGenres.add(g.trim());
-          }
-        });
+    // This is inefficient for large datasets. Consider a separate 'genres' collection or aggregation.
+    const querySnapshot = await getDocs(query(animesCollection, limit(500))); // Limit to avoid excessive reads
+    const genresSet = new Set<string>();
+    querySnapshot.docs.forEach(doc => {
+      const anime = doc.data() as Anime;
+      if (anime.genre && Array.isArray(anime.genre)) {
+        anime.genre.forEach(g => genresSet.add(g));
       }
     });
-    // Ensure static genres are also included for consistency if DB is sparse
-    staticAvailableGenres.forEach(g => allGenres.add(g));
-    return Array.from(allGenres).sort();
+    return Array.from(genresSet).sort();
   } catch (error) {
-    if (error instanceof FirestoreError && error.code === 'failed-precondition') {
-        console.warn("Firestore query in getUniqueGenres for sampling requires an index on 'updatedAt'. Using static list as fallback. Please create this index (animes collection, field 'updatedAt', order Descending) for dynamic genre fetching. Error: ", error.message);
-    } else {
-        console.warn("Failed to dynamically fetch genres, falling back to static list with additions:", error);
-    }
-    return [...new Set(staticAvailableGenres)].sort();
+    throw handleFirestoreError(error, 'getUniqueGenres');
   }
-};
+}
 
-export async function updateAnimeIsFeatured(animeId: string, isFeatured: boolean): Promise<void> {
-  try {
-    const animeRef = doc(animesCollection, animeId);
-    await updateDoc(animeRef, { isFeatured, updatedAt: serverTimestamp() });
-  } catch (error) {
-    throw handleFirestoreError(error, `updateAnimeIsFeatured (id: ${animeId})`);
+export async function getFeaturedAnimes(options: { count?: number; filters?: { sortBy?: 'updatedAt' | 'popularity'; sortOrder?: 'asc' | 'desc' } } = { count: 5, filters: {} }): Promise<Anime[]> {
+  const { count = 5, filters = {} } = options;
+  const { sortBy = 'updatedAt', sortOrder = 'desc' } = filters; // Default sort for featured
+
+  const queryConstraints: QueryConstraint[] = [
+    where('isFeatured', '==', true),
+    orderBy(sortBy, sortOrder), // Example: sort featured by updatedAt or popularity
+  ];
+  
+  // Add a secondary sort for consistency if not already sorting by title
+  if (sortBy !== 'title') {
+    queryConstraints.push(orderBy('title', 'asc'));
   }
-};
+
+  if (count > 0) {
+    queryConstraints.push(limit(count));
+  }
+
+
+  try {
+    const q = query(animesCollection, ...queryConstraints);
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => convertAnimeTimestampsForClient(doc.data() as Anime) as Anime);
+  } catch (error) {
+     if (error instanceof FirestoreError && error.code === 'failed-precondition') {
+      console.warn(`Firestore query for featured animes requires an index. Details: ${error.message}. Query constraints: isFeatured == true, orderBy ${sortBy} ${sortOrder}, orderBy title asc.`);
+    }
+    throw handleFirestoreError(error, `getFeaturedAnimes with options: ${JSON.stringify(options)}`);
+  }
+}
+
+
+// Basic text search across title and genres.
+// For more advanced search, consider Algolia or Elasticsearch.
+export async function searchAnimes(searchText: string, count: number = 20): Promise<Anime[]> {
+  if (!searchText.trim()) return [];
+  
+  const lowerSearchText = searchText.toLowerCase();
+  // This is a client-side filter after fetching a broader set. Not ideal for large datasets.
+  // Firestore does not support direct text search or OR queries on different fields easily.
+  try {
+    // Fetch a larger initial set and filter locally.
+    // This approach is NOT scalable and should be replaced with a proper search solution (e.g., Algolia, Typesense) for production.
+    // For demonstration, we'll fetch a limited number of recent items and filter.
+    const q = query(animesCollection, orderBy('updatedAt', 'desc'), limit(200));
+    const querySnapshot = await getDocs(q);
+    const allFetchedAnimes = querySnapshot.docs.map(doc => convertAnimeTimestampsForClient(doc.data() as Anime) as Anime);
+
+    const filteredResults = allFetchedAnimes.filter(anime => {
+      const titleMatch = anime.title.toLowerCase().includes(lowerSearchText);
+      const genreMatch = anime.genre.some(g => g.toLowerCase().includes(lowerSearchText));
+      // const synopsisMatch = anime.synopsis.toLowerCase().includes(lowerSearchText); // Optional: search synopsis
+      return titleMatch || genreMatch;
+    });
+
+    return filteredResults.slice(0, count);
+  } catch (error) {
+    throw handleFirestoreError(error, `searchAnimes (searchText: ${searchText})`);
+  }
+}
+
+
+const MAX_IDS_PER_QUERY = 30; // Firestore 'in' query limit
 
 export async function getAnimesByIds(ids: string[]): Promise<Anime[]> {
   if (!ids || ids.length === 0) {
     return [];
   }
   try {
-    const MAX_IDS_PER_QUERY = 30; 
-    const animePromises: Promise<Anime[]>[] = [];
-
+    const fetchedAnimes: Anime[] = [];
+    // Batch IDs because Firestore 'in' query has a limit (currently 30, was 10)
     for (let i = 0; i < ids.length; i += MAX_IDS_PER_QUERY) {
       const batchIds = ids.slice(i, i + MAX_IDS_PER_QUERY);
-      const q = query(animesCollection, where(documentId(), 'in', batchIds));
-      animePromises.push(
-        getDocs(q).then(snapshot => snapshot.docs.map(doc => convertAnimeTimestampsForClient(doc.data() as Anime)))
-      );
+      if (batchIds.length > 0) {
+        const q = query(animesCollection, where(documentId(), 'in', batchIds));
+        const querySnapshot = await getDocs(q);
+        querySnapshot.forEach((doc) => {
+          fetchedAnimes.push(convertAnimeTimestampsForClient(doc.data() as Anime) as Anime);
+        });
+      }
     }
-    
-    const results = await Promise.all(animePromises);
-    return results.flat(); 
+     // Re-order based on original IDs array if necessary, as Firestore doesn't guarantee order for 'in' queries
+    return ids.map(id => fetchedAnimes.find(anime => anime.id === id)).filter(anime => anime !== undefined) as Anime[];
+
   } catch (error) {
-    throw handleFirestoreError(error, `getAnimesByIds (ids: ${ids.join(',')})`);
+    throw handleFirestoreError(error, `getAnimesByIds (ids: ${ids.join(', ')})`);
   }
-};
+}
 
-export async function getFeaturedAnimes(options: { count?: number; sortBy?: 'title' | 'updatedAt' | 'popularity'; sortOrder?: 'asc' | 'desc'; } = {}): Promise<Anime[]> {
-  const { count = 5, sortBy, sortOrder } = options;
+export async function updateAnimeIsFeatured(animeId: string, isFeatured: boolean): Promise<void> {
+  const animeRef = doc(db, 'animes', animeId);
   try {
-    const effectiveCount = count > 0 ? count : 5;
-    if (effectiveCount === 0 && count !== -1) return [];
-
-    const queryConstraints: QueryConstraint[] = [
-        where('isFeatured', '==', true),
-    ];
-
-    if (sortBy) {
-        // If sortBy is 'title', default sortOrder to 'asc', otherwise 'desc'
-        const effectiveSortOrder = sortOrder || (sortBy === 'title' ? 'asc' : 'desc');
-        queryConstraints.push(orderBy(sortBy, effectiveSortOrder));
-    } else {
-      // Default sort for featured: popularity descending. Requires index (isFeatured ASC, popularity DESC)
-      queryConstraints.push(orderBy('popularity', 'desc'));
-    }
-
-    queryConstraints.push(limit(effectiveCount));
-
-    const q = query(animesCollection, ...queryConstraints);
-    const querySnapshot = await getDocs(q);
-    const animes = querySnapshot.docs.map(doc => convertAnimeTimestampsForClient(doc.data() as Anime));
-    return animes;
+    await updateDoc(animeRef, {
+      isFeatured: isFeatured,
+      updatedAt: serverTimestamp(),
+    });
   } catch (error) {
-    if (error instanceof FirestoreError && error.code === 'failed-precondition') {
-      let sortFieldMsg = sortBy ? `${sortBy} (${sortOrder || (sortBy === 'title' ? 'asc' : 'desc')})` : "popularity (desc) as default";
-      console.warn(`Firestore query in getFeaturedAnimes requires an index.
-        Query involves 'isFeatured == true' and sorting by '${sortFieldMsg}'.
-        Original error: ${error.message}.
-        Please create the required composite index (e.g., isFeatured ASC, ${sortBy || 'popularity'} ${sortOrder || (sortBy === 'title' ? 'asc' : 'desc')}) in your Firebase console.`);
-    }
-    throw handleFirestoreError(error, `getFeaturedAnimes`);
+    throw handleFirestoreError(error, `updateAnimeIsFeatured (animeId: ${animeId})`);
+  }
+}
+
+export async function getTotalAnimeCount(): Promise<number> {
+  try {
+    const snapshot = await getCountFromServer(animesCollection);
+    return snapshot.data().count;
+  } catch (error) {
+    throw handleFirestoreError(error, 'getTotalAnimeCount');
   }
 }

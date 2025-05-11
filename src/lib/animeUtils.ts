@@ -1,60 +1,88 @@
 
 import type { Anime } from '@/types/anime';
+import type { AniListMedia } from '@/types/anilist';
 import { Timestamp } from 'firebase/firestore';
 
 // Helper to convert Firestore Timestamps to ISO strings for client components
-export const convertAnimeTimestampsForClient = (animeData: any): Omit<Anime, 'createdAt' | 'updatedAt'> & { createdAt?: string; updatedAt?: string } => {
+export const convertAnimeTimestampsForClient = (animeData: any): Omit<Anime, 'createdAt' | 'updatedAt' | 'airedFrom' | 'airedTo'> & { createdAt?: string; updatedAt?: string; airedFrom?: string; airedTo?: string; } => {
   const data = { ...animeData };
 
-  if (data.createdAt && data.createdAt instanceof Timestamp) {
-    data.createdAt = data.createdAt.toDate().toISOString();
-  } else if (typeof data.createdAt === 'object' && data.createdAt && 'seconds' in data.createdAt && 'nanoseconds' in data.createdAt && typeof data.createdAt.seconds === 'number' && typeof data.createdAt.nanoseconds === 'number') {
-    data.createdAt = new Timestamp(data.createdAt.seconds, data.createdAt.nanoseconds).toDate().toISOString();
-  } else if (typeof data.createdAt === 'string') {
-    try {
-      data.createdAt = new Date(data.createdAt).toISOString();
-    } catch (e) {
-      console.warn("Failed to parse createdAt string, leaving as is:", data.createdAt, e);
+  const convertTimestampToISO = (field: any): string | undefined => {
+    if (!field) return undefined;
+    if (field instanceof Timestamp) {
+      return field.toDate().toISOString();
     }
-  } else if (data.createdAt) {
-    console.warn("Unexpected createdAt format, attempting conversion:", data.createdAt);
-    try {
-      data.createdAt = new Date(data.createdAt).toISOString();
-    } catch (e) { console.error("Failed to convert createdAt", e); delete data.createdAt; }
-  }
+    // Handle cases where Timestamps might be plain objects (e.g., from server to client)
+    if (typeof field === 'object' && field !== null && 'seconds' in field && 'nanoseconds' in field) {
+      if (typeof field.seconds === 'number' && typeof field.nanoseconds === 'number') {
+        return new Timestamp(field.seconds, field.nanoseconds).toDate().toISOString();
+      }
+    }
+    // If it's already a string, try to parse and reformat to ensure consistency, or return if valid ISO
+    if (typeof field === 'string') {
+      try {
+        // Attempt to parse and re-serialize to ensure it's a valid ISO string
+        return new Date(field).toISOString();
+      } catch (e) {
+        // If parsing fails, it might not be a valid date string
+        console.warn(`Invalid date string encountered for conversion: ${field}`, e);
+        return undefined; 
+      }
+    }
+    console.warn(`Unexpected date/timestamp format for conversion: ${JSON.stringify(field)}`);
+    return undefined;
+  };
+  
+  const convertTimestampToDateOnlyISO = (field: any): string | undefined => {
+    const isoString = convertTimestampToISO(field);
+    return isoString ? isoString.split('T')[0] : undefined;
+  };
 
 
-  if (data.updatedAt && data.updatedAt instanceof Timestamp) {
-    data.updatedAt = data.updatedAt.toDate().toISOString();
-  } else if (typeof data.updatedAt === 'object' && data.updatedAt && 'seconds' in data.updatedAt && 'nanoseconds' in data.updatedAt && typeof data.updatedAt.seconds === 'number' && typeof data.updatedAt.nanoseconds === 'number') {
-     data.updatedAt = new Timestamp(data.updatedAt.seconds, data.updatedAt.nanoseconds).toDate().toISOString();
-  } else if (typeof data.updatedAt === 'string') {
-    try {
-      data.updatedAt = new Date(data.updatedAt).toISOString();
-    } catch (e) {
-      console.warn("Failed to parse updatedAt string, leaving as is:", data.updatedAt, e);
-    }
-  } else if (data.updatedAt) {
-    console.warn("Unexpected updatedAt format, attempting conversion:", data.updatedAt);
-     try {
-      data.updatedAt = new Date(data.updatedAt).toISOString();
-    } catch (e) { console.error("Failed to convert updatedAt", e); delete data.updatedAt; }
-  }
+  data.createdAt = convertTimestampToISO(data.createdAt);
+  data.updatedAt = convertTimestampToISO(data.updatedAt);
+  data.airedFrom = convertTimestampToDateOnlyISO(data.airedFrom);
+  data.airedTo = convertTimestampToDateOnlyISO(data.airedTo);
   
   if (data.episodes && Array.isArray(data.episodes)) {
     data.episodes = data.episodes.map((ep: any) => {
       const episode = { ...ep };
-      if (episode.airDate && episode.airDate instanceof Timestamp) {
-        episode.airDate = episode.airDate.toDate().toISOString().split('T')[0];
-      } else if (typeof episode.airDate === 'object' && episode.airDate && 'seconds' in episode.airDate && 'nanoseconds'in episode.airDate) {
-        episode.airDate = new Timestamp(episode.airDate.seconds, episode.airDate.nanoseconds).toDate().toISOString().split('T')[0];
-      } else if (typeof episode.airDate === 'string') {
-         try {
-          episode.airDate = new Date(episode.airDate).toISOString().split('T')[0];
-        } catch (e) { console.warn("Failed to parse episode airDate string", e); }
-      }
+      episode.airDate = convertTimestampToDateOnlyISO(episode.airDate);
       return episode;
     });
   }
-  return data as Omit<Anime, 'createdAt' | 'updatedAt'> & { createdAt?: string; updatedAt?: string };
+  return data as Omit<Anime, 'createdAt' | 'updatedAt' | 'airedFrom' | 'airedTo'> & { createdAt?: string; updatedAt?: string; airedFrom?: string; airedTo?: string; };
 };
+
+
+export function mapAniListStatusToAppStatus(aniListStatus?: AniListMedia['status'] | null): Anime['status'] {
+  if (!aniListStatus) return 'Unknown';
+  switch (aniListStatus) {
+    case 'FINISHED':
+      return 'Completed';
+    case 'RELEASING':
+      return 'Ongoing';
+    case 'NOT_YET_RELEASED':
+      return 'Upcoming';
+    case 'CANCELLED':
+      return 'Cancelled'; 
+    case 'HIATUS':
+      return 'Hiatus'; 
+    default:
+      return 'Unknown';
+  }
+}
+
+export function mapAniListFormatToAppType(aniListFormat?: AniListMedia['format'] | null): Anime['type'] {
+    if (!aniListFormat) return 'Unknown';
+    switch (aniListFormat) {
+        case 'TV': return 'TV';
+        case 'TV_SHORT': return 'TV'; 
+        case 'MOVIE': return 'Movie';
+        case 'SPECIAL': return 'Special';
+        case 'OVA': return 'OVA';
+        case 'ONA': return 'OVA'; 
+        case 'MUSIC': return 'Music';
+        default: return 'Unknown';
+    }
+}
