@@ -8,14 +8,13 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight, AlertTriangle, Play, Plus, Tv, Calendar, ListVideo, Star as StarIcon, Volume2, VolumeX, Loader2 } from 'lucide-react';
-// Removed: import { getFeaturedAnimes, getAllAnimes } from '@/services/animeService';
 import { convertAnimeTimestampsForClient } from '@/lib/animeUtils';
 import type { Anime } from '@/types/anime';
 import FeaturedAnimeCard from '@/components/anime/FeaturedAnimeCard';
 import TopAnimeListItem from '@/components/anime/TopAnimeListItem';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FirestoreError } from 'firebase/firestore';
+// Removed FirestoreError import as it's not directly used here for type checking
 
 const shuffleArray = <T,>(array: T[]): T[] => {
   if (!array || array.length === 0) return [];
@@ -43,40 +42,53 @@ const getYouTubeVideoId = (url?: string): string | null => {
       }
     }
   } catch (e) {
-    // Invalid URL
     return null;
   }
   return null;
 };
-
 
 export interface HomeClientProps {
   homePageGenreSectionComponent: React.ReactNode;
   recommendationsSectionComponent: React.ReactNode;
   initialAllAnimeData?: Anime[]; 
   initialFeaturedAnimes?: Anime[];
+  fetchError?: string | null; // Added to receive fetch errors
 }
 
 export default function HomeClient({ 
     homePageGenreSectionComponent, 
     recommendationsSectionComponent,
-    initialAllAnimeData = [], // Provide default empty array
-    initialFeaturedAnimes = [] // Provide default empty array
+    initialAllAnimeData = [],
+    initialFeaturedAnimes = [],
+    fetchError: initialFetchError // Receive fetchError prop
 }: HomeClientProps) {
-  // Use the props directly instead of fetching inside HomeClientContent
-  const [allAnime, setAllAnime] = useState<Anime[]>(initialAllAnimeData.map(a => convertAnimeTimestampsForClient(a)) as Anime[]);
-  const [featuredAnimesList, setFeaturedAnimesList] = useState<Anime[]>(initialFeaturedAnimes.map(a => convertAnimeTimestampsForClient(a)) as Anime[]);
-  const [fetchError, setFetchError] = useState<string | null>(null); // Can be set by parent if initial fetch fails
-  const [isLoading, setIsLoading] = useState(false); // True if parent is still fetching, or if HomeClientContent does its own loading
+  const [allAnime, setAllAnime] = useState<Anime[]>(initialAllAnimeData);
+  const [featuredAnimesList, setFeaturedAnimesList] = useState<Anime[]>(initialFeaturedAnimes);
+  const [fetchError, setFetchError] = useState<string | null>(initialFetchError);
+  const [isLoading, setIsLoading] = useState(true); // Start as true
 
   const [playTrailer, setPlayTrailer] = useState(false);
   const [isTrailerMuted, setIsTrailerMuted] = useState(true);
 
-  // Effect to handle prop updates if they change after initial load (though typically they won't for initial data)
   useEffect(() => {
-    setAllAnime(initialAllAnimeData.map(a => convertAnimeTimestampsForClient(a)) as Anime[]);
-    setFeaturedAnimesList(initialFeaturedAnimes.map(a => convertAnimeTimestampsForClient(a)) as Anime[]);
-  }, [initialAllAnimeData, initialFeaturedAnimes]);
+    // This effect now primarily handles updates if props change post-initial render,
+    // and sets initial loading state correctly.
+    if (initialFetchError) {
+      setFetchError(initialFetchError);
+      setAllAnime([]);
+      setFeaturedAnimesList([]);
+      setIsLoading(false);
+    } else if (initialAllAnimeData.length > 0 || initialFeaturedAnimes.length > 0) {
+      setAllAnime(initialAllAnimeData);
+      setFeaturedAnimesList(initialFeaturedAnimes);
+      setFetchError(null);
+      setIsLoading(false);
+    } else {
+      // No error, but also no data. Could be legitimately empty or still loading server-side.
+      // If HomePageWrapper has run and passed empty arrays with no error, it implies data is empty.
+      setIsLoading(false);
+    }
+  }, [initialAllAnimeData, initialFeaturedAnimes, initialFetchError]);
 
 
   const heroAnime = featuredAnimesList[0] || (allAnime.length > 0 ? shuffleArray([...allAnime])[0] : undefined);
@@ -84,16 +96,14 @@ export default function HomeClient({
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (heroAnime && youtubeVideoId && !playTrailer) {
+    if (heroAnime && youtubeVideoId && !playTrailer && !fetchError) { // Don't start trailer if there's an error
       timer = setTimeout(() => {
         setPlayTrailer(true);
-      }, 3000); // Auto-play trailer after 3 seconds
+      }, 3000);
     }
     return () => clearTimeout(timer);
-  }, [heroAnime, youtubeVideoId, playTrailer]);
+  }, [heroAnime, youtubeVideoId, playTrailer, fetchError]);
 
-
-  // Carousels Data Preparation
   const trendingAnime = allAnime.length > 0 ? shuffleArray([...allAnime]).slice(0, 10) : [];
   
   const popularAnime = allAnime.length > 0 
@@ -116,10 +126,7 @@ export default function HomeClient({
     .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
     .slice(0, 10) : [];
 
-   // If parent indicates loading (e.g., by passing empty arrays while it fetches), show skeleton
-   // Or if HomeClientContent is set to loading for some other reason.
-   // This check ensures skeleton shows if initial data isn't ready.
-  if (isLoading || (initialAllAnimeData.length === 0 && initialFeaturedAnimes.length === 0 && !fetchError)) {
+  if (isLoading && !fetchError) { // Show skeleton only if loading and no initial error
     return (
       <>
         <section className="relative h-[65vh] md:h-[80vh] w-full flex items-end -mt-[calc(var(--header-height,4rem)+1px)] bg-muted/30">
@@ -165,6 +172,23 @@ export default function HomeClient({
     );
   }
 
+  if (fetchError) {
+    return (
+      <Container className="flex flex-col items-center justify-center min-h-[calc(100vh-var(--header-height,4rem)-var(--footer-height,0px)-1px)] py-12 text-center">
+        <AlertTriangle className="mx-auto h-16 w-16 text-destructive mb-6" />
+        <h1 className="text-3xl font-bold text-destructive mb-3 font-zen-dots">Error Loading Content</h1>
+        <p className="text-lg text-muted-foreground mb-4 font-orbitron">We encountered an issue fetching anime data.</p>
+        <p className="text-md text-foreground/80 mb-6 whitespace-pre-line max-w-2xl">{fetchError}</p>
+        <p className="text-sm text-muted-foreground font-poppins">
+          Please try refreshing the page. If the problem persists, ensure your Firebase setup is correct (including Firestore indexes and OAuth authorized domains for login features) and check your internet connection.
+        </p>
+        <Button onClick={() => window.location.reload()} className="mt-8 btn-primary-gradient">
+          Refresh Page
+        </Button>
+      </Container>
+    );
+  }
+  
   const noContentAvailable = !isLoading && !fetchError && allAnime.length === 0 && featuredAnimesList.length === 0 && !heroAnime;
 
   return (
@@ -218,7 +242,7 @@ export default function HomeClient({
                 }
                  <span className="flex items-center"><Calendar className="w-4 h-4 mr-1.5" /> {heroAnime.year}</span>
               </div>
-              <p className="text-base md:text-lg text-muted-foreground mb-6 line-clamp-3">
+              <p className="text-base md:text-lg text-muted-foreground mb-6 line-clamp-3 font-poppins">
                 {heroAnime.synopsis}
               </p>
               <div className="flex flex-wrap gap-3 sm:gap-4 items-center">
@@ -255,28 +279,18 @@ export default function HomeClient({
       )}
 
       <Container className="overflow-x-clip py-8">
-        {fetchError && (
-          <div className="my-8 p-6 bg-destructive/10 border border-destructive/30 rounded-lg flex items-start text-destructive">
-            <AlertTriangle className="h-6 w-6 mr-3 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-semibold font-orbitron text-lg">Error Loading Content</h3>
-              <p className="text-sm whitespace-pre-line">{fetchError}</p>
-              {/* Removed fetchData button as HomeClientContent no longer fetches directly */}
-            </div>
-          </div>
-        )}
         {noContentAvailable && (
            <div className="my-8 p-6 bg-card border border-border rounded-lg text-center">
             <h3 className="font-semibold text-xl font-orbitron">No Anime Found</h3>
-            <p className="text-muted-foreground">It looks like there's no anime in the database yet. An admin can add some via the admin panel.</p>
+            <p className="text-muted-foreground font-poppins">It looks like there's no anime in the database yet. An admin can add some via the admin panel.</p>
           </div>
         )}
 
         {featuredAnimesList.length > 0 && (
           <section className="py-6 md:py-8">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar">Featured Anime</h2>
-              <Button variant="link" asChild className="text-primary hover:text-primary/80">
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar font-orbitron">Featured Anime</h2>
+              <Button variant="link" asChild className="text-primary hover:text-primary/80 font-poppins">
                 <Link href="/browse?filter=featured">View More <ChevronRight className="w-4 h-4 ml-1"/></Link>
               </Button>
             </div>
@@ -298,9 +312,9 @@ export default function HomeClient({
         {topAnimeList.length > 0 && (
           <section className="py-6 md:py-8">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar">Top Anime</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground section-title-bar font-orbitron">Top Anime</h2>
               <div className="flex items-center gap-2">
-                <Button variant="link" asChild className="text-primary hover:text-primary/80">
+                <Button variant="link" asChild className="text-primary hover:text-primary/80 font-poppins">
                   <Link href="/browse?sort=top">View More <ChevronRight className="w-4 h-4 ml-1"/></Link>
                 </Button>
               </div>
@@ -317,5 +331,3 @@ export default function HomeClient({
     </> 
   );
 }
-
-    

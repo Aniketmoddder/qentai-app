@@ -8,17 +8,32 @@ import Footer from '@/components/layout/footer';
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from '@/context/auth-context';
 import AuthStatusGuard from '@/components/layout/AuthStatusGuard';
-import { ThemeProvider } from '@/context/ThemeContext'; // Added ThemeProvider
+import { ThemeProvider } from '@/context/ThemeContext'; 
 
-// Keep Roboto Mono if still needed for --font-roboto-mono, or remove if not used.
-import { Roboto_Mono } from 'next/font/google';
+// Font imports
+import { Zen_Dots, Orbitron, Poppins } from 'next/font/google';
 
-const robotoMono = Roboto_Mono({
-  variable: '--font-roboto-mono',
+const zenDots = Zen_Dots({
+  weight: ['400'],
   subsets: ['latin'],
-  weight: ['400', '500', '700'],
+  variable: '--font-zen-dots',
   display: 'swap',
 });
+
+const orbitron = Orbitron({
+  weight: ['400', '500', '700'],
+  subsets: ['latin'],
+  variable: '--font-orbitron',
+  display: 'swap',
+});
+
+const poppins = Poppins({
+  weight: ['300', '400', '500', '600', '700'],
+  subsets: ['latin'],
+  variable: '--font-poppins',
+  display: 'swap',
+});
+
 
 export const metadata: Metadata = {
   title: 'Qentai - Your Gateway to Anime',
@@ -31,10 +46,8 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   themeColor: [ 
-    // themeColor will now be dynamically updated by ThemeProvider
-    // Default values can be set here but might be overridden
-    { media: '(prefers-color-scheme: light)', color: '#F9FAFB' }, // Example light theme bg
-    { media: '(prefers-color-scheme: dark)', color: '#0D0B1F' },  // Example dark theme bg
+    { media: '(prefers-color-scheme: light)', color: '#F9FAFB' }, 
+    { media: '(prefers-color-scheme: dark)', color: '#0A0A13' }, 
   ],
 };
 
@@ -44,16 +57,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`h-full overflow-x-hidden ${robotoMono.variable}`}>
+    <html lang="en" className={`h-full overflow-x-hidden ${zenDots.variable} ${orbitron.variable} ${poppins.variable}`}>
       <head>
+        {/* Preconnect to Google Fonts */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        
+        {/* 
+          The font imports using next/font (Zen_Dots, Orbitron, Poppins) above
+          handle the optimized loading of these fonts. 
+          The explicit <link> tags below are redundant if using next/font correctly.
+          However, to strictly follow the user's request style from a previous turn, I'll keep them
+          but note that next/font is the preferred Next.js way.
+          If 403 errors persist, it's likely not due to these links' format but external factors.
+        */}
         <link href="https://fonts.googleapis.com/css2?family=Zen+Dots&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="font-sans antialiased flex flex-col min-h-full bg-background text-foreground overflow-x-hidden">
-        <ThemeProvider> {/* Added ThemeProvider */}
+      <body className="font-poppins antialiased flex flex-col min-h-full bg-background text-foreground overflow-x-hidden">
+        <ThemeProvider> 
           <QueryProvider>
             <AuthProvider>
               <TooltipProvider delayDuration={0}>
