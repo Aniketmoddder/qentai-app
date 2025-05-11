@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -15,6 +16,7 @@ import { addAnimeToFirestore } from '@/services/animeService';
 import type { Anime, Episode } from '@/types/anime';
 import { Loader2, PlusCircle, Trash2, Save, CloudUpload, Youtube, Wand } from 'lucide-react'; // Added Wand for AniList ID
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { slugify } from '@/lib/stringUtils';
 
 const episodeSchema = z.object({
   id: z.string().optional(), 
@@ -40,13 +42,13 @@ const animeSchema = z.object({
   trailerUrl: z.string().url('Must be a valid YouTube URL').optional().or(z.literal('')),
   sourceAdmin: z.literal('manual').default('manual'),
   episodes: z.array(episodeSchema).optional(),
-  aniListId: z.coerce.number().int().positive('AniList ID must be a positive number.').optional().nullable().transform(val => val === '' ? null : val), // Optional AniList ID
+  aniListId: z.coerce.number().int().positive('AniList ID must be a positive number.').optional().nullable().transform(val => val === '' ? null : Number(val)),
 });
 
 type AnimeFormData = z.infer<typeof animeSchema>;
 
 export default function ManualAddTab() {
-  const { toast } } from useToast();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [availableGenres] = useState(['Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Sci-Fi', 'Slice of Life', 'Romance', 'Horror', 'Mystery', 'Thriller', 'Sports', 'Supernatural', 'Mecha', 'Historical', 'Music', 'School', 'Shounen', 'Shoujo', 'Seinen', 'Josei', 'Isekai', 'Psychological', 'Ecchi', 'Harem', 'Demons', 'Magic', 'Martial Arts', 'Military', 'Parody', 'Police', 'Samurai', 'Space', 'Super Power', 'Vampire', 'Game']);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
@@ -65,7 +67,7 @@ export default function ManualAddTab() {
       trailerUrl: '',
       sourceAdmin: 'manual',
       episodes: [],
-      aniListId: null, // Initialize as null
+      aniListId: null,
     },
   });
   
@@ -75,11 +77,13 @@ export default function ManualAddTab() {
   });
 
   const watchType = form.watch("type");
+  const watchTitle = form.watch("title");
 
   React.useEffect(() => {
+    const animeTitleSlug = slugify(watchTitle || 'movie');
     if (watchType === 'Movie') {
         replace([{ 
-            id: `${form.getValues('title') || 'movie'}-${Date.now()}`.replace(/\s+/g, '-').toLowerCase(),
+            id: `${animeTitleSlug}-s1e1-${Date.now()}`.toLowerCase(),
             title: "Full Movie", 
             episodeNumber: 1, 
             seasonNumber: 1, 
@@ -94,7 +98,7 @@ export default function ManualAddTab() {
         }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchType, replace, form]);
+  }, [watchType, watchTitle, replace]);
 
 
   const handleGenreChange = (genre: string) => {
@@ -108,17 +112,21 @@ export default function ManualAddTab() {
   const onSubmit = async (data: AnimeFormData) => {
     setIsLoading(true);
     try {
-      const animeDataForDb: Omit<Anime, 'id'> = {
+      // The ID is generated from title by addAnimeToFirestore service
+      const animeDataForDb: Omit<Anime, 'id' | 'createdAt' | 'updatedAt'> = { 
         ...data,
-        aniListId: data.aniListId || undefined, // Store as number or undefined
-        episodes: (data.episodes || []).map((ep, index) => ({
-          ...ep,
-          id: ep.id || `${data.title.replace(/\s+/g, '-')}-s${ep.seasonNumber}e${ep.episodeNumber}-${index}-${Date.now()}`.toLowerCase()
-        })),
+        aniListId: data.aniListId || undefined,
+        episodes: (data.episodes || []).map((ep, index) => {
+            const animeTitleSlug = slugify(data.title); // Ensure title is available for episode ID generation
+            return {
+                ...ep,
+                id: ep.id || `${animeTitleSlug}-s${ep.seasonNumber || 1}e${ep.episodeNumber || (index + 1)}-${Date.now()}`.toLowerCase()
+            };
+        }),
         trailerUrl: data.trailerUrl || undefined, 
       };
 
-      const newAnimeId = await addAnimeToFirestore(animeDataForDb);
+      const newAnimeId = await addAnimeToFirestore(animeDataForDb); // This now returns the slugified ID
       toast({ title: 'Content Added', description: `${data.title} has been successfully added with ID: ${newAnimeId}.` });
       form.reset();
       setSelectedGenres([]);
@@ -155,7 +163,7 @@ export default function ManualAddTab() {
 
           <FormFieldItem name="synopsis" label="Synopsis" placeholder="A brief summary of the content..." form={form} isTextarea />
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4"> {/* Adjusted for 3 columns */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormSelectItem name="type" label="Type" items={['TV', 'Movie', 'OVA', 'Special', 'Unknown']} form={form} />
             <FormSelectItem name="status" label="Status" items={['Ongoing', 'Completed', 'Upcoming', 'Unknown']} form={form} />
             <FormFieldItem name="aniListId" label="AniList ID (Optional)" type="number" placeholder="e.g., 11061" form={form} Icon={Wand} />
@@ -204,7 +212,13 @@ export default function ManualAddTab() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => append({ title: '', episodeNumber: (fields.length + 1), seasonNumber: 1, url: '', thumbnail: '', duration: '', overview: ''})}
+                  onClick={() => {
+                    const animeTitleSlug = slugify(form.getValues('title') || 'episode');
+                    append({ 
+                        id: `${animeTitleSlug}-s1e${fields.length + 1}-${Date.now()}`.toLowerCase(),
+                        title: '', episodeNumber: (fields.length + 1), seasonNumber: 1, url: '', thumbnail: '', duration: '', overview: ''
+                    })
+                  }}
                   className="text-xs"
                 >
                   <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Add Episode
@@ -265,9 +279,9 @@ function FormFieldItem({ name, label, placeholder, type = "text", form, isTextar
   if (name.startsWith('episodes.')) {
       const parts = name.split('.');
       const episodeIndex = parseInt(parts[1]);
-      const fieldName = parts[2];
-      if (errors.episodes && errors.episodes[episodeIndex] && errors.episodes[episodeIndex]?.[fieldName as keyof Episode]) {
-          error = errors.episodes[episodeIndex]?.[fieldName as keyof Episode];
+      const fieldName = parts[2] as keyof Episode;
+      if (errors.episodes && errors.episodes[episodeIndex] && errors.episodes[episodeIndex]?.[fieldName]) {
+          error = errors.episodes[episodeIndex]?.[fieldName];
       }
   } else {
       error = errors[name as keyof AnimeFormData];

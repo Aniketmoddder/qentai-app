@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -13,6 +14,7 @@ import type { Anime } from '@/types/anime';
 import { Loader2, Film, Tv as TvIcon, DownloadCloud, AlertTriangle, Wand } from 'lucide-react'; 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { slugify } from '@/lib/stringUtils';
 
 export default function TmdbImportTab() {
   const { toast } = useToast();
@@ -56,11 +58,12 @@ export default function TmdbImportTab() {
     setIsLoading(true);
     setError(null);
     try {
-      const animeDataToAdd: Omit<Anime, 'id'> = {
+      // The ID is generated from title by addAnimeToFirestore service
+      const animeDataToAdd: Omit<Anime, 'id' | 'createdAt' | 'updatedAt'> = { 
         tmdbId: fetchedAnime.tmdbId,
-        aniListId: fetchedAnime.aniListId || undefined, // Include aniListId
+        aniListId: fetchedAnime.aniListId || undefined,
         title: fetchedAnime.title,
-        coverImage: fetchedAnime.coverImage || `https://picsum.photos/seed/${fetchedAnime.tmdbId || fetchedAnime.title}/300/450`,
+        coverImage: fetchedAnime.coverImage || `https://picsum.photos/seed/${slugify(fetchedAnime.title)}-cover/300/450`,
         bannerImage: fetchedAnime.bannerImage || undefined, 
         year: fetchedAnime.year || new Date().getFullYear(), 
         genre: fetchedAnime.genre || [], 
@@ -74,7 +77,7 @@ export default function TmdbImportTab() {
         isFeatured: false, 
       };
       
-      const newAnimeId = await addAnimeToFirestore(animeDataToAdd);
+      const newAnimeId = await addAnimeToFirestore(animeDataToAdd); // This now returns the slugified ID
       toast({ title: 'Anime Added', description: `${fetchedAnime.title} successfully added to Firestore with ID: ${newAnimeId}.` });
       setFetchedAnime(null);
       setTmdbId('');
