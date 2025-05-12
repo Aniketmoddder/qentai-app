@@ -5,8 +5,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Anime } from '@/types/anime';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button'; // Import Button
 import { PlayCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 interface AnimeCardProps {
   anime: Anime;
@@ -14,6 +16,8 @@ interface AnimeCardProps {
 }
 
 export default function AnimeCard({ anime, className }: AnimeCardProps) {
+  const router = useRouter(); // Initialize router
+
   const getEpisodeBadgeText = () => {
     if (anime.type === 'Movie') {
       return 'Movie';
@@ -32,12 +36,17 @@ export default function AnimeCard({ anime, className }: AnimeCardProps) {
   const placeholderCover = `https://picsum.photos/seed/${anime.id}/300/450`;
   const firstEpisodeId = anime.episodes?.[0]?.id || '';
 
+  const handlePlayClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation(); // Prevent outer Link (to details page) from firing
+    router.push(`/play/${anime.id}?episode=${firstEpisodeId}`);
+  };
+
   return (
     <Link
       href={`/anime/${anime.id}`}
       className={cn(
         "group block cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg",
-        "w-[45vw] max-w-[180px] sm:w-auto sm:max-w-[200px] md:max-w-[220px]", 
+        "w-[45vw] max-w-[160px] sm:w-auto sm:max-w-[180px] md:max-w-[200px]", 
         className
       )}
       aria-label={`View details for ${anime.title}`}
@@ -48,7 +57,7 @@ export default function AnimeCard({ anime, className }: AnimeCardProps) {
           alt={anime.title}
           fill
           sizes="(max-width: 640px) 45vw, (max-width: 768px) 200px, 220px"
-          className="object-cover group-hover:scale-105 transition-transform duration-300" // Ensure image covers and has hover effect
+          className="object-cover group-hover:scale-105 transition-transform duration-300"
           priority={false} 
           data-ai-hint={`${anime.genre?.[0] || 'anime'} portrait poster`}
         />
@@ -67,20 +76,19 @@ export default function AnimeCard({ anime, className }: AnimeCardProps) {
         <div 
             className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-2.5 z-10"
         >
-             {/* Play Icon - This Link now correctly wraps the play icon area */}
-            <div 
+            {/* Centered Play Icon on Hover - now a Button */}
+            <div
                 className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300 z-20"
             >
-                <Link
-                    href={`/play/${anime.id}?episode=${firstEpisodeId}`}
-                    onClick={(e) => {
-                        e.stopPropagation(); // Prevent outer Link (to details page) from firing
-                    }}
+                <Button
+                    variant="ghost" 
+                    size="icon"
+                    onClick={handlePlayClick}
                     aria-label={`Play ${anime.title}`}
-                    className="p-2 rounded-full hover:bg-black/30 focus:bg-black/40 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary" // Added focus styling
+                    className="p-2 rounded-full hover:bg-black/40 focus:bg-black/50 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary w-auto h-auto"
                 >
                     <PlayCircle className="w-10 h-10 text-white/90 group-hover:text-primary transition-colors" />
-                </Link>
+                </Button>
             </div>
             <p
               className="text-sm font-semibold text-white group-hover:text-primary transition-colors duration-200 truncate"
