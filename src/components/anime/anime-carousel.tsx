@@ -44,6 +44,7 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
       currentRef.addEventListener('scroll', checkScrollPosition, { passive: true });
       window.addEventListener('resize', checkScrollPosition);
       
+      // Use ResizeObserver to detect changes in container size (e.g., due to responsive layout shifts)
       const observer = new ResizeObserver(checkScrollPosition);
       observer.observe(currentRef);
 
@@ -59,16 +60,12 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
       const container = scrollContainerRef.current;
-      // Scroll by a percentage of the container's width for smoother multi-item scroll
-      // For desktop, a slightly larger scroll might feel better.
-      const scrollAmount = container.clientWidth * (window.innerWidth < 768 ? 0.75 : 0.6); 
-
-
+      const scrollAmount = container.clientWidth * (window.innerWidth < 768 ? 0.85 : 0.7); 
       container.scrollBy({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth',
       });
-      setTimeout(checkScrollPosition, 350); 
+      setTimeout(checkScrollPosition, 350); // Re-check position after scroll animation
     }
   };
 
@@ -77,6 +74,7 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
     return null; 
   }
 
+  // Determine if scroll buttons should be shown based on actual scrollability
   const showScrollButtons = isClient && scrollContainerRef.current ? scrollContainerRef.current.scrollWidth > scrollContainerRef.current.clientWidth : false;
 
 
@@ -101,7 +99,7 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
                     "opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 ease-in-out",
                     "disabled:opacity-30 disabled:cursor-not-allowed",
                     "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background", 
-                    "flex items-center justify-center" // Ensure flex properties for centering icon
+                    "flex items-center justify-center" 
                 )}
                 aria-label="Scroll left"
             >
@@ -119,7 +117,7 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
                     "opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 ease-in-out",
                     "disabled:opacity-30 disabled:cursor-not-allowed",
                     "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                    "flex items-center justify-center" // Ensure flex properties for centering icon
+                    "flex items-center justify-center" 
                 )}
                 aria-label="Scroll right"
             >
@@ -130,10 +128,10 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
 
         <div 
             ref={scrollContainerRef} 
-            className="flex overflow-x-auto pb-4 gap-3 sm:gap-4 md:gap-x-5 scrollbar-hide"
+            className="flex overflow-x-auto pb-4 gap-2.5 sm:gap-3 md:gap-x-4 scrollbar-hide" // Adjusted gap for smaller cards
             style={{ 
                 scrollSnapType: 'x mandatory',
-                scrollBehavior: 'smooth' // Added for CSS-driven smooth scroll, complements JS
+                scrollBehavior: 'smooth' 
             }}
         >
             {animeList.map((anime, index) => (
@@ -147,8 +145,6 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
             ))}
         </div>
       </div>
-
-      {/* Removed mobile scroll buttons div that was previously here */}
     </section>
   );
 }
