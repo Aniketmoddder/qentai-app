@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Character } from '@/types/anime';
@@ -40,7 +41,7 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
   const checkScrollPosition = useCallback(() => {
     if (scrollContainerRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      const tolerance = 5; // Small tolerance for scroll position checks
+      const tolerance = 5; 
       setIsAtStart(scrollLeft <= tolerance);
       setIsAtEnd(scrollLeft + clientWidth >= scrollWidth - tolerance);
     }
@@ -68,7 +69,7 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
       const container = scrollContainerRef.current;
-      const scrollAmount = container.clientWidth * 0.75; // Scroll by 75% of visible width
+      const scrollAmount = container.clientWidth * 0.75; 
       container.scrollBy({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth',
@@ -97,10 +98,10 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
 
 
   return (
-    <div className="relative group/carousel py-4">
+    <div className="relative group/carousel py-4 mt-2 sm:mt-3"> {/* Added top margin */}
       <div
         ref={scrollContainerRef}
-        className="flex overflow-x-auto pb-4 gap-3 sm:gap-4 scrollbar-hide px-1" // Added small horizontal padding to prevent clipping with buttons
+        className="flex overflow-x-auto pb-4 gap-3 sm:gap-4 scrollbar-hide px-1" 
         style={{ scrollSnapType: 'x mandatory', scrollBehavior: 'smooth' }}
       >
         {characters.map((character) => (
@@ -114,8 +115,8 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
         ))}
       </div>
 
-      {/* Left Scroll Button */}
-      {canScroll && (
+      {/* Left Scroll Button - Conditionally rendered/styled based on isAtStart */}
+      {canScroll && !isAtStart && (
         <Button
           variant="ghost"
           size="icon"
@@ -126,9 +127,8 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
             "rounded-full w-9 h-9 sm:w-10 sm:h-10",
             "bg-black/40 hover:bg-black/60 text-white shadow-md",
             "opacity-0 group-hover/carousel:opacity-100 transition-all duration-300",
-            isAtStart && "opacity-0 cursor-not-allowed pointer-events-none", // Keep hidden if at start
-            !isAtStart && "group-hover/carousel:opacity-100", // Ensure it shows on hover if not at start
             "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            // Removed isAtStart condition from here as it's handled by the outer conditional rendering
           )}
           aria-label="Scroll left"
         >
@@ -148,8 +148,8 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
             "rounded-full w-9 h-9 sm:w-10 sm:h-10",
             "bg-black/40 hover:bg-black/60 text-white shadow-md",
             "opacity-0 group-hover/carousel:opacity-100 transition-all duration-300",
-            isAtEnd && "opacity-0 cursor-not-allowed pointer-events-none", // Keep hidden if at end
-            !isAtEnd && "group-hover/carousel:opacity-100", // Ensure it shows on hover if not at end
+            isAtEnd && "opacity-0 cursor-not-allowed pointer-events-none", 
+            !isAtEnd && "group-hover/carousel:opacity-100", 
             "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           )}
           aria-label="Scroll right"
@@ -157,9 +157,6 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
           <ChevronRight className="h-5 w-5 sm:h-6 sm:h-6" />
         </Button>
       )}
-      
-      {/* Removed bottom mobile scroll buttons */}
     </div>
   );
 }
-
