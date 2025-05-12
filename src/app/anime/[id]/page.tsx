@@ -104,7 +104,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
   return (
     <div className="min-h-screen text-foreground">
       <section 
-        className="relative h-[45vh] md:h-[55vh] lg:h-[60vh] w-full -mt-[calc(var(--header-height,4rem)+1px)] bg-card"
+        className="relative h-[40vh] sm:h-[45vh] md:h-[50vh] lg:h-[55vh] w-full -mt-[calc(var(--header-height,4rem)+1px)] bg-card"
       >
         <Image
           src={primaryImageSrc}
@@ -118,10 +118,10 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
         <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-transparent to-transparent md:hidden" />
       </section>
 
-      <Container className="relative z-10 -mt-[20vh] sm:-mt-[25vh] md:-mt-[280px] lg:-mt-[320px] pb-16">
-        <div className="md:grid md:grid-cols-12 md:gap-8">
+      <Container className="relative z-10 -mt-[25vh] sm:-mt-[180px] md:-mt-[220px] lg:-mt-[250px] pb-16">
+        <div className="md:grid md:grid-cols-12 md:gap-6 lg:gap-8">
           <div className="md:col-span-4 lg:col-span-3">
-            <div className="sticky top-[calc(var(--header-height,4rem)+2rem)] max-w-[280px] sm:max-w-xs mx-auto md:mx-0">
+            <div className="sticky top-[calc(var(--header-height,4rem)+1.5rem)] max-w-[220px] sm:max-w-xs mx-auto md:mx-0">
               <div className="aspect-[2/3] relative rounded-xl overflow-hidden shadow-2xl border-2 border-border/20 bg-card">
                 <Image
                   src={coverImageSrc}
@@ -135,45 +135,45 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
             </div>
           </div>
 
-          <div className="md:col-span-8 lg:col-span-9 mt-8 md:mt-0">
+          <div className="md:col-span-8 lg:col-span-9 mt-6 md:mt-0">
             {/* Title and Action Buttons Section */}
-            <div className="flex flex-col items-center sm:items-start space-y-4 mb-6">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground font-zen-dots leading-tight text-center sm:text-left max-w-full">
+            <div className="flex flex-col items-center sm:items-start space-y-3 sm:space-y-4 mb-5 sm:mb-6">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground font-zen-dots leading-tight text-center sm:text-left line-clamp-2">
                 {anime.title}
               </h1>
               
-              <div className="w-full max-w-sm sm:max-w-md md:max-w-none mx-auto sm:mx-0 flex flex-col sm:flex-row gap-3">
+              <div className="w-full max-w-sm sm:max-w-md md:max-w-none mx-auto sm:mx-0 flex flex-col sm:flex-row gap-2.5 sm:gap-3">
                 <Button 
                   asChild 
                   size="lg" 
-                  className="w-full sm:flex-1 btn-primary-gradient font-semibold py-3 rounded-lg"
+                  className="w-full sm:flex-1 btn-primary-gradient font-semibold py-2.5 sm:py-3 rounded-lg text-sm sm:text-base"
                 >
                   <Link href={`/play/${anime.id}${firstEpisodeId ? `?episode=${firstEpisodeId}` : ''}`}>
-                    <PlayCircle className="mr-2 h-5 w-5" /> Watch Now
+                    <PlayCircle className="mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Watch Now
                   </Link>
                 </Button>
                 
                 <Suspense fallback={
-                  <div className="w-full sm:w-auto flex flex-row sm:flex-col md:flex-row gap-3">
-                    <Skeleton className="h-12 w-full sm:w-40 rounded-lg" />
-                    <Skeleton className="h-12 w-full sm:w-40 rounded-lg" />
+                  <div className="w-full sm:w-auto flex flex-row sm:flex-col md:flex-row gap-2.5 sm:gap-3">
+                    <Skeleton className="h-10 sm:h-12 w-full sm:w-36 md:w-40 rounded-lg" />
+                    <Skeleton className="h-10 sm:h-12 w-full sm:w-36 md:w-40 rounded-lg" />
                   </div>
                 }>
-                  <AnimeInteractionControls anime={anime} />
+                  <AnimeInteractionControls anime={anime} className="[&>button]:py-2.5 [&>button]:sm:py-3 [&>button]:text-sm [&>button]:sm:text-base" />
                 </Suspense>
               </div>
             </div>
             
             {/* Meta Info Section */}
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3.5 gap-y-2 text-sm text-muted-foreground mb-6">
-              {anime.format && <div className="flex items-center">{typeIconMap[anime.format] || <Info className="w-4 h-4 mr-1.5" />} <span className="font-medium">{anime.format}</span></div>}
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1.5 text-xs sm:text-sm text-muted-foreground mb-5 sm:mb-6">
+              {anime.format && <div className="flex items-center">{typeIconMap[anime.format] || <Info className="w-3.5 h-3.5 mr-1" />} <span className="font-medium">{anime.format}</span></div>}
               {anime.format && <span className="opacity-50 hidden sm:inline">•</span>}
-              <div className="flex items-center"><CalendarDays className="w-4 h-4 mr-1.5" /> <span className="font-medium">{anime.seasonYear || anime.year}</span></div>
+              <div className="flex items-center"><CalendarDays className="w-3.5 h-3.5 mr-1" /> <span className="font-medium">{anime.seasonYear || anime.year}</span></div>
               {anime.averageRating !== undefined && anime.averageRating !== null && (
                 <>
                   <span className="opacity-50 hidden sm:inline">•</span>
                   <div className="flex items-center">
-                    <Star className="w-4 h-4 mr-1.5 text-yellow-400 fill-yellow-400" />
+                    <Star className="w-3.5 h-3.5 mr-1 text-yellow-400 fill-yellow-400" />
                     <span className="font-semibold text-foreground">{anime.averageRating.toFixed(1)}</span>
                     <span className="text-xs ml-0.5">/10</span>
                   </div>
@@ -195,78 +195,87 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
             </div>
 
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="flex space-x-1 sm:space-x-2 border-b border-border/40 mb-6 bg-transparent p-0">
-                {['Overview', 'Characters', 'Relations', 'Artwork'].map(tabName => (
-                  <TabsTrigger
-                    key={tabName}
-                    value={tabName.toLowerCase()}
-                    className={cn(
-                      "relative px-2 sm:px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background data-[state=inactive]:text-muted-foreground data-[state=active]:text-foreground data-[state=active]:font-semibold",
-                      "hover:text-foreground",
-                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-transparent after:transition-transform after:duration-300 after:ease-in-out",
-                      "data-[state=active]:after:bg-foreground data-[state=active]:after:scale-x-100",
-                      "hover:after:bg-foreground hover:after:scale-x-100",
-                       "data-[state=inactive]:after:scale-x-0" 
-                    )}
-                  >
-                    {tabName}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+                <div className="relative border-b border-border/40 mb-5 sm:mb-6">
+                  <TabsList className="flex space-x-0 bg-transparent p-0 overflow-x-auto scrollbar-hide">
+                    {['Overview', 'Characters', 'Relations', 'Artwork'].map(tabName => (
+                      <TabsTrigger
+                        key={tabName}
+                        value={tabName.toLowerCase()}
+                        className={cn(
+                          "relative px-3 sm:px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-background data-[state=inactive]:text-muted-foreground data-[state=active]:text-primary data-[state=active]:font-semibold",
+                          "hover:text-primary",
+                          "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-transparent after:transition-transform after:duration-300 after:ease-in-out",
+                          "data-[state=active]:after:bg-primary data-[state=active]:after:scale-x-100",
+                          "data-[state=inactive]:after:scale-x-0 hover:after:scale-x-100 hover:after:bg-primary/30"
+                        )}
+                      >
+                        {tabName}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </div>
               
               <TabsContent value="overview" className="bg-transparent p-0">
-                <div className="mb-8">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-xl font-semibold text-foreground font-orbitron">Description</h3>
-                    <div className="flex items-center gap-x-3">
-                       <Logo iconSize={18} />
-                        {anime.trailerUrl && (
-                            <Button variant="secondary" size="sm" asChild className="hover:border-primary hover:text-primary">
-                                <Link href={anime.trailerUrl} target="_blank" rel="noopener noreferrer" className="flex items-center">
-                                     Trailer <ExternalLink size={12} className="ml-1.5 opacity-70"/>
-                                </Link>
-                            </Button>
-                        )}
-                    </div>
-                  </div>
-                  <ReadMoreSynopsis text={anime.synopsis || "No synopsis available."} />
-                </div>
-
-                <div className="mt-8">
-                  <h3 className="text-xl font-semibold text-foreground font-orbitron mb-2">Details</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 border-t border-border/20">
-                    <DetailItem label="Type" value={anime.format || anime.type} icon={typeIconMap[anime.format || anime.type || 'Unknown'] ? undefined : Info } >
-                        {typeIconMap[anime.format || anime.type || 'Unknown']} <span className="ml-1">{anime.format || anime.type || 'N/A'}</span>
-                    </DetailItem>
-                    <DetailItem label="Episodes" value={anime.episodesCount || anime.episodes?.length || 'N/A'} icon={List} />
-                    <DetailItem label="Genres" icon={GenreIcon}>
-                      <div className="flex flex-wrap gap-1.5 justify-end">
-                        {anime.genre?.map(g => <Badge key={g} variant="secondary" className="text-xs">{g}</Badge>)}
-                        {(!anime.genre || anime.genre.length === 0) && 'N/A'}
-                      </div>
-                    </DetailItem>
-                    <DetailItem label="Aired" value={airedDateString || 'N/A'} icon={CalendarDays} />
-                    <DetailItem label="Status" value={anime.status} icon={ShieldCheck} />
-                    <DetailItem label="Season" value={`${anime.season || ''} ${anime.seasonYear || anime.year}`} icon={Clapperboard} />
-                    <DetailItem label="Country" value={anime.countryOfOrigin} icon={Globe2} />
-                    <DetailItem label="Studios" icon={UserSquare2}>
-                       <div className="flex flex-wrap gap-1 justify-end">
-                          {anime.studios?.map(s => <Badge key={s.id} variant="outline" className="text-xs">{s.name}</Badge>)}
-                          {(!anime.studios || anime.studios.length === 0) && 'N/A'}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 space-y-6">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg sm:text-xl font-semibold text-foreground font-orbitron flex items-center">
+                                <div className="w-1.5 h-6 bg-primary rounded-full mr-2.5"></div>
+                                Description
+                            </h3>
+                            <div className="flex items-center gap-x-2">
+                               <Logo iconSize={20} className="opacity-70 hover:opacity-100 transition-opacity"/>
+                                {anime.trailerUrl && (
+                                    <Button variant="outline" size="sm" asChild className="text-xs hover:border-primary hover:text-primary">
+                                        <Link href={anime.trailerUrl} target="_blank" rel="noopener noreferrer" className="flex items-center">
+                                             Trailer <ExternalLink size={12} className="ml-1.5 opacity-70"/>
+                                        </Link>
+                                    </Button>
+                                )}
+                            </div>
                         </div>
-                    </DetailItem>
-                    <DetailItem label="Source" value={anime.source} icon={BookOpen} />
-                    <DetailItem label="Duration" value={anime.duration ? `${anime.duration} min/ep` : 'N/A'} icon={HistoryIcon} />
-                    <DetailItem label="Popularity" value={anime.popularity?.toLocaleString()} icon={Users} />
-                  </div>
+                        <ReadMoreSynopsis text={anime.synopsis || "No synopsis available."} />
+                    </div>
+                    <div className="lg:col-span-1">
+                         <h3 className="text-lg sm:text-xl font-semibold text-foreground font-orbitron mb-2 flex items-center">
+                            <div className="w-1.5 h-6 bg-primary rounded-full mr-2.5"></div>
+                            Details
+                        </h3>
+                        <div className="space-y-0.5 border-t border-border/20 pt-2">
+                            <DetailItem label="Type" value={anime.format || anime.type} icon={typeIconMap[anime.format || anime.type || 'Unknown'] ? undefined : Info } >
+                                {typeIconMap[anime.format || anime.type || 'Unknown']} <span className="ml-1">{anime.format || anime.type || 'N/A'}</span>
+                            </DetailItem>
+                            <DetailItem label="Episodes" value={anime.episodesCount || anime.episodes?.length || 'N/A'} icon={List} />
+                            <DetailItem label="Genres" icon={GenreIcon}>
+                              <div className="flex flex-wrap gap-1 justify-end">
+                                {anime.genre?.map((g, index) => <Badge key={`${g}-${index}`} variant="secondary" className="text-xs">{g}</Badge>)}
+                                {(!anime.genre || anime.genre.length === 0) && 'N/A'}
+                              </div>
+                            </DetailItem>
+                            <DetailItem label="Aired" value={airedDateString || 'N/A'} icon={CalendarDays} />
+                            <DetailItem label="Status" value={anime.status} icon={ShieldCheck} />
+                            <DetailItem label="Season" value={`${anime.season || ''} ${anime.seasonYear || anime.year}`} icon={Clapperboard} />
+                            <DetailItem label="Country" value={anime.countryOfOrigin} icon={Globe2} />
+                            <DetailItem label="Studios" icon={UserSquare2}>
+                               <div className="flex flex-wrap gap-1 justify-end">
+                                  {anime.studios?.map((s, index) => <Badge key={`${s.id}-${index}`} variant="outline" className="text-xs">{s.name}</Badge>)}
+                                  {(!anime.studios || anime.studios.length === 0) && 'N/A'}
+                                </div>
+                            </DetailItem>
+                            <DetailItem label="Source" value={anime.source} icon={BookOpen} />
+                            <DetailItem label="Duration" value={anime.duration ? `${anime.duration} min/ep` : 'N/A'} icon={HistoryIcon} />
+                            <DetailItem label="Popularity" value={anime.popularity?.toLocaleString()} icon={Users} />
+                        </div>
+                    </div>
                 </div>
-
+                
                 <EpisodeListSection anime={anime} />
               </TabsContent>
 
-              <TabsContent value="characters" className="p-0 sm:p-0 rounded-lg relative overflow-hidden"> {/* No explicit background for carousel to blend */}
-                <h3 className="text-xl font-semibold mb-1 mt-3 ml-0 md:ml-3 text-foreground flex items-center font-orbitron">
-                    <Users className="mr-2 h-5 w-5"/> Characters & Voice Actors
+              <TabsContent value="characters" className="p-0 sm:p-0 rounded-lg relative overflow-hidden">
+                <h3 className="text-lg sm:text-xl font-semibold mb-1 mt-2 ml-0 md:ml-1 text-foreground flex items-center font-orbitron">
+                    <div className="w-1.5 h-6 bg-primary rounded-full mr-2.5"></div>
+                    Characters & Voice Actors
                 </h3>
                 <Suspense fallback={<div className="h-48 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
                   <CharacterCarousel characters={anime.characters} />
@@ -289,4 +298,3 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     </div>
   );
 }
-
