@@ -12,6 +12,8 @@ interface CharacterCarouselProps {
   characters?: Character[];
 }
 
+const MAX_CHARACTERS_TO_SHOW = 15;
+
 export default function CharacterCarousel({ characters }: CharacterCarouselProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isAtStart, setIsAtStart] = useState(true);
@@ -23,13 +25,16 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
     setIsClient(true);
   }, []);
 
-  const checkScrollability = useCallback(() => {
+  const checkScrollabilityAndPosition = useCallback(() => {
     if (scrollContainerRef.current) {
-      const { scrollWidth, clientWidth } = scrollContainerRef.current;
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
       const scrollable = scrollWidth > clientWidth;
       setCanScroll(scrollable);
+
       if (scrollable) {
-        checkScrollPosition();
+        const tolerance = 5; 
+        setIsAtStart(scrollLeft <= tolerance);
+        setIsAtEnd(scrollLeft + clientWidth >= scrollWidth - tolerance);
       } else {
         setIsAtStart(true);
         setIsAtEnd(true);
@@ -38,46 +43,38 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
   }, []);
 
 
-  const checkScrollPosition = useCallback(() => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      const tolerance = 5; 
-      setIsAtStart(scrollLeft <= tolerance);
-      setIsAtEnd(scrollLeft + clientWidth >= scrollWidth - tolerance);
-    }
-  }, []);
-
   useEffect(() => {
     const currentRef = scrollContainerRef.current;
     if (currentRef && isClient) {
-      checkScrollability();
+      checkScrollabilityAndPosition();
       
-      currentRef.addEventListener('scroll', checkScrollPosition, { passive: true });
-      window.addEventListener('resize', checkScrollability);
+      currentRef.addEventListener('scroll', checkScrollabilityAndPosition, { passive: true });
+      window.addEventListener('resize', checkScrollabilityAndPosition);
       
-      const observer = new ResizeObserver(checkScrollability);
+      const observer = new ResizeObserver(checkScrollabilityAndPosition);
       observer.observe(currentRef);
 
       return () => {
-        currentRef.removeEventListener('scroll', checkScrollPosition);
-        window.removeEventListener('resize', checkScrollability);
+        currentRef.removeEventListener('scroll', checkScrollabilityAndPosition);
+        window.removeEventListener('resize', checkScrollabilityAndPosition);
         observer.disconnect();
       };
     }
-  }, [checkScrollPosition, characters, isClient, checkScrollability]);
+  }, [checkScrollabilityAndPosition, characters, isClient]);
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
       const container = scrollContainerRef.current;
-      // Adjusted scroll amount for character carousel
       const scrollAmount = container.clientWidth * 0.7; 
       container.scrollBy({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth',
       });
-      setTimeout(checkScrollPosition, 350); 
+      setTimeout(checkScrollabilityAndPosition, 350); 
     }
   };
+
+  const displayedCharacters = characters ? characters.slice(0, MAX_CHARACTERS_TO_SHOW) : [];
 
   if (!isClient) { 
     return (
@@ -88,7 +85,7 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
     );
   }
 
-  if (!characters || characters.length === 0) {
+  if (displayedCharacters.length === 0) {
     return (
         <div className="py-6 text-center text-muted-foreground mt-3 sm:mt-4">
             <Users size={32} className="mx-auto mb-2 opacity-50" />
@@ -99,16 +96,16 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
 
 
   return (
-    <div className="relative group/carousel py-4 mt-3 sm:mt-4">
+    <div className="relative py-4 mt-3 sm:mt-4"> {/* Removed group/carousel */}
       <div
         ref={scrollContainerRef}
         className="flex overflow-x-auto pb-4 gap-3 sm:gap-4 scrollbar-hide px-1" 
         style={{ 
             scrollSnapType: 'x mandatory', 
-            scrollBehavior: 'smooth' // Ensure CSS smooth scrolling for touch
+            scrollBehavior: 'smooth'
         }}
       >
-        {characters.map((character) => (
+        {displayedCharacters.map((character) => (
           <div
             key={character.id}
             className="flex-shrink-0"
@@ -119,51 +116,46 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
         ))}
       </div>
 
-      {canScroll && (
-        <>
+      {canScroll && !isAtStart && (
           <Button
             variant="ghost"
             size="icon"
             onClick={() => scroll('left')}
-            disabled={isAtStart}
             className={cn(
-              "absolute left-0 top-1/2 -translate-y-1/2 z-20 -translate-x-0 md:-translate-x-1/2", // Adjusted for edge placement
-              "w-9 h-9 sm:w-10 sm:h-10 p-0 rounded-full", 
-              "bg-background/50 hover:bg-primary/80 text-foreground hover:text-primary-foreground shadow-md",
-              "opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-300",
-              isAtStart && "opacity-0 pointer-events-none",
-              "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              "absolute left-0 top-1/2 -translate-y-1/2 z-20 -translate-x-0 md:-translate-x-1/2",
+              "w-9 h-16 sm:w-10 sm:h-20 p-0 rounded-none", // Sharp edges, adjusted height
+              "bg-black/20 text-white", // Bold white icon, subtle background
+              "opacity-100", // Always visible
+              "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0",
               "flex items-center justify-center"
             )}
             aria-label="Scroll left"
           >
-            <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
+            <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
           </Button>
+      )}
 
+      {canScroll && !isAtEnd && (
           <Button
             variant="ghost"
             size="icon"
             onClick={() => scroll('right')}
-            disabled={isAtEnd}
             className={cn(
-              "absolute right-0 top-1/2 -translate-y-1/2 z-20 translate-x-0 md:translate-x-1/2", // Adjusted for edge placement
-              "w-9 h-9 sm:w-10 sm:h-10 p-0 rounded-full",
-              "bg-background/50 hover:bg-primary/80 text-foreground hover:text-primary-foreground shadow-md",
-              "opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-300",
-              isAtEnd && "opacity-0 pointer-events-none",
-              "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              "absolute right-0 top-1/2 -translate-y-1/2 z-20 translate-x-0 md:translate-x-1/2",
+              "w-9 h-16 sm:w-10 sm:h-20 p-0 rounded-none", // Sharp edges, adjusted height
+              "bg-black/20 text-white", // Bold white icon, subtle background
+              "opacity-100", // Always visible
+              "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0",
               "flex items-center justify-center"
             )}
             aria-label="Scroll right"
           >
-            <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
+            <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
           </Button>
-        </>
       )}
+       <p className="text-xs text-muted-foreground mt-2 text-center md:text-left">
+        Note: This carousel uses native browser smooth scrolling. For advanced effects, consider libraries like Framer Motion.
+      </p>
     </div>
   );
-}
-
-interface CharacterTypeProps {
-  character: CharacterType;
 }

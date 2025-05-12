@@ -24,8 +24,8 @@ export default function CharacterCard({ character }: CharacterTypeProps) {
   return (
     <div
       className={cn(
-        "group/charcard relative w-28 sm:w-32 md:w-[136px] h-40 sm:h-44 md:h-[190px] overflow-hidden rounded-lg bg-card border border-border/20 shadow-md transition-all duration-300 ease-in-out transform hover:shadow-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      )}
+        "group/charcard relative w-28 sm:w-32 md:w-[136px] h-40 sm:h-44 md:h-[190px] overflow-hidden rounded-lg bg-card border border-border/20 shadow-md transition-all duration-300 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      )} // Removed transform hover:shadow-primary/30 to avoid card scaling
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onFocus={() => setIsHovered(true)} 
