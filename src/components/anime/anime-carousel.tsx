@@ -45,7 +45,8 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
         <h2 className="text-xl md:text-2xl font-bold text-foreground section-title-bar">{title}</h2>
       </div>
       
-      <div className="relative group">
+      {/* Removed 'group' class from this div to avoid hover conflicts with AnimeCard's own 'group' */}
+      <div className="relative"> 
         <Swiper
           modules={[Navigation]}
           onSwiper={(swiper) => {
@@ -70,44 +71,44 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
         </Swiper>
 
         {/* Custom Navigation Arrows */}
-        {!isBeginning && (
-          <Button
+        <Button
             variant="ghost"
             size="icon"
             className={cn(
               "absolute left-0 top-1/2 -translate-y-1/2 z-20",
-              "text-white w-10 h-16 md:w-12 md:h-20 p-0", 
-              "bg-transparent", 
-              "opacity-100", 
-              "focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none",
+              "text-white w-10 h-16 md:w-12 md:h-20 p-0 rounded-none", 
+              "bg-transparent",
+              "opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-300",
+              "focus-visible:ring-0 focus-visible:ring-offset-0",
               "flex items-center justify-center",
+              isBeginning && "hidden", // Hide if at the beginning
               `swiper-button-prev-${uniqueSwiperNavClassSuffix}` 
             )}
             onClick={() => swiperRef.current?.slidePrev()}
             aria-label="Scroll left"
+            // No hover effect on button itself
           >
             <ChevronLeft className="h-7 w-7 md:h-8 md:w-8" />
           </Button>
-        )}
-        {!isEnd && (
-          <Button
+        <Button
             variant="ghost"
             size="icon"
             className={cn(
               "absolute right-0 top-1/2 -translate-y-1/2 z-20",
-              "text-white w-10 h-16 md:w-12 md:h-20 p-0", 
-              "bg-transparent", 
-              "opacity-100", 
-              "focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none",
+              "text-white w-10 h-16 md:w-12 md:h-20 p-0 rounded-none",
+              "bg-transparent",
+              "opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-300",
+              "focus-visible:ring-0 focus-visible:ring-offset-0",
               "flex items-center justify-center",
+              isEnd && "hidden", // Hide if at the end
               `swiper-button-next-${uniqueSwiperNavClassSuffix}`
             )}
             onClick={() => swiperRef.current?.slideNext()}
             aria-label="Scroll right"
+            // No hover effect on button itself
           >
             <ChevronRight className="h-7 w-7 md:h-8 md:w-8" />
           </Button>
-        )}
       </div>
     </section>
   );
