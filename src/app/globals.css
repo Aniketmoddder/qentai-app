@@ -222,7 +222,7 @@
     -webkit-tap-highlight-color: transparent; 
   }
   body {
-    @apply bg-background text-foreground font-poppins antialiased flex flex-col min-h-full overflow-x-hidden; /* Added font-poppins */
+    @apply bg-background text-foreground font-sans antialiased flex flex-col min-h-full overflow-x-hidden;
   }
   main {
     @apply flex-grow; 
@@ -337,3 +337,4 @@
     @apply border-border;
   }
 }
+

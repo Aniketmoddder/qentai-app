@@ -75,7 +75,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="font-poppins antialiased flex flex-col min-h-full bg-background text-foreground overflow-x-hidden">
+      <body className="font-sans antialiased flex flex-col min-h-full bg-background text-foreground overflow-x-hidden">
         <ThemeProvider> 
           <QueryProvider>
             <AuthProvider>
@@ -96,3 +96,4 @@ export default function RootLayout({
     </html>
   );
 }
+
