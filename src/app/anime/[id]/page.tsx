@@ -159,7 +159,6 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                     <Skeleton className="h-12 w-full sm:w-40 rounded-lg" />
                   </div>
                 }>
-                   {/* AnimeInteractionControls will now handle its internal button layout for responsiveness */}
                   <AnimeInteractionControls anime={anime} />
                 </Suspense>
               </div>
@@ -196,17 +195,18 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
             </div>
 
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="flex space-x-1 border-b border-border/40 pb-0 mb-6">
+              <TabsList className="flex space-x-4 border-b border-border/40 mb-6 bg-transparent p-0">
                 {['Overview', 'Characters', 'Relations', 'Artwork'].map(tabName => (
                   <TabsTrigger
                     key={tabName}
                     value={tabName.toLowerCase()}
                     className={cn(
-                      "relative px-1 pb-3 pt-2 -mb-[1px] text-sm font-medium text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background",
-                      "hover:text-foreground data-[state=active]:text-primary data-[state=active]:font-semibold",
+                      "relative px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background data-[state=inactive]:text-muted-foreground data-[state=active]:text-foreground data-[state=active]:font-semibold",
+                      "hover:text-foreground",
                       "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-transparent after:transition-transform after:duration-300 after:ease-in-out",
-                      "data-[state=active]:after:bg-primary data-[state=active]:after:scale-x-100 hover:after:bg-muted-foreground/30 hover:after:scale-x-100",
-                       "data-[state=inactive]:after:scale-x-0 data-[state=inactive]:hover:after:scale-x-100" 
+                      "data-[state=active]:after:bg-foreground data-[state=active]:after:scale-x-100",
+                      "hover:after:bg-foreground hover:after:scale-x-100",
+                       "data-[state=inactive]:after:scale-x-0" 
                     )}
                   >
                     {tabName}
@@ -216,17 +216,18 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
               
               <TabsContent value="overview" className="bg-transparent p-0">
                 <div className="mb-8">
-                <div className="flex items-center gap-x-3 mb-3"> 
-                    <Logo iconSize={20} className="opacity-80 filter grayscale contrast-200 brightness-200 mr-1"/>
+                  <div className="flex items-center justify-between mb-3">
                     <h3 className="text-xl font-semibold text-foreground font-orbitron">Description</h3>
-                    {anime.trailerUrl && (
-                        <Button variant="outline" size="sm" asChild className="border-border/50 hover:border-primary hover:text-primary ml-auto">
-                            <Link href={anime.trailerUrl} target="_blank" rel="noopener noreferrer" className="flex items-center">
-                                <Film className="w-4 h-4 mr-1.5" /> Trailer
-                                <ExternalLink size={12} className="ml-1 opacity-70"/>
-                            </Link>
-                        </Button>
-                    )}
+                    <div className="flex items-center gap-x-3">
+                       <Logo iconSize={18} />
+                        {anime.trailerUrl && (
+                            <Button variant="secondary" size="sm" asChild className="hover:border-primary hover:text-primary">
+                                <Link href={anime.trailerUrl} target="_blank" rel="noopener noreferrer" className="flex items-center">
+                                     Trailer <ExternalLink size={12} className="ml-1.5 opacity-70"/>
+                                </Link>
+                            </Button>
+                        )}
+                    </div>
                   </div>
                   <ReadMoreSynopsis text={anime.synopsis || "No synopsis available."} />
                 </div>
@@ -288,3 +289,4 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     </div>
   );
 }
+
