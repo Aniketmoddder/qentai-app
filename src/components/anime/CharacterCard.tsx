@@ -11,10 +11,10 @@ export default function CharacterCard({ character }: CharacterTypeProps) {
 
   const primaryVoiceActor = character.voiceActors?.find(va => va.language?.toUpperCase() === 'JAPANESE') || character.voiceActors?.[0];
 
-  const characterImage = character.image || `https://picsum.photos/seed/${character.id || 'char'}-${Date.now()}/100/150`;
+  const characterImage = character.image || `https://picsum.photos/seed/${character.id || 'char'}-${Date.now()}/120/180`;
   const characterNameText = character.name || 'Character';
 
-  const voiceActorImage = primaryVoiceActor?.image || `https://picsum.photos/seed/${primaryVoiceActor?.id || 'va'}-${Date.now()}/100/150`;
+  const voiceActorImage = primaryVoiceActor?.image || `https://picsum.photos/seed/${primaryVoiceActor?.id || 'va'}-${Date.now()}/120/180`;
   const voiceActorNameText = primaryVoiceActor?.name || 'Voice Actor';
   
   const [currentImageSrc, setCurrentImageSrc] = useState(voiceActorImage);
@@ -22,48 +22,45 @@ export default function CharacterCard({ character }: CharacterTypeProps) {
   const [currentAlt, setCurrentAlt] = useState(voiceActorNameText);
 
   useEffect(() => {
-    // Client-side effect to prevent hydration mismatch if Math.random was used in placeholder
-    // and to set initial state based on non-hovered.
     setCurrentImageSrc(isHovered ? characterImage : voiceActorImage);
     setCurrentName(isHovered ? characterNameText : voiceActorNameText);
     setCurrentAlt(isHovered ? characterNameText : voiceActorNameText);
   }, [isHovered, characterImage, characterNameText, voiceActorImage, voiceActorNameText]);
   
-  const roleLetter = ''; // Role display removed as per previous request
 
   return (
     <div
       className={cn(
-        "relative w-[75px] h-[112.5px] sm:w-[85px] sm:h-[127.5px] md:w-[95px] md:h-[142.5px]", 
-        "rounded-lg overflow-hidden", 
-        "bg-card border-2 border-transparent group-hover/charcard:border-primary/50 transition-all duration-300 ease-in-out",
+        "relative w-[80px] h-[120px] sm:w-[90px] sm:h-[135px] md:w-[100px] md:h-[150px]", // Increased size
+        "rounded-lg overflow-hidden group/charcard", 
+        "bg-card border-2 border-transparent hover:border-primary/70 transition-all duration-300 ease-in-out transform hover:scale-105 focus-within:scale-105 focus-within:border-primary/70",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onFocus={() => setIsHovered(true)} 
       onBlur={() => setIsHovered(false)}
-      tabIndex={-1} 
-      aria-hidden="true" 
+      tabIndex={0} // Make it focusable for keyboard navigation
+      aria-label={`View details for ${currentName}`}
     >
-      <div className="relative w-full h-full transition-transform duration-500 ease-out group-hover/charcard:scale-105">
+      <div className="relative w-full h-full transition-transform duration-500 ease-out">
         <div className="absolute inset-0 transition-opacity duration-300 ease-in-out">
           <Image
-            src={currentImageSrc || `https://picsum.photos/seed/placeholder-char/100/150`} // Fallback for null src
+            src={currentImageSrc || `https://picsum.photos/seed/placeholder-char/120/180`}
             alt={currentAlt}
             fill
-            sizes="(max-width: 640px) 75px, (max-width: 768px) 85px, 95px"
+            sizes="(max-width: 640px) 80px, (max-width: 768px) 90px, 100px"
             className="object-cover object-center" 
             data-ai-hint="person portrait"
-            priority={true} 
+            priority={false} 
           />
         </div>
-        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-1.5 text-center z-10 pointer-events-none">
+      <div className="absolute bottom-0 left-0 right-0 p-2 text-center z-10 pointer-events-none">
         <p 
-          className="text-[0.6rem] sm:text-xs font-semibold text-white truncate w-full leading-tight"
+          className="text-xs sm:text-sm font-semibold text-white truncate w-full leading-tight"
           title={currentName}
           aria-live="polite" 
         >
@@ -77,3 +74,4 @@ export default function CharacterCard({ character }: CharacterTypeProps) {
 interface CharacterTypeProps {
   character: CharacterType;
 }
+

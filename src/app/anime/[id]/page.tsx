@@ -5,7 +5,7 @@ import Container from '@/components/layout/container';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Star, PlayCircle, CalendarDays, Tv, Film, ListVideo, List, ChevronRight, AlertTriangle, Users, ShieldCheck, Info, ExternalLink, Tag as GenreIcon, Clapperboard, UserSquare2, BookOpen, History as HistoryIcon, Globe2, Loader2, RefreshCw, ArrowUpDown, Settings2, LayoutGrid } from 'lucide-react';
+import { Star, PlayCircle, CalendarDays, Tv, Film, ListVideo, List, ChevronRight, AlertTriangle, Users, ShieldCheck, Info, ExternalLink, Tag as GenreIcon, Clapperboard, UserSquare2, BookOpen, History as HistoryIcon, Globe2, Loader2, RefreshCw, ArrowUpDown, Settings2, LayoutGrid, Users2Icon } from 'lucide-react';
 import Link from 'next/link';
 import AnimeInteractionControls from '@/components/anime/anime-interaction-controls'; 
 import CharacterCarousel from '@/components/anime/CharacterCarousel';
@@ -118,16 +118,16 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
         <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-transparent to-transparent md:hidden" />
       </section>
 
-      <Container className="relative z-10 -mt-[25vh] sm:-mt-[180px] md:-mt-[220px] lg:-mt-[250px] pb-16">
+      <Container className="relative z-10 -mt-[20vh] sm:-mt-[180px] md:-mt-[200px] lg:-mt-[220px] pb-16">
         <div className="md:grid md:grid-cols-12 md:gap-6 lg:gap-8">
           <div className="md:col-span-4 lg:col-span-3">
-            <div className="sticky top-[calc(var(--header-height,4rem)+1.5rem)] max-w-[220px] sm:max-w-xs mx-auto md:mx-0">
+             <div className="sticky top-[calc(var(--header-height,4rem)+1.5rem)] max-w-[200px] sm:max-w-[220px] mx-auto md:mx-0"> {/* Adjusted max-w */}
               <div className="aspect-[2/3] relative rounded-xl overflow-hidden shadow-2xl border-2 border-border/20 bg-card">
                 <Image
                   src={coverImageSrc}
                   alt={anime.title}
                   fill
-                  sizes="(max-width: 768px) 70vw, (max-width: 1024px) 33vw, 25vw"
+                  sizes="(max-width: 640px) 200px, (max-width: 768px) 220px, (max-width: 1024px) 33vw, 25vw"
                   className="object-cover" 
                   data-ai-hint={`${anime.genre?.[0] || 'anime'} portrait`}
                 />
@@ -139,7 +139,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
             {/* Title and Action Buttons Section */}
             <div className="flex flex-col items-center sm:items-start space-y-3 sm:space-y-4 mb-5 sm:mb-6">
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground font-zen-dots leading-tight text-center sm:text-left line-clamp-2">
-                {anime.title}
+                {anime.title || 'Anime Title Not Available'}
               </h1>
               
               <div className="w-full max-w-sm sm:max-w-md md:max-w-none mx-auto sm:mx-0 flex flex-col sm:flex-row gap-2.5 sm:gap-3">
@@ -154,7 +154,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                 </Button>
                 
                 <Suspense fallback={
-                  <div className="w-full sm:w-auto flex flex-row sm:flex-col md:flex-row gap-2.5 sm:gap-3">
+                  <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2.5 sm:gap-3">
                     <Skeleton className="h-10 sm:h-12 w-full sm:w-36 md:w-40 rounded-lg" />
                     <Skeleton className="h-10 sm:h-12 w-full sm:w-36 md:w-40 rounded-lg" />
                   </div>
@@ -209,7 +209,9 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                           "data-[state=inactive]:after:scale-x-0 hover:after:scale-x-100 hover:after:bg-primary/30"
                         )}
                       >
-                        {tabName}
+                        {tabName === 'Characters' && <Users2Icon className="w-4 h-4 mr-1.5 sm:hidden" />}
+                        <span className="hidden sm:inline">{tabName}</span>
+                        <span className="sm:hidden">{tabName.substring(0,3)}</span> 
                       </TabsTrigger>
                     ))}
                   </TabsList>
@@ -274,7 +276,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
 
               <TabsContent value="characters" className="p-0 sm:p-0 rounded-lg relative overflow-hidden">
                 <h3 className="text-lg sm:text-xl font-semibold mb-1 mt-2 ml-0 md:ml-1 text-foreground flex items-center font-orbitron">
-                    <div className="w-1.5 h-6 bg-primary rounded-full mr-2.5"></div>
+                     <Users2Icon className="w-5 h-5 mr-2.5 text-primary"/> {/* Replaced div with icon */}
                     Characters & Voice Actors
                 </h3>
                 <Suspense fallback={<div className="h-48 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
@@ -298,3 +300,4 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     </div>
   );
 }
+
