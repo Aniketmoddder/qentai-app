@@ -1,4 +1,4 @@
-
+// src/components/anime/CharacterCard.tsx
 'use client';
 
 import Image from 'next/image';
@@ -18,14 +18,13 @@ export default function CharacterCard({ character }: CharacterTypeProps) {
   const voiceActorImageSrc = primaryVoiceActor?.image || `https://picsum.photos/seed/${primaryVoiceActor?.id || 'va'}/200/300`;
   const voiceActorNameText = primaryVoiceActor?.name || 'Voice Actor';
   
-  const displayName = isHovered ? characterNameText : voiceActorNameText;
+  const displayName = isHovered && character.name ? character.name : (primaryVoiceActor?.name || 'N/A');
   const displayRole = character.role ? character.role.charAt(0).toUpperCase() + character.role.slice(1).toLowerCase() : 'Supporting';
 
   return (
     <div
       className={cn(
-        "group/charcard relative w-28 sm:w-32 md:w-[136px] h-40 sm:h-44 md:h-[190px] overflow-hidden rounded-lg bg-card border border-border/20 shadow-md transition-all duration-300 ease-in-out transform hover:shadow-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        // Removed hover:scale-105
+        "group/charcard relative w-28 sm:w-32 md:w-[136px] h-40 sm:h-44 md:h-[190px] overflow-hidden rounded-lg bg-card border border-border/20 shadow-md transition-all duration-300 ease-in-out transform hover:shadow-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}

@@ -1,4 +1,4 @@
-
+// src/components/anime/CharacterCarousel.tsx
 'use client';
 
 import type { Character } from '@/types/anime';
@@ -69,7 +69,8 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
       const container = scrollContainerRef.current;
-      const scrollAmount = container.clientWidth * 0.75; 
+      // Adjusted scroll amount for character carousel
+      const scrollAmount = container.clientWidth * 0.7; 
       container.scrollBy({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth',
@@ -102,7 +103,10 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
       <div
         ref={scrollContainerRef}
         className="flex overflow-x-auto pb-4 gap-3 sm:gap-4 scrollbar-hide px-1" 
-        style={{ scrollSnapType: 'x mandatory', scrollBehavior: 'smooth' }}
+        style={{ 
+            scrollSnapType: 'x mandatory', 
+            scrollBehavior: 'smooth' // Ensure CSS smooth scrolling for touch
+        }}
       >
         {characters.map((character) => (
           <div
@@ -115,48 +119,51 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
         ))}
       </div>
 
-      {/* Left Scroll Button */}
       {canScroll && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => scroll('left')}
-          disabled={isAtStart}
-          className={cn(
-            "absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-20",
-            "w-9 h-9 sm:w-10 sm:h-10 p-0", // Reset padding
-            "text-white/70 hover:text-white", // Icon color, hover for icon
-            "opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-300",
-            isAtStart && "opacity-0 pointer-events-none",
-            "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          )}
-          aria-label="Scroll left"
-        >
-          <ChevronLeft className="h-6 w-6 sm:h-7 sm:w-7" />
-        </Button>
-      )}
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => scroll('left')}
+            disabled={isAtStart}
+            className={cn(
+              "absolute left-0 top-1/2 -translate-y-1/2 z-20 -translate-x-0 md:-translate-x-1/2", // Adjusted for edge placement
+              "w-9 h-9 sm:w-10 sm:h-10 p-0 rounded-full", 
+              "bg-background/50 hover:bg-primary/80 text-foreground hover:text-primary-foreground shadow-md",
+              "opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-300",
+              isAtStart && "opacity-0 pointer-events-none",
+              "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              "flex items-center justify-center"
+            )}
+            aria-label="Scroll left"
+          >
+            <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
+          </Button>
 
-      {/* Right Scroll Button */}
-      {canScroll && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => scroll('right')}
-          disabled={isAtEnd}
-          className={cn(
-            "absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-20",
-            "w-9 h-9 sm:w-10 sm:h-10 p-0", // Reset padding
-            "text-white/70 hover:text-white", // Icon color, hover for icon
-            "opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-300",
-            isAtEnd && "opacity-0 pointer-events-none",
-            "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          )}
-          aria-label="Scroll right"
-        >
-          <ChevronRight className="h-6 w-6 sm:h-7 sm:w-7" />
-        </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => scroll('right')}
+            disabled={isAtEnd}
+            className={cn(
+              "absolute right-0 top-1/2 -translate-y-1/2 z-20 translate-x-0 md:translate-x-1/2", // Adjusted for edge placement
+              "w-9 h-9 sm:w-10 sm:h-10 p-0 rounded-full",
+              "bg-background/50 hover:bg-primary/80 text-foreground hover:text-primary-foreground shadow-md",
+              "opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-300",
+              isAtEnd && "opacity-0 pointer-events-none",
+              "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              "flex items-center justify-center"
+            )}
+            aria-label="Scroll right"
+          >
+            <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
+          </Button>
+        </>
       )}
     </div>
   );
 }
 
+interface CharacterTypeProps {
+  character: CharacterType;
+}
