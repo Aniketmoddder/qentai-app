@@ -66,19 +66,17 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
 
 
   return (
-    <div className="relative py-4 mt-1 sm:mt-2 navigation-wrapper"> {/* Added navigation-wrapper for consistency */}
-        {/* keen-slider div needs padding for arrows to sit in */}
+    <div className="relative py-4 mt-1 sm:mt-2 navigation-wrapper group px-8 sm:px-10 md:px-12"> {/* Added padding for arrows */}
       <div
         ref={sliderRef}
-        className="keen-slider scrollbar-hide px-10"  // Added padding
+        className="keen-slider scrollbar-hide" // Removed px from here
       >
         {displayedCharacters.map((character) => (
           <div
             key={character.id}
             className="keen-slider__slide"
             style={{
-                minWidth: '112px', 
-                maxWidth: '136px', 
+                // Let CharacterCard's own width/max-width control the size
             }}
           >
             <CharacterCard character={character} />
@@ -86,45 +84,46 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
         ))}
       </div>
 
-      {loaded && instanceRef.current && canScroll && !isAtStart && (
+      {loaded && instanceRef.current && canScroll && (
+          <>
           <Button
-            variant="default"
+            variant="ghost"
             size="icon"
             onClick={(e: any) => { e.stopPropagation(); instanceRef.current?.prev()}}
             className={cn(
-              "absolute left-0 top-1/2 -translate-y-1/2 z-30",
-              "rounded-full w-9 h-9 sm:w-10 sm:h-10 p-0", // Made circular and sized
-              "bg-black/30 text-white", // Dark semi-transparent background, white icon
-              "opacity-100", // Always visible
-              "disabled:opacity-0 disabled:cursor-not-allowed",
-              "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0",
-              "flex items-center justify-center border-none shadow-none"
+              "absolute left-0 top-1/2 -translate-y-1/2 z-20",
+              "text-white",
+              "opacity-100 disabled:opacity-0 disabled:cursor-not-allowed",
+              "focus-visible:ring-0 focus-visible:ring-offset-0",
+              "border-none shadow-none bg-transparent hover:bg-transparent",
+              "p-1 w-auto h-auto"
             )}
             aria-label="Scroll left"
+            disabled={isAtStart}
           >
-            <ChevronLeft className="h-5 w-5 sm:h-6 sm:h-6" />
+            <ChevronLeft className="h-6 w-6 sm:h-7 sm:h-7" />
           </Button>
-      )}
 
-      {loaded && instanceRef.current && canScroll && !isAtEnd && (
           <Button
-            variant="default"
+            variant="ghost"
             size="icon"
             onClick={(e: any) => { e.stopPropagation(); instanceRef.current?.next()}}
             className={cn(
-              "absolute right-0 top-1/2 -translate-y-1/2 z-30",
-              "rounded-full w-9 h-9 sm:w-10 sm:h-10 p-0",
-              "bg-black/30 text-white",
-              "opacity-100",
-              "disabled:opacity-0 disabled:cursor-not-allowed",
-              "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0",
-              "flex items-center justify-center border-none shadow-none"
+              "absolute right-0 top-1/2 -translate-y-1/2 z-20",
+              "text-white",
+              "opacity-100 disabled:opacity-0 disabled:cursor-not-allowed",
+              "focus-visible:ring-0 focus-visible:ring-offset-0",
+              "border-none shadow-none bg-transparent hover:bg-transparent",
+              "p-1 w-auto h-auto"
             )}
             aria-label="Scroll right"
+            disabled={isAtEnd}
           >
-            <ChevronRight className="h-5 w-5 sm:h-6 sm:h-6" />
+            <ChevronRight className="h-6 w-6 sm:h-7 sm:h-7" />
           </Button>
+          </>
       )}
     </div>
   );
 }
+

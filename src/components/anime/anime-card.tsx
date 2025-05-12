@@ -3,11 +3,10 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation'; // Import useRouter
 import type { Anime } from '@/types/anime';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import { PlayCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface AnimeCardProps {
   anime: Anime;
@@ -15,7 +14,6 @@ interface AnimeCardProps {
 }
 
 export default function AnimeCard({ anime, className }: AnimeCardProps) {
-  const router = useRouter(); // Initialize useRouter
   const firstEpisodeId = anime.episodes?.[0]?.id || '';
   const placeholderCover = `https://picsum.photos/seed/${anime.id}/200/300`;
 
@@ -35,30 +33,29 @@ export default function AnimeCard({ anime, className }: AnimeCardProps) {
 
   const episodeBadgeText = getEpisodeBadgeText();
 
-  const handlePlayClick = (e: React.MouseEvent | React.KeyboardEvent) => {
-    e.stopPropagation(); // Prevent outer Link (to details page) from firing
-    router.push(`/play/${anime.id}?episode=${firstEpisodeId}`);
-  };
-
   return (
     <Link
       href={`/anime/${anime.id}`}
       className={cn(
         "group block cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg",
-        "w-[calc(50vw-1.25rem)] max-w-[150px] sm:w-auto sm:max-w-[160px] md:max-w-[170px]",
         className
       )}
       aria-label={`View details for ${anime.title}`}
     >
-      <div className="flex flex-col h-full bg-card border border-border/20 rounded-lg overflow-hidden shadow-md hover:shadow-primary/20 transition-shadow duration-300">
-        <div className="relative w-full aspect-[2/3]">
+      <div className={cn(
+        "flex flex-col h-full bg-card border border-border/20 rounded-lg overflow-hidden shadow-md hover:shadow-primary/20 transition-shadow duration-300",
+        "w-[45vw] max-w-[150px] sm:max-w-[160px] md:max-w-[170px] lg:max-w-[180px] xl:max-w-[190px]", // Adjusted sizes
+        "aspect-[2/3]"
+       )}
+      >
+        <div className="relative w-full flex-grow"> {/* Use flex-grow for image to take available space */}
           <Image
             src={anime.coverImage || placeholderCover}
             alt={anime.title}
             fill
-            sizes="(max-width: 640px) 40vw, (max-width: 768px) 160px, 170px"
+            sizes="(max-width: 640px) 40vw, (max-width: 768px) 160px, 190px"
             className="object-cover"
-            priority={false}
+            priority={false} // Consider priority for LCP elements only
             data-ai-hint={`${anime.genre?.[0] || 'anime'} portrait poster`}
           />
           {episodeBadgeText && (
@@ -72,23 +69,23 @@ export default function AnimeCard({ anime, className }: AnimeCardProps) {
             </div>
           )}
 
-          {/* Centered Play Button (changed from Link to div with onClick) */}
+          {/* Centered Play Icon on Hover - links to player page. */}
           <div
-            role="button" // Make it behave like a button for accessibility
-            tabIndex={0} // Make it focusable
-            onClick={handlePlayClick}
-            onKeyDown={(e) => { // Allow activation with Enter/Space
-              if (e.key === 'Enter' || e.key === ' ') {
-                handlePlayClick(e);
-              }
-            }}
-            aria-label={`Play ${anime.title}`}
-            className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300 z-20 p-2 rounded-full hover:bg-black/30 focus:bg-black/40 focus:outline-none"
+            className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300 z-20"
           >
-            <PlayCircle className="w-10 h-10 text-white/90 drop-shadow-lg" />
+            <Link
+                href={`/play/${anime.id}?episode=${firstEpisodeId}`}
+                onClick={(e) => {
+                    e.stopPropagation(); // Prevent outer Link (to details page) from firing
+                }}
+                aria-label={`Play ${anime.title}`}
+                className="p-2 focus:outline-none" // Removed rounded-full and hover/focus backgrounds
+            >
+                <PlayCircle className="w-10 h-10 text-white/90 drop-shadow-lg" />
+            </Link>
           </div>
         </div>
-        <div className="p-2.5 text-center mt-auto bg-card">
+        <div className="p-2 text-center bg-card mt-auto"> {/* Ensure text is at the bottom */}
           <p
             className="text-xs sm:text-sm font-medium text-foreground group-hover:text-primary transition-colors duration-200 truncate"
             title={anime.title}

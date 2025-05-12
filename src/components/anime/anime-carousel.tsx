@@ -53,27 +53,18 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
         <h2 className="text-xl md:text-2xl font-bold text-foreground section-title-bar">{title}</h2>
       </div>
       
-      <div className="relative navigation-wrapper">
-         {/* keen-slider div needs padding for arrows to sit in */}
+      <div className="navigation-wrapper relative px-8 sm:px-10 md:px-12 group"> {/* Added padding for arrows */}
         <div 
             ref={sliderRef} 
-            className="keen-slider scrollbar-hide px-10 md:px-12" // Added padding for arrows
+            className="keen-slider scrollbar-hide" // Removed px from here
         >
             {displayedAnime.map((anime, index) => (
             <div 
                 key={anime.id + '-' + index} 
                 className="keen-slider__slide"
                  style={{ 
-                    minWidth: 'calc(50vw - 1.25rem - 6px)', 
-                    maxWidth: '150px', 
-                    // @ts-ignore
-                    '@screen sm': { 
-                         minWidth: 'auto',
-                         maxWidth: '160px',
-                    },
-                    '@screen md': {
-                         maxWidth: '170px',
-                    }
+                    // Let the AnimeCard's own max-width control the size.
+                    // perView: 'auto' will adjust.
                  }}
             >
                 <AnimeCard anime={anime} />
@@ -81,45 +72,46 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
             ))}
         </div>
         
-        {loaded && instanceRef.current && canScroll && !isAtStart && (
+        {loaded && instanceRef.current && canScroll && (
+            <>
             <Button
-                variant="default" // Changed from ghost to have a background
+                variant="ghost"
                 size="icon"
                 onClick={(e: any) => { e.stopPropagation(); instanceRef.current?.prev()}}
                 className={cn(
-                    "absolute left-0 top-1/2 -translate-y-1/2 z-30", // Ensure left-0 is within parent's padding context
-                    "rounded-full w-10 h-10 md:w-12 md:h-12 p-0",
-                    "bg-black/30 text-white", // Dark semi-transparent background, white icon
-                    "opacity-100", // Always visible
-                    "disabled:opacity-0 disabled:cursor-not-allowed", // Hides if disabled (at start)
-                    "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0", // Minimal focus
-                    "flex items-center justify-center border-none shadow-none" // No border, no explicit shadow
+                    "absolute left-0 top-1/2 -translate-y-1/2 z-20", // Sits within navigation-wrapper padding
+                    "text-white", // Icon color
+                    "opacity-100 disabled:opacity-0 disabled:cursor-not-allowed",
+                    "focus-visible:ring-0 focus-visible:ring-offset-0",
+                    "border-none shadow-none bg-transparent hover:bg-transparent", // No background, border, shadow or hover bg
+                    "p-1 w-auto h-auto" // Adjust padding/size to fit icon snugly
                 )}
                 aria-label="Scroll left"
+                disabled={isAtStart}
             >
-                <ChevronLeft className="h-6 w-6 md:h-7 md:w-7" />
+                <ChevronLeft className="h-7 w-7 md:h-8 md:w-8" />
             </Button>
-        )}
-        {loaded && instanceRef.current && canScroll && !isAtEnd && (
             <Button
-                variant="default"
+                variant="ghost"
                 size="icon"
                 onClick={(e: any) => { e.stopPropagation(); instanceRef.current?.next()}}
                 className={cn(
-                    "absolute right-0 top-1/2 -translate-y-1/2 z-30", // Ensure right-0 is within parent's padding context
-                    "rounded-full w-10 h-10 md:w-12 md:h-12 p-0",
-                    "bg-black/30 text-white",
-                    "opacity-100",
-                    "disabled:opacity-0 disabled:cursor-not-allowed",
-                    "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0",
-                    "flex items-center justify-center border-none shadow-none"
+                    "absolute right-0 top-1/2 -translate-y-1/2 z-20", // Sits within navigation-wrapper padding
+                    "text-white", // Icon color
+                    "opacity-100 disabled:opacity-0 disabled:cursor-not-allowed",
+                    "focus-visible:ring-0 focus-visible:ring-offset-0",
+                    "border-none shadow-none bg-transparent hover:bg-transparent",
+                    "p-1 w-auto h-auto"
                 )}
                 aria-label="Scroll right"
+                disabled={isAtEnd}
             >
-                <ChevronRight className="h-6 w-6 md:h-7 md:w-7" />
+                <ChevronRight className="h-7 w-7 md:h-8 md:w-8" />
             </Button>
+            </>
         )}
       </div>
     </section>
   );
 }
+
