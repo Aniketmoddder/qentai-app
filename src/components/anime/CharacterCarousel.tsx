@@ -80,7 +80,7 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
 
   if (!isClient) { 
     return (
-        <div className="py-6 text-center text-muted-foreground">
+        <div className="py-6 text-center text-muted-foreground mt-3 sm:mt-4">
             <Users size={32} className="mx-auto mb-2 opacity-50 animate-pulse" />
             <p>Loading characters...</p>
         </div>
@@ -89,7 +89,7 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
 
   if (!characters || characters.length === 0) {
     return (
-        <div className="py-6 text-center text-muted-foreground">
+        <div className="py-6 text-center text-muted-foreground mt-3 sm:mt-4">
             <Users size={32} className="mx-auto mb-2 opacity-50" />
             <p>No character information available for this title yet.</p>
         </div>
@@ -98,7 +98,7 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
 
 
   return (
-    <div className="relative group/carousel py-4 mt-2 sm:mt-3"> {/* Added top margin */}
+    <div className="relative group/carousel py-4 mt-3 sm:mt-4">
       <div
         ref={scrollContainerRef}
         className="flex overflow-x-auto pb-4 gap-3 sm:gap-4 scrollbar-hide px-1" 
@@ -115,8 +115,8 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
         ))}
       </div>
 
-      {/* Left Scroll Button - Conditionally rendered/styled based on isAtStart */}
-      {canScroll && !isAtStart && (
+      {/* Left Scroll Button */}
+      {canScroll && (
         <Button
           variant="ghost"
           size="icon"
@@ -124,15 +124,15 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
           disabled={isAtStart}
           className={cn(
             "absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-20",
-            "rounded-full w-9 h-9 sm:w-10 sm:h-10",
-            "bg-black/40 hover:bg-black/60 text-white shadow-md",
-            "opacity-0 group-hover/carousel:opacity-100 transition-all duration-300",
+            "w-9 h-9 sm:w-10 sm:h-10 p-0", // Reset padding
+            "text-white/70 hover:text-white", // Icon color, hover for icon
+            "opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-300",
+            isAtStart && "opacity-0 pointer-events-none",
             "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            // Removed isAtStart condition from here as it's handled by the outer conditional rendering
           )}
           aria-label="Scroll left"
         >
-          <ChevronLeft className="h-5 w-5 sm:h-6 sm:h-6" />
+          <ChevronLeft className="h-6 w-6 sm:h-7 sm:w-7" />
         </Button>
       )}
 
@@ -145,18 +145,18 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
           disabled={isAtEnd}
           className={cn(
             "absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-20",
-            "rounded-full w-9 h-9 sm:w-10 sm:h-10",
-            "bg-black/40 hover:bg-black/60 text-white shadow-md",
-            "opacity-0 group-hover/carousel:opacity-100 transition-all duration-300",
-            isAtEnd && "opacity-0 cursor-not-allowed pointer-events-none", 
-            !isAtEnd && "group-hover/carousel:opacity-100", 
+            "w-9 h-9 sm:w-10 sm:h-10 p-0", // Reset padding
+            "text-white/70 hover:text-white", // Icon color, hover for icon
+            "opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-300",
+            isAtEnd && "opacity-0 pointer-events-none",
             "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           )}
           aria-label="Scroll right"
         >
-          <ChevronRight className="h-5 w-5 sm:h-6 sm:h-6" />
+          <ChevronRight className="h-6 w-6 sm:h-7 sm:w-7" />
         </Button>
       )}
     </div>
   );
 }
+
