@@ -8,13 +8,14 @@ import AnimeCardSkeleton from './AnimeCardSkeleton';
 import { Button } from '@/components/ui/button';
 import { Loader2, Wand2, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { getAllAnimes as fetchAllAnimesFromDB, getUniqueGenres } from '@/services/animeService'; // Import getUniqueGenres
+import { getAllAnimes } from '@/services/animeService'; 
+import { getUniqueGenres } from '@/services/animeService';
 
 // Placeholder for actual user watch history - will be replaced with real user data.
 let dynamicMockWatchHistoryTitles: string[] = []; 
 
 interface RecommendationsSectionProps {
-  allAnimesCache: Anime[]; // This prop will now be primarily for matching titles, not initial catalog load
+  allAnimesCache: Anime[]; 
 }
 
 export default function RecommendationsSection({ allAnimesCache: initialAllAnimesCache }: RecommendationsSectionProps) {
@@ -23,11 +24,10 @@ export default function RecommendationsSection({ allAnimesCache: initialAllAnime
   const [error, setError] = useState<string | null>(null);
   const [internalAnimeCatalog, setInternalAnimeCatalog] = useState<Anime[]>(initialAllAnimesCache || []);
 
-  // Fetch all animes for the catalog if not already provided or to ensure freshness
   const ensureAnimeCatalog = useCallback(async () => {
     if (internalAnimeCatalog.length === 0) {
       try {
-        const animes = await fetchAllAnimesFromDB({ count: -1 }); // Fetch all
+        const animes = await getAllAnimes({ count: -1, filters: {} }); 
         setInternalAnimeCatalog(animes);
         return animes;
       } catch (e) {
@@ -44,11 +44,9 @@ export default function RecommendationsSection({ allAnimesCache: initialAllAnime
         try {
             const uniqueGenres = await getUniqueGenres();
             if (uniqueGenres.length > 0) {
-                // Use a few genres as mock "watched" anime titles for demo if history is empty
-                // This is a placeholder for actual user history integration
                 dynamicMockWatchHistoryTitles = uniqueGenres.slice(0, 3).map(genre => `Anime with ${genre} genre`);
             } else {
-                dynamicMockWatchHistoryTitles = ['Attack on Titan', 'Solo Leveling', 'One Punch Man']; // Fallback
+                dynamicMockWatchHistoryTitles = ['Attack on Titan', 'Solo Leveling', 'One Punch Man']; 
             }
         } catch (genreError) {
             console.warn("Could not fetch genres for mock history, using default:", genreError);
@@ -114,7 +112,7 @@ export default function RecommendationsSection({ allAnimesCache: initialAllAnime
       fetchRecommendations();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Fetch on initial mount if conditions are met
+  }, []); 
 
 
   return (
@@ -143,7 +141,7 @@ export default function RecommendationsSection({ allAnimesCache: initialAllAnime
       )}
 
       {isLoading && recommendations.length === 0 && !error && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-4 sm:gap-x-4 place-items-center sm:place-items-stretch">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 place-items-center sm:place-items-stretch"> {/* Reduced gap */}
           {[...Array(5)].map((_, index) => (
             <AnimeCardSkeleton key={index} />
           ))}
@@ -165,7 +163,7 @@ export default function RecommendationsSection({ allAnimesCache: initialAllAnime
 
 
       {recommendations.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-4 sm:gap-x-4 place-items-center sm:place-items-stretch">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 place-items-center sm:place-items-stretch"> {/* Reduced gap */}
           {recommendations.map((anime) => (
             <AnimeCard key={anime.id} anime={anime} />
           ))}

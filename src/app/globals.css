@@ -1,8 +1,12 @@
 
-@import 'keen-slider/keen-slider.min.css';
 /* Vidstack Player Styles */
 @import 'vidstack/player/styles/default/theme.css';
 @import 'vidstack/player/styles/default/layouts/video.css';
+
+/* Swiper.js Styles */
+@import 'swiper/css';
+@import 'swiper/css/navigation';
+
 
 @tailwind base;
 @tailwind components;
@@ -338,3 +342,37 @@
   }
 }
 
+/* Custom Swiper Navigation Styles */
+.swiper-button-prev,
+.swiper-button-next {
+  color: #ffffff !important; /* Bold white */
+  background-image: none !important; /* Remove default Swiper arrow images */
+  width: 40px !important; /* Adjust size as needed */
+  height: 40px !important; /* Adjust size as needed */
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  transition: opacity 0.2s ease-in-out;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.swiper-button-prev::after,
+.swiper-button-next::after {
+  font-size: 24px !important; /* Adjust icon size */
+  font-weight: bold !important;
+}
+
+.swiper-button-prev {
+  left: 10px !important;
+}
+
+.swiper-button-next {
+  right: 10px !important;
+}
+
+.swiper-button-disabled {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

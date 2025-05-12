@@ -3,80 +3,99 @@
 
 import Image from 'next/image';
 import type { Character as CharacterType } from '@/types/anime'; 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 export default function CharacterCard({ character }: CharacterTypeProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [currentImageSrc, setCurrentImageSrc] = useState('');
+  const [currentName, setCurrentName] = useState('');
+  const [currentAlt, setCurrentAlt] = useState('');
 
-  const primaryVoiceActor = character.voiceActors?.find(va => va.language === 'JAPANESE') || character.voiceActors?.[0];
+  const primaryVoiceActor = character.voiceActors?.find(va => va.language?.toUpperCase() === 'JAPANESE') || character.voiceActors?.[0];
 
-  const characterImageSrc = character.image || `https://picsum.photos/seed/${character.id || 'char'}/200/300`;
+  const characterImageSrc = character.image || `https://picsum.photos/seed/${character.id || 'char'}/80/120`;
   const characterNameText = character.name || 'Character';
 
-  const voiceActorImageSrc = primaryVoiceActor?.image || `https://picsum.photos/seed/${primaryVoiceActor?.id || 'va'}/200/300`;
+  const voiceActorImageSrc = primaryVoiceActor?.image || `https://picsum.photos/seed/${primaryVoiceActor?.id || 'va'}/80/120`;
   const voiceActorNameText = primaryVoiceActor?.name || 'Voice Actor';
   
-  const displayName = isHovered && character.name ? character.name : (primaryVoiceActor?.name || 'N/A');
-  const displayRole = character.role ? character.role.charAt(0).toUpperCase() + character.role.slice(1).toLowerCase() : 'Supporting';
+  useEffect(() => {
+    if (isHovered) {
+      setCurrentImageSrc(characterImageSrc);
+      setCurrentName(characterNameText);
+      setCurrentAlt(characterNameText);
+    } else {
+      setCurrentImageSrc(voiceActorImageSrc);
+      setCurrentName(voiceActorNameText);
+      setCurrentAlt(voiceActorNameText);
+    }
+  }, [isHovered, characterImageSrc, characterNameText, voiceActorImageSrc, voiceActorNameText]);
+
+  const getInitials = (name: string | null | undefined): string => {
+    if (!name) return 'N/A';
+    const parts = name.split(' ');
+    if (parts.length > 1) {
+      return `${parts[0][0]}.${parts[parts.length -1][0]}.`.toUpperCase();
+    }
+    return `${parts[0][0]}.`.toUpperCase();
+  };
+
+  const displayInitials = isHovered ? getInitials(character.name) : getInitials(primaryVoiceActor?.name);
+  
+  let roleLetter = '';
+  if (character.role) {
+    if (character.role.toUpperCase() === 'MAIN') roleLetter = 'M';
+    else if (character.role.toUpperCase() === 'SUPPORTING') roleLetter = 'S';
+  }
+
 
   return (
     <div
       className={cn(
-        "group/charcard relative w-[100px] h-[150px] sm:w-[110px] sm:h-[165px] md:w-[120px] md:h-[180px] overflow-hidden rounded-md bg-card border border-border/20 shadow-sm transition-all duration-300 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      )} // Adjusted size to be smaller, removed transform
+        "group/charcard relative w-[70px] h-[210px] sm:w-[75px] sm:h-[225px] md:w-[80px] md:h-[240px]", // Adjusted size for capsule
+        "rounded-full overflow-hidden", // Capsule shape
+        "bg-card border-2 border-transparent group-hover/charcard:border-primary/50 transition-all duration-300 ease-in-out",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onFocus={() => setIsHovered(true)} 
       onBlur={() => setIsHovered(false)}
       tabIndex={0} 
-      aria-label={`Details for ${displayName}, role: ${displayRole}`}
+      aria-label={`Details for ${currentName}, role: ${character.role || 'Unknown'}`}
     >
       <div className="relative w-full h-full">
-        {/* Voice Actor Image (Default) */}
-        <Image
-          src={voiceActorImageSrc}
-          alt={voiceActorNameText}
-          fill
-          sizes="(max-width: 640px) 100px, (max-width: 768px) 110px, 120px"
-          className={cn(
-            "absolute inset-0 object-cover object-center transition-opacity duration-300 ease-in-out", // Faster transition
-            isHovered ? "opacity-0" : "opacity-100"
-          )}
-          data-ai-hint="person portrait"
-          priority={!isHovered} 
-          onError={(e) => { e.currentTarget.src = `https://picsum.photos/seed/${primaryVoiceActor?.id || 'va-fallback'}/200/300`; }}
-        />
-        {/* Character Image (On Hover) */}
-        <Image
-          src={characterImageSrc}
-          alt={characterNameText}
-          fill
-          sizes="(max-width: 640px) 100px, (max-width: 768px) 110px, 120px"
-          className={cn(
-            "absolute inset-0 object-cover object-center transition-opacity duration-300 ease-in-out", // Faster transition
-            isHovered ? "opacity-100" : "opacity-0"
-          )}
-          data-ai-hint="anime character portrait"
-          priority={isHovered}
-          onError={(e) => { e.currentTarget.src = `https://picsum.photos/seed/${character.id || 'char-fallback'}/200/300`; }}
-        />
-        <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/80 via-black/50 to-transparent pointer-events-none" />
+        {/* Image container with fixed aspect ratio for consistent image display */}
+        <div className="absolute inset-0 transition-opacity duration-300 ease-in-out">
+          <Image
+            src={currentImageSrc}
+            alt={currentAlt}
+            fill
+            sizes="(max-width: 640px) 70px, (max-width: 768px) 75px, 80px"
+            className="object-cover object-center" // Ensures image covers the area
+            data-ai-hint="person portrait"
+            priority={true} 
+            onError={(e) => { e.currentTarget.src = `https://picsum.photos/seed/${character.id || 'fallback-char'}/80/120`; }}
+          />
+        </div>
+        {/* Gradient overlay for text */}
+        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
       </div>
-      <div className="absolute bottom-0 left-0 right-0 p-1.5 sm:p-2 text-left z-10"> {/* Reduced padding */}
+
+      {/* Text Overlay - Initials and Role */}
+      <div className="absolute bottom-0 left-0 right-0 p-2 text-center z-10">
         <p 
-          className="text-[0.65rem] sm:text-xs font-semibold text-white truncate w-full transition-colors duration-300 group-hover/charcard:text-primary group-focus/charcard:text-primary" 
-          title={displayName}
+          className="text-sm font-bold text-white truncate w-full"
+          title={displayInitials}
           aria-live="polite" 
         >
-          {displayName}
+          {displayInitials}
         </p>
-        {displayRole && (
-          <div className="flex items-center mt-0 sm:mt-0.5">
-            <p className="text-[0.55rem] sm:text-[0.6rem] text-white/80 group-hover/charcard:text-primary/90 truncate w-full">
-              {displayRole}
-            </p>
-          </div>
+        {roleLetter && (
+          <p className="text-xs text-white/90 mt-0.5">
+            {roleLetter}
+          </p>
         )}
       </div>
     </div>

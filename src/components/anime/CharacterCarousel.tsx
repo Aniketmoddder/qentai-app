@@ -5,9 +5,12 @@ import type { Character } from '@/types/anime';
 import CharacterCard from './CharacterCard';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Users } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
-import { useKeenSlider } from 'keen-slider/react';
-import 'keen-slider/keen-slider.min.css';
+import React, { useState, useEffect, useRef } from 'react';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import type { Swiper as SwiperInstance } from 'swiper';
+import { Navigation } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/navigation';
 import { cn } from '@/lib/utils';
 
 interface CharacterCarouselProps {
@@ -17,25 +20,11 @@ interface CharacterCarouselProps {
 const MAX_CHARACTERS_TO_SHOW = 15;
 
 export default function CharacterCarousel({ characters }: CharacterCarouselProps) {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [loaded, setLoaded] = useState(false);
-  const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>({
-    initial: 0,
-    slideChanged(slider) {
-      setCurrentSlide(slider.track.details.rel);
-    },
-    created() {
-      setLoaded(true);
-    },
-    slides: {
-      perView: 'auto',
-      spacing: 10, // Slightly less spacing for character cards
-    },
-     drag: true,
-     rubberband: true,
-  });
-
+  const swiperRef = useRef<SwiperInstance | null>(null);
+  const [isBeginning, setIsBeginning] = useState(true);
+  const [isEnd, setIsEnd] = useState(false);
   const [isClient, setIsClient] = useState(false);
+
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -60,69 +49,72 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
     );
   }
   
-  const showLeftArrow = loaded && instanceRef.current && currentSlide !== 0;
-  const showRightArrow = loaded && instanceRef.current && instanceRef.current.track.details && currentSlide < instanceRef.current.track.details.slides.length - (Math.floor(instanceRef.current.options.slides?.perView || 1) > 0 ? Math.floor(instanceRef.current.options.slides?.perView || 1) : 1) ;
-  const canScroll = loaded && instanceRef.current && instanceRef.current.track.details && instanceRef.current.track.details.slides.length > (instanceRef.current.options.slides?.perView || 1);
-
+  const updateNavState = (swiper: SwiperInstance) => {
+    setIsBeginning(swiper.isBeginning);
+    setIsEnd(swiper.isEnd);
+  };
 
   return (
-    <div className="relative py-4 mt-1 sm:mt-2 navigation-wrapper group">
-      <div
-        ref={sliderRef}
-        className="keen-slider scrollbar-hide px-1" 
+    <div className="relative py-4 mt-1 sm:mt-2 group">
+      <Swiper
+        modules={[Navigation]}
+        onSwiper={(swiper) => {
+          swiperRef.current = swiper;
+          updateNavState(swiper);
+        }}
+        onSlideChange={(swiper) => updateNavState(swiper)}
+        spaceBetween={10} // Spacing for character cards
+        slidesPerView="auto"
+        className="!px-1" // Allow some space for shadows or card outlines
+        navigation={{
+          nextEl: '.swiper-button-next-character',
+          prevEl: '.swiper-button-prev-character',
+          disabledClass: 'swiper-button-disabled-custom',
+        }}
       >
         {displayedCharacters.map((character) => (
-          <div
-            key={character.id}
-            className="keen-slider__slide flex justify-center" // Added flex justify-center
-            style={{
-                // Width is controlled by CharacterCard
-            }}
-          >
+          <SwiperSlide key={character.id} className="!w-auto flex justify-center">
             <CharacterCard character={character} />
-          </div>
+          </SwiperSlide>
         ))}
-      </div>
-
-      {canScroll && (
-          <>
-          {showLeftArrow && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e: any) => { e.stopPropagation(); instanceRef.current?.prev()}}
-                className={cn(
-                  "absolute left-0 top-1/2 -translate-y-1/2 z-20",
-                  "text-white w-8 h-12 md:w-10 md:h-16 p-0", // Slightly smaller arrows for char carousel
-                  "bg-gradient-to-r from-black/40 to-transparent",
-                  "opacity-100 hover:opacity-100 focus:opacity-100",
-                  "focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none",
-                  "flex items-center justify-center"
-                )}
-                aria-label="Scroll left"
-              >
-                <ChevronLeft className="h-6 w-6" />
-              </Button>
-          )}
-          {showRightArrow && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e: any) => { e.stopPropagation(); instanceRef.current?.next()}}
-                className={cn(
-                  "absolute right-0 top-1/2 -translate-y-1/2 z-20",
-                  "text-white w-8 h-12 md:w-10 md:h-16 p-0",
-                  "bg-gradient-to-l from-black/40 to-transparent",
-                  "opacity-100 hover:opacity-100 focus:opacity-100",
-                  "focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none",
-                  "flex items-center justify-center"
-                )}
-                aria-label="Scroll right"
-              >
-                <ChevronRight className="h-6 w-6" />
-              </Button>
-          )}
-          </>
+      </Swiper>
+      
+      {/* Custom Navigation Arrows */}
+      {!isBeginning && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "absolute left-0 top-1/2 -translate-y-1/2 z-20",
+              "text-white w-8 h-12 md:w-10 md:h-16 p-0",
+              "bg-transparent",
+              "opacity-100 focus:opacity-100",
+              "focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none",
+              "flex items-center justify-center swiper-button-prev-character"
+            )}
+            onClick={() => swiperRef.current?.slidePrev()}
+            aria-label="Scroll left"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </Button>
+      )}
+      {!isEnd && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "absolute right-0 top-1/2 -translate-y-1/2 z-20",
+              "text-white w-8 h-12 md:w-10 md:h-16 p-0",
+              "bg-transparent",
+              "opacity-100 focus:opacity-100",
+              "focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none",
+              "flex items-center justify-center swiper-button-next-character"
+            )}
+            onClick={() => swiperRef.current?.slideNext()}
+            aria-label="Scroll right"
+          >
+            <ChevronRight className="h-6 w-6" />
+          </Button>
       )}
     </div>
   );
