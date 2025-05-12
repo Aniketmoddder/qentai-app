@@ -5,37 +5,33 @@ import type { Character as CharacterType } from '@/types/anime';
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { UserCircle } from 'lucide-react'; // Placeholder for role icon
 
-interface CharacterCardProps {
-  character: CharacterType;
-}
-
-export default function CharacterCard({ character }: CharacterCardProps) {
+export default function CharacterCard({ character }: CharacterTypeProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   const primaryVoiceActor = character.voiceActors?.find(va => va.language === 'JAPANESE') || character.voiceActors?.[0];
 
-  const characterImageSrc = character.image || '/placeholder-character.png';
+  const characterImageSrc = character.image || `https://picsum.photos/seed/${character.id || 'char'}/200/300`;
   const characterNameText = character.name || 'Character';
 
-  const voiceActorImageSrc = primaryVoiceActor?.image || '/placeholder-va.png';
+  const voiceActorImageSrc = primaryVoiceActor?.image || `https://picsum.photos/seed/${primaryVoiceActor?.id || 'va'}/200/300`;
   const voiceActorNameText = primaryVoiceActor?.name || 'Voice Actor';
   
-  // Display name for the text overlay
   const displayName = isHovered ? characterNameText : voiceActorNameText;
+  const displayRole = character.role ? character.role.charAt(0).toUpperCase() + character.role.slice(1).toLowerCase() : 'Supporting';
 
   return (
     <div
       className={cn(
-        "group/charcard relative w-28 sm:w-32 md:w-36 h-44 sm:h-48 md:h-52 overflow-hidden rounded-xl bg-card border-border/30 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-primary/20 cursor-default focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        "group/charcard relative w-28 sm:w-32 md:w-[136px] h-40 sm:h-44 md:h-[190px] overflow-hidden rounded-lg bg-card border border-border/20 shadow-md transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onFocus={() => setIsHovered(true)}
+      onFocus={() => setIsHovered(true)} // Consistent behavior for keyboard navigation
       onBlur={() => setIsHovered(false)}
-      tabIndex={0} 
-      role="button" // Add role button for better accessibility for non-interactive div
-      aria-label={`Details for ${displayName}`}
+      tabIndex={0} // Make it focusable
+      aria-label={`Details for ${displayName}, role: ${displayRole}`}
     >
       <div className="relative w-full h-full">
         {/* Voice Actor Image - visible by default */}
@@ -43,41 +39,53 @@ export default function CharacterCard({ character }: CharacterCardProps) {
           src={voiceActorImageSrc}
           alt={voiceActorNameText}
           fill
-          sizes="(max-width: 640px) 112px, (max-width: 768px) 128px, 144px"
+          sizes="(max-width: 640px) 112px, (max-width: 768px) 128px, 136px"
           className={cn(
-            "absolute inset-0 object-cover object-center transition-opacity duration-300 ease-in-out",
+            "absolute inset-0 object-cover object-center transition-opacity duration-500 ease-in-out",
             isHovered ? "opacity-0" : "opacity-100"
           )}
           data-ai-hint="person portrait"
           priority={!isHovered} 
-          onError={(e) => { e.currentTarget.src = '/placeholder-va.png'; }}
+          onError={(e) => { e.currentTarget.src = `https://picsum.photos/seed/${primaryVoiceActor?.id || 'va-fallback'}/200/300`; }}
         />
         {/* Character Image - visible on hover/focus */}
         <Image
           src={characterImageSrc}
           alt={characterNameText}
           fill
-          sizes="(max-width: 640px) 112px, (max-width: 768px) 128px, 144px"
+          sizes="(max-width: 640px) 112px, (max-width: 768px) 128px, 136px"
           className={cn(
-            "absolute inset-0 object-cover object-center transition-opacity duration-300 ease-in-out",
+            "absolute inset-0 object-cover object-center transition-opacity duration-500 ease-in-out",
             isHovered ? "opacity-100" : "opacity-0"
           )}
           data-ai-hint="anime character portrait"
           priority={isHovered}
-          onError={(e) => { e.currentTarget.src = '/placeholder-character.png'; }}
+          onError={(e) => { e.currentTarget.src = `https://picsum.photos/seed/${character.id || 'char-fallback'}/200/300`; }}
         />
         {/* Gradient overlay for text visibility */}
-        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 via-black/40 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/80 via-black/50 to-transparent pointer-events-none" />
       </div>
-      <CardContent className="absolute bottom-0 left-0 right-0 p-2 text-center z-10">
+      <CardContent className="absolute bottom-0 left-0 right-0 p-2.5 text-left z-10">
         <p 
-          className="text-xs sm:text-sm font-semibold text-white truncate w-full transition-colors duration-300 group-hover/charcard:text-primary group-focus/charcard:text-primary" 
+          className="text-xs sm:text-sm font-bold text-white truncate w-full transition-colors duration-300 group-hover/charcard:text-primary group-focus/charcard:text-primary" 
           title={displayName}
-          aria-live="polite" // Announces changes to screen readers
+          aria-live="polite" 
         >
           {displayName}
         </p>
+        {displayRole && (
+          <div className="flex items-center mt-0.5">
+            {/* <UserCircle className="w-2.5 h-2.5 mr-1 text-white/70 group-hover/charcard:text-primary/70" /> */}
+            <p className="text-[0.6rem] sm:text-[0.65rem] text-white/80 group-hover/charcard:text-primary/90 truncate w-full">
+              {displayRole}
+            </p>
+          </div>
+        )}
       </CardContent>
     </div>
   );
+}
+
+interface CharacterTypeProps {
+  character: CharacterType;
 }

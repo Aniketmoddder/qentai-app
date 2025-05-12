@@ -2,9 +2,9 @@
 import Container from '@/components/layout/container';
 import Logo from '@/components/common/logo';
 import Link from 'next/link';
-import { Github, Twitter, Send, ListChecks, History, Grid, Tag } from 'lucide-react'; 
+import { Github, Twitter, Send, ListChecks, History, Grid3X3 as QuickActionsIcon, Tag } from 'lucide-react'; 
 import { Button } from '@/components/ui/button';
-import ThemeSwitcher from '@/components/theme/ThemeSwitcher'; // Added ThemeSwitcher
+import ThemeSwitcher from '@/components/theme/ThemeSwitcher';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -53,7 +53,7 @@ export default function Footer() {
             </div>
             <div>
                  <h3 className="text-base font-semibold text-foreground mb-2">Theme</h3>
-                 <ThemeSwitcher /> {/* Replaced static button with ThemeSwitcher */}
+                 <ThemeSwitcher />
             </div>
           </div>
 
@@ -66,7 +66,7 @@ export default function Footer() {
 
       <div className="absolute -top-5 right-8 md:right-12">
         <Button size="icon" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full w-12 h-12 shadow-lg hover:shadow-primary/50">
-          <Grid size={24} />
+          <QuickActionsIcon size={24} />
           <span className="sr-only">Quick Actions</span>
         </Button>
       </div>

@@ -138,7 +138,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
           <div className="md:col-span-8 lg:col-span-9 mt-8 md:mt-0">
             {/* Title and Action Buttons Section */}
             <div className="flex flex-col items-center sm:items-start space-y-4 mb-6">
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground font-zen-dots leading-tight text-center sm:text-left">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground font-zen-dots leading-tight text-center sm:text-left">
                 {anime.title}
               </h1>
               
@@ -154,7 +154,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                 </Button>
                 
                 <Suspense fallback={
-                  <div className="w-full sm:w-auto flex flex-row sm:flex-col gap-3">
+                  <div className="w-full sm:w-auto flex flex-row sm:flex-col md:flex-row gap-3">
                     <Skeleton className="h-12 w-full sm:w-40 rounded-lg" />
                     <Skeleton className="h-12 w-full sm:w-40 rounded-lg" />
                   </div>
@@ -264,8 +264,8 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                 <EpisodeListSection anime={anime} />
               </TabsContent>
 
-              <TabsContent value="characters" className="bg-card/50 p-1 sm:p-2 rounded-lg border border-border/20 shadow-inner">
-                <h3 className="text-xl font-semibold mb-1 mt-3 ml-3 text-foreground flex items-center font-orbitron">
+              <TabsContent value="characters" className="p-0 sm:p-0 rounded-lg relative overflow-hidden"> {/* No explicit background for carousel to blend */}
+                <h3 className="text-xl font-semibold mb-1 mt-3 ml-0 md:ml-3 text-foreground flex items-center font-orbitron">
                     <Users className="mr-2 h-5 w-5"/> Characters & Voice Actors
                 </h3>
                 <Suspense fallback={<div className="h-48 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
@@ -289,4 +289,3 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     </div>
   );
 }
-
