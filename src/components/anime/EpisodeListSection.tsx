@@ -1,24 +1,63 @@
 // src/components/anime/EpisodeListSection.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Anime, Episode } from '@/types/anime';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Info, ArrowUpDown, Settings2, LayoutGrid, List as ListIcon, PlayCircle, GripVertical } from 'lucide-react';
+import { Info, ArrowUpDown, Settings2, LayoutGrid, List as ListIcon, PlayCircle, GripVertical, DownloadCloud, AlertCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface EpisodeListSectionProps {
   anime: Anime;
 }
 
 type ViewMode = 'detailed' | 'simple';
+type SortOrder = 'asc' | 'desc';
 
 export default function EpisodeListSection({ anime }: EpisodeListSectionProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('detailed');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [isInfoDialogOpen, setIsInfoDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  const sortedEpisodes = useMemo(() => {
+    if (!anime.episodes || anime.episodes.length === 0) {
+      return [];
+    }
+    const sorted = [...anime.episodes].sort((a, b) => {
+      if ((a.seasonNumber || 1) !== (b.seasonNumber || 1)) {
+        return (a.seasonNumber || 1) - (b.seasonNumber || 1);
+      }
+      return (a.episodeNumber || 0) - (b.episodeNumber || 0);
+    });
+
+    if (sortOrder === 'desc') {
+      return sorted.reverse();
+    }
+    return sorted;
+  }, [anime.episodes, sortOrder]);
+
+  const handleToggleSortOrder = () => {
+    setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+  };
+  
+  const handleDownloadClick = () => {
+    if (anime.downloadPageUrl) {
+      window.open(anime.downloadPageUrl, '_blank');
+    } else {
+      toast({
+        variant: 'default',
+        title: 'No Download Link',
+        description: 'A download page URL has not been set for this anime.',
+      });
+    }
+  };
 
   if (!anime.episodes || anime.episodes.length === 0) {
     return (
@@ -28,39 +67,61 @@ export default function EpisodeListSection({ anime }: EpisodeListSectionProps) {
     );
   }
 
-  // Sort episodes: by season, then by episode number
-  const sortedEpisodes = [...anime.episodes].sort((a, b) => {
-    if ((a.seasonNumber || 1) !== (b.seasonNumber || 1)) {
-      return (a.seasonNumber || 1) - (b.seasonNumber || 1);
-    }
-    return (a.episodeNumber || 0) - (b.episodeNumber || 0);
-  });
-
   return (
     <section className="mt-8">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <span className="w-1 h-6 bg-primary rounded-full mr-3"></span>
           <h3 className="text-xl font-semibold text-foreground font-orbitron">Episodes</h3>
-          <Button variant="ghost" size="icon" className="ml-2 text-muted-foreground hover:text-primary w-7 h-7">
-            <RefreshCw size={16} />
-            <span className="sr-only">Refresh episodes</span>
-          </Button>
-          <Button variant="ghost" size="icon" className="ml-1 text-muted-foreground hover:text-primary w-7 h-7">
-            <Info size={16} />
-            <span className="sr-only">Episode info</span>
-          </Button>
+          
+          <Dialog open={isInfoDialogOpen} onOpenChange={setIsInfoDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="ml-2 text-muted-foreground hover:text-primary w-7 h-7">
+                <Info size={16} />
+                <span className="sr-only">Episode info/report</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px] bg-card border-border">
+              <DialogHeader>
+                <DialogTitle className="text-primary flex items-center">
+                  <AlertCircle className="w-5 h-5 mr-2"/> Episode Issue Reporting
+                </DialogTitle>
+                <DialogDescription className="text-muted-foreground pt-2">
+                  This feature is to report issues with episode links (e.g., not working, wrong episode). 
+                  For now, if you encounter a problem, please try again later. Full reporting functionality is coming soon!
+                </DialogDescription>
+              </DialogHeader>
+              <DialogClose asChild>
+                <Button type="button" variant="outline" className="mt-4">
+                  Got it
+                </Button>
+              </DialogClose>
+            </DialogContent>
+          </Dialog>
+
         </div>
         <div className="flex items-center space-x-1">
-          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 w-8 h-8">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 17V3"></path><path d="m6 11 6 6 6-6"></path><path d="M19 21H5"></path></svg>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-muted-foreground hover:text-primary w-8 h-8"
+            onClick={handleDownloadClick}
+            title={anime.downloadPageUrl ? "Go to Download Page" : "No Download Link Available"}
+          >
+            <DownloadCloud size={18} />
             <span className="sr-only">Download options</span>
           </Button>
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary w-8 h-8">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-muted-foreground hover:text-primary w-8 h-8"
+            onClick={handleToggleSortOrder}
+            title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}
+            >
             <ArrowUpDown size={18} />
             <span className="sr-only">Sort episodes</span>
           </Button>
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary w-8 h-8">
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary w-8 h-8" onClick={() => toast({title: "Episode Settings", description: "Settings coming soon!"})}>
             <Settings2 size={18} />
             <span className="sr-only">Episode settings</span>
           </Button>
@@ -70,9 +131,10 @@ export default function EpisodeListSection({ anime }: EpisodeListSectionProps) {
       <div className="relative">
         <ScrollArea
             className={cn(
-                "rounded-lg border border-border/30 bg-card/50 shadow-inner overflow-y-auto", // Added overflow-y-auto
-                viewMode === 'detailed' ? "max-h-[55vh] sm:max-h-[60vh]" : "max-h-[45vh] sm:max-h-[50vh]" // Adjusted max-height
+                "rounded-lg border border-border/30 bg-card/50 shadow-inner", 
+                viewMode === 'detailed' ? "max-h-[55vh] sm:max-h-[60vh]" : "max-h-[45vh] sm:max-h-[50vh]" 
             )}
+            style={{ overflowY: 'auto' }} // Ensure vertical scroll is explicitly allowed
         >
           <div className={cn("p-3 sm:p-4 space-y-2", viewMode === 'simple' && 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2')}>
             {sortedEpisodes.map((episode) => (
@@ -110,30 +172,30 @@ const DetailedEpisodeItem: React.FC<EpisodeItemProps> = ({ episode, animeId }) =
       href={`/play/${animeId}?episode=${episode.id}`}
       className="group flex items-center p-2.5 bg-card hover:bg-primary/10 rounded-lg shadow-sm transition-all duration-200 ease-in-out border border-transparent hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-background"
     >
-      <div className="relative w-28 h-16 sm:w-32 sm:h-[72px] rounded-md overflow-hidden flex-shrink-0 border border-border/20 bg-muted/50">
-        <Image
-          src={episode.thumbnail || placeholderThumbnail}
-          alt={`Episode ${episode.episodeNumber}: ${episode.title}`}
-          fill
-          sizes="(max-width: 640px) 112px, 128px"
-          className="object-cover"
-          data-ai-hint="anime episode thumbnail"
-        />
-        <Badge className="absolute bottom-1 left-1 bg-black/70 text-white text-[0.65rem] px-1.5 py-0.5 pointer-events-none">
-          EP {episode.episodeNumber}
-        </Badge>
-        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <PlayCircle className="w-8 h-8 text-white/90" />
+        <div className="relative w-28 h-16 sm:w-32 sm:h-[72px] rounded-md overflow-hidden flex-shrink-0 border border-border/20 bg-muted/50">
+            <Image
+            src={episode.thumbnail || placeholderThumbnail}
+            alt={`Episode ${episode.episodeNumber}: ${episode.title}`}
+            fill
+            sizes="(max-width: 640px) 112px, 128px"
+            className="object-cover"
+            data-ai-hint="anime episode thumbnail"
+            />
+            <Badge className="absolute bottom-1 left-1 bg-black/70 text-white text-[0.65rem] px-1.5 py-0.5 pointer-events-none">
+            EP {episode.episodeNumber}
+            </Badge>
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <PlayCircle className="w-8 h-8 text-white/90" />
+            </div>
         </div>
-      </div>
-      <div className="ml-3 sm:ml-4 flex-grow min-w-0">
-        <h4 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate" title={episode.title}>
-          {episode.episodeNumber}. {episode.title}
-        </h4>
-        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5" title={episode.overview}>
-          {episode.overview || 'No overview available.'}
-        </p>
-      </div>
+        <div className="ml-3 sm:ml-4 flex-grow min-w-0">
+            <h4 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate" title={episode.title}>
+            {episode.episodeNumber}. {episode.title}
+            </h4>
+            <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5" title={episode.overview}>
+            {episode.overview || 'No overview available.'}
+            </p>
+        </div>
     </Link>
   );
 };

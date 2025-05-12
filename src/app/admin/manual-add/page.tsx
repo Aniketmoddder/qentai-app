@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -14,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { addAnimeToFirestore, getAllAnimes } from '@/services/animeService'; // Added getAllAnimes
 import type { Anime, Episode } from '@/types/anime';
-import { Loader2, PlusCircle, Trash2, Save, CloudUpload, Youtube, Wand } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Save, CloudUpload, Youtube, Wand, Link as LinkIcon } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { slugify } from '@/lib/stringUtils';
 
@@ -40,6 +39,7 @@ const animeSchema = z.object({
   synopsis: z.string().min(10, 'Synopsis must be at least 10 characters'),
   type: z.enum(['TV', 'Movie', 'OVA', 'Special', 'Unknown']),
   trailerUrl: z.string().url('Must be a valid YouTube URL').optional().or(z.literal('')),
+  downloadPageUrl: z.string().url('Must be a valid URL for download page').optional().or(z.literal('')),
   sourceAdmin: z.literal('manual').default('manual'),
   episodes: z.array(episodeSchema).optional(),
   aniListId: z.coerce.number().int().positive('AniList ID must be a positive number.').optional().nullable().transform(val => val === '' || val === null ? null : Number(val)),
@@ -51,7 +51,7 @@ const INITIAL_GENRES = ['Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Sc
 
 
 export default function ManualAddTab() {
-  const { toast } = useToast();
+  const { toast } } from useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [availableGenres, setAvailableGenres] = useState<string[]>(INITIAL_GENRES);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
@@ -68,6 +68,7 @@ export default function ManualAddTab() {
       synopsis: '',
       type: 'TV',
       trailerUrl: '',
+      downloadPageUrl: '',
       sourceAdmin: 'manual',
       episodes: [],
       aniListId: null,
@@ -148,6 +149,7 @@ export default function ManualAddTab() {
             };
         }),
         trailerUrl: data.trailerUrl || undefined, 
+        downloadPageUrl: data.downloadPageUrl || undefined,
       };
 
       const newAnimeId = await addAnimeToFirestore(animeDataForDb); 
@@ -194,6 +196,7 @@ export default function ManualAddTab() {
           </div>
 
           <FormFieldItem name="trailerUrl" label="YouTube Trailer URL (Optional)" placeholder="https://www.youtube.com/watch?v=..." form={form} Icon={Youtube} />
+          <FormFieldItem name="downloadPageUrl" label="Download Page URL (Optional)" placeholder="https://example.com/download-page" form={form} Icon={LinkIcon} />
 
           <div>
             <Label className="font-medium">Genres (Select multiple)</Label>
@@ -364,4 +367,3 @@ function FormSelectItem({ name, label, items, form }: FormSelectItemProps) {
     </div>
   );
 }
-

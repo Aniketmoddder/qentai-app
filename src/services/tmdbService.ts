@@ -54,17 +54,11 @@ export const fetchAnimeDetailsFromTMDB = async (tmdbId: string, type: 'movie' | 
   if (!TMDB_API_KEY) return null;
   let details: Partial<Anime> = {};
 
-  // Placeholder for finding AniList ID - this is a complex task and should ideally be handled
-  // by a separate process or manually linked. For now, we assume aniListId is not auto-fetched here.
-  // let foundAniListId: number | undefined = undefined;
-  // Example: if (titleForSearch) { const aniListResults = await searchAniListByTitle(titleForSearch); ... }
-
   if (type === 'movie') {
     const movieData = await fetchFromTMDB<TMDBMovie>(`movie/${tmdbId}`);
     if (!movieData) return null;
     details = {
       tmdbId: movieData.id.toString(),
-      // aniListId: foundAniListId, // Would be set if auto-linking was implemented
       title: movieData.title,
       synopsis: movieData.overview,
       coverImage: movieData.poster_path ? `${TMDB_IMAGE_BASE_URL}w500${movieData.poster_path}` : `https://picsum.photos/seed/${movieData.id}poster/300/450`,
@@ -85,7 +79,8 @@ export const fetchAnimeDetailsFromTMDB = async (tmdbId: string, type: 'movie' | 
           overview: movieData.overview || undefined,
       }],
       sourceAdmin: 'tmdb',
-      trailerUrl: undefined, 
+      trailerUrl: undefined,
+      downloadPageUrl: undefined, 
       isFeatured: false,
     };
   } else if (type === 'tv') {
@@ -119,7 +114,6 @@ export const fetchAnimeDetailsFromTMDB = async (tmdbId: string, type: 'movie' | 
 
     details = {
       tmdbId: tvData.id.toString(),
-      // aniListId: foundAniListId, // Would be set if auto-linking was implemented
       title: tvData.name,
       synopsis: tvData.overview,
       coverImage: tvData.poster_path ? `${TMDB_IMAGE_BASE_URL}w500${tvData.poster_path}` : `https://picsum.photos/seed/${tvData.id}poster/300/450`,
@@ -134,7 +128,8 @@ export const fetchAnimeDetailsFromTMDB = async (tmdbId: string, type: 'movie' | 
         return a.episodeNumber - b.episodeNumber;
       }) : undefined,
       sourceAdmin: 'tmdb',
-      trailerUrl: undefined, 
+      trailerUrl: undefined,
+      downloadPageUrl: undefined, 
       isFeatured: false,
     };
   }

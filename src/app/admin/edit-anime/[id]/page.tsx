@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -16,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { getAnimeById, updateAnimeInFirestore, getAllAnimes } from '@/services/animeService';
 import type { Anime } from '@/types/anime';
-import { Loader2, Save, ArrowLeft, AlertCircle, Youtube, Wand } from 'lucide-react'; 
+import { Loader2, Save, ArrowLeft, AlertCircle, Youtube, Wand, Link as LinkIcon } from 'lucide-react'; 
 import Container from '@/components/layout/container';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
@@ -33,6 +32,7 @@ const animeSchema = z.object({
   synopsis: z.string().min(10, 'Synopsis must be at least 10 characters'),
   type: z.enum(['TV', 'Movie', 'OVA', 'Special', 'Unknown']),
   trailerUrl: z.string().url('Must be a valid YouTube URL').optional().or(z.literal('')),
+  downloadPageUrl: z.string().url('Must be a valid URL for download page').optional().or(z.literal('')),
   isFeatured: z.boolean().optional(),
   averageRating: z.coerce.number().min(0).max(10).optional(),
   aniListId: z.coerce.number().int().positive('AniList ID must be a positive number.').optional().nullable().transform(val => val === '' || val === null ? null : Number(val)),
@@ -72,6 +72,7 @@ export default function EditAnimePage() {
       synopsis: '',
       type: 'TV',
       trailerUrl: '',
+      downloadPageUrl: '',
       isFeatured: false,
       averageRating: 0,
       aniListId: null, 
@@ -115,6 +116,7 @@ export default function EditAnimePage() {
           synopsis: animeData.synopsis || '',
           type: animeData.type || 'TV',
           trailerUrl: animeData.trailerUrl || '',
+          downloadPageUrl: animeData.downloadPageUrl || '',
           isFeatured: animeData.isFeatured || false,
           averageRating: animeData.averageRating || 0,
           aniListId: animeData.aniListId || null, 
@@ -177,7 +179,8 @@ export default function EditAnimePage() {
       const updateData: Partial<Omit<Anime, 'episodes' | 'id'>> = { 
         ...data,
         aniListId: data.aniListId || undefined, 
-        trailerUrl: data.trailerUrl || undefined, 
+        trailerUrl: data.trailerUrl || undefined,
+        downloadPageUrl: data.downloadPageUrl || undefined,
       };
       await updateAnimeInFirestore(animeId, updateData);
       toast({ title: 'Content Updated', description: `${data.title} has been successfully updated.` });
@@ -263,7 +266,9 @@ export default function EditAnimePage() {
               <FormSelectItem name="status" label="Status" items={['Ongoing', 'Completed', 'Upcoming', 'Unknown']} form={form} />
               <FormFieldItem name="aniListId" label="AniList ID (Optional)" type="number" placeholder="e.g., 11061" form={form} Icon={Wand} />
             </div>
-             <FormFieldItem name="trailerUrl" label="YouTube Trailer URL (Optional)" placeholder="https://www.youtube.com/watch?v=..." form={form} Icon={Youtube} />
+            <FormFieldItem name="trailerUrl" label="YouTube Trailer URL (Optional)" placeholder="https://www.youtube.com/watch?v=..." form={form} Icon={Youtube} />
+            <FormFieldItem name="downloadPageUrl" label="Download Page URL (Optional)" placeholder="https://example.com/download-page" form={form} Icon={LinkIcon} />
+
 
             <FormFieldItem name="averageRating" label="Average Rating (0-10)" type="number" placeholder="e.g., 7.5" form={form} />
             
@@ -382,4 +387,3 @@ function FormSelectItem({ name, label, items, form }: FormSelectItemProps) {
     </div>
   );
 }
-

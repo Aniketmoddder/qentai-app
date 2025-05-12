@@ -1,4 +1,3 @@
-
 import type { Timestamp } from 'firebase/firestore';
 
 export interface VoiceActor {
@@ -65,6 +64,7 @@ export interface Anime {
   sourceAdmin?: 'tmdb' | 'manual' | 'tmdb_anilist' | 'anilist';
   isFeatured?: boolean;
   trailerUrl?: string; // YouTube URL
+  downloadPageUrl?: string; // New field for download page link
   characters?: Character[];
   createdAt?: string; // ISO string on client
   updatedAt?: string; // ISO string on client
