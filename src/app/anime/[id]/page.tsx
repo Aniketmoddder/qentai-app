@@ -11,7 +11,6 @@ import AnimeInteractionControls from '@/components/anime/anime-interaction-contr
 import CharacterCarousel from '@/components/anime/CharacterCarousel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import React, { Suspense } from 'react';
 import Logo from '@/components/common/logo';
 import ReadMoreSynopsis from '@/components/anime/ReadMoreSynopsis';
@@ -154,8 +153,8 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                 
                 <Suspense fallback={
                   <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2.5 sm:gap-3">
-                    <Skeleton className="h-10 sm:h-12 w-full sm:w-36 md:w-40 rounded-lg" />
-                    <Skeleton className="h-10 sm:h-12 w-full sm:w-36 md:w-40 rounded-lg" />
+                    <Skeleton className="h-12 w-full sm:w-40 rounded-lg" />
+                    <Skeleton className="h-12 w-full sm:w-40 rounded-lg" />
                   </div>
                 }>
                   <AnimeInteractionControls anime={anime} className="[&>button]:py-2.5 [&>button]:sm:py-3 [&>button]:text-sm [&>button]:sm:text-base" />
@@ -268,7 +267,6 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                         </div>
                     </div>
                 </div>
-                
                 <EpisodeListSection anime={anime} />
               </TabsContent>
 
@@ -279,16 +277,19 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                 <Suspense fallback={<div className="h-48 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
                   <CharacterCarousel characters={anime.characters} />
                 </Suspense>
+                <EpisodeListSection anime={anime} />
               </TabsContent>
 
               <TabsContent value="relations" className="bg-card/50 p-4 sm:p-6 rounded-lg border border-border/20 shadow-inner">
                  <h3 className="text-xl font-semibold text-foreground font-orbitron mb-3">Relations</h3>
                  <p className="text-muted-foreground">Related anime information will be displayed here.</p>
+                 <EpisodeListSection anime={anime} />
               </TabsContent>
 
               <TabsContent value="artwork" className="bg-card/50 p-4 sm:p-6 rounded-lg border border-border/20 shadow-inner">
                 <h3 className="text-xl font-semibold text-foreground font-orbitron mb-3">Artwork</h3>
                 <p className="text-muted-foreground">Artwork, posters, and fan art will be displayed here.</p>
+                <EpisodeListSection anime={anime} />
               </TabsContent>
             </Tabs>
           </div>
@@ -297,5 +298,3 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     </div>
   );
 }
-
-
