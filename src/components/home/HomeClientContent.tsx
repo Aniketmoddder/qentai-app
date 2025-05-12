@@ -1,3 +1,4 @@
+// src/components/home/HomeClientContent.tsx
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -12,7 +13,6 @@ import FeaturedAnimeCard from '@/components/anime/FeaturedAnimeCard';
 import TopAnimeListItem from '@/components/anime/TopAnimeListItem';
 import { Badge } from '@/components/ui/badge';
 import HeroSkeleton from '@/components/home/HeroSkeleton';
-import { Skeleton } from '@/components/ui/skeleton';
 import AnimeCardSkeleton from '@/components/anime/AnimeCardSkeleton';
 import HomePageGenreSection from './HomePageGenreSection';
 import RecommendationsSection from '../anime/recommendations-section';
@@ -55,38 +55,42 @@ export interface HomeClientProps {
   fetchError: string | null;
 }
 
-const ARTIFICIAL_SKELETON_DELAY = 750; // milliseconds
+const ARTIFICIAL_SKELETON_DELAY = 750; 
 
 export default function HomeClient({
     initialAllAnimeData,
     initialFeaturedAnimes,
     fetchError: initialFetchError
 }: HomeClientProps) {
-  const [allAnime, setAllAnime] = useState<Anime[]>([]);
-  const [featuredAnimesList, setFeaturedAnimesList] = useState<Anime[]>([]);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [isLoadingData, setIsLoadingData] = useState(true); // Actual data loading
-  const [isInitialSkeletonPhase, setIsInitialSkeletonPhase] = useState(true); // For artificial delay
+  const [allAnime, setAllAnime] = useState<Anime[]>(initialAllAnimeData || []);
+  const [featuredAnimesList, setFeaturedAnimesList] = useState<Anime[]>(initialFeaturedAnimes || []);
+  const [fetchError, setFetchError] = useState<string | null>(initialFetchError);
+  const [isLoadingData, setIsLoadingData] = useState(!initialAllAnimeData || !initialFeaturedAnimes);
+  const [isInitialSkeletonPhase, setIsInitialSkeletonPhase] = useState(true);
 
   const [playTrailer, setPlayTrailer] = useState(false);
   const [isTrailerMuted, setIsTrailerMuted] = useState(true);
 
   useEffect(() => {
+    // This effect handles the initial data setting and error state.
+    // If initial props are provided, data loading might be considered complete.
     if (initialFetchError) {
       setFetchError(initialFetchError);
       setAllAnime([]);
       setFeaturedAnimesList([]);
+      setIsLoadingData(false);
     } else if (initialAllAnimeData && initialFeaturedAnimes) {
       setAllAnime(initialAllAnimeData);
       setFeaturedAnimesList(initialFeaturedAnimes);
       setFetchError(null);
+      setIsLoadingData(false); 
     } else {
-      setAllAnime([]);
-      setFeaturedAnimesList([]);
-      setFetchError(null);
+      // This case means initial data was not provided, so actual fetching might be needed
+      // or it's an empty state.
+      setIsLoadingData(true); // Or true if you intend to fetch client-side as fallback
     }
-    setIsLoadingData(false); 
   }, [initialAllAnimeData, initialFeaturedAnimes, initialFetchError]);
+
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -109,13 +113,13 @@ export default function HomeClient({
     if (heroAnime && youtubeVideoId && !playTrailer && !fetchError && !isLoadingData && !isInitialSkeletonPhase) {
       timer = setTimeout(() => {
         setPlayTrailer(true);
-      }, 3000); // Autoplay trailer after main content is shown and a delay
+      }, 3000); 
     }
     return () => clearTimeout(timer);
   }, [heroAnime, youtubeVideoId, playTrailer, fetchError, isLoadingData, isInitialSkeletonPhase]);
 
   const trendingAnime = useMemo(() => {
-    return allAnime.length > 0 ? shuffleArray([...allAnime]).slice(0, 10) : [];
+    return allAnime.length > 0 ? shuffleArray([...allAnime]).slice(0, 15) : []; // Max 15 for carousel
   }, [allAnime]);
 
   const popularAnime = useMemo(() => {
@@ -123,7 +127,7 @@ export default function HomeClient({
     ? [...allAnime]
         .filter(a => a.averageRating !== undefined && a.averageRating !== null && a.averageRating >= 7.0)
         .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
-        .slice(0, 10)
+        .slice(0, 15) // Max 15
     : [];
   }, [allAnime]);
 
@@ -131,11 +135,11 @@ export default function HomeClient({
     return allAnime.length > 0
     ? [...allAnime].sort((a,b) => {
         const dateAValue = a.updatedAt || a.createdAt || (a.year ? new Date(a.year, 0, 1).toISOString() : '1970-01-01T00:00:00.000Z');
-        const dateBValue = b.updatedAt || b.createdAt || (b.year ? new Date(b.year, 0, 1).toISOString() : '1970-01-01T00:00:00.000Z');
+        const dateBValue = b.updatedAt || b.createdAt || (a.year ? new Date(a.year, 0, 1).toISOString() : '1970-01-01T00:00:00.000Z');
         const dateA = new Date(dateAValue).getTime();
         const dateB = new Date(dateBValue).getTime();
         return dateB - dateA;
-      }).slice(0,10)
+      }).slice(0,15) // Max 15
     : [];
   }, [allAnime]);
 
@@ -143,7 +147,7 @@ export default function HomeClient({
     return allAnime.length > 0 ? [...allAnime]
     .filter(a => a.averageRating !== undefined && a.averageRating !== null)
     .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
-    .slice(0, 10) : [];
+    .slice(0, 10) : []; // Top 10 for list view
   }, [allAnime]);
 
   const showSkeleton = isInitialSkeletonPhase || (isLoadingData && !fetchError);
@@ -154,15 +158,15 @@ export default function HomeClient({
         <HeroSkeleton />
         <Container className="py-8">
           <div className="mb-8">
-            <Skeleton className="h-8 w-1/3 mb-4 rounded-md bg-muted/50" />
+            <AnimeCardSkeleton className="h-8 w-1/3 mb-4 rounded-md bg-muted/50" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                <Skeleton className="aspect-[16/10] sm:aspect-[16/9] rounded-xl bg-muted/50" />
-                <Skeleton className="aspect-[16/10] sm:aspect-[16/9] rounded-xl bg-muted/50 hidden md:block" />
+                <AnimeCardSkeleton className="aspect-[16/10] sm:aspect-[16/9] rounded-xl bg-muted/50" />
+                <AnimeCardSkeleton className="aspect-[16/10] sm:aspect-[16/9] rounded-xl bg-muted/50 hidden md:block" />
             </div>
           </div>
           {[...Array(3)].map((_, i) => (
             <div key={`carousel-skeleton-${i}`} className="mb-8">
-              <Skeleton className="h-8 w-1/3 mb-4 rounded-md bg-muted/50" />
+              <AnimeCardSkeleton className="h-8 w-1/3 mb-4 rounded-md bg-muted/50" />
               <div className="flex overflow-x-auto pb-4 gap-3 sm:gap-4 md:gap-x-5 scrollbar-hide">
                 {[...Array(5)].map((_, j) => (
                   <div key={`card-skeleton-${i}-${j}`} className="flex-shrink-0">
@@ -173,18 +177,18 @@ export default function HomeClient({
             </div>
           ))}
            <div className="mb-8">
-            <Skeleton className="h-8 w-1/3 mb-6 rounded-md bg-muted/50" />
+            <AnimeCardSkeleton className="h-8 w-1/3 mb-6 rounded-md bg-muted/50" />
             <div className="space-y-3">
                 {[...Array(5)].map((_, k) => (
-                    <Skeleton key={`top-item-skeleton-${k}`} className="h-28 w-full rounded-lg bg-muted/50" />
+                    <AnimeCardSkeleton key={`top-item-skeleton-${k}`} className="h-28 w-full rounded-lg bg-muted/50" />
                 ))}
             </div>
           </div>
            <div className="mb-8">
-            <Skeleton className="h-8 w-1/3 mb-4 rounded-md bg-muted/50" />
+            <AnimeCardSkeleton className="h-8 w-1/3 mb-4 rounded-md bg-muted/50" />
              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
                 {[...Array(6)].map((_, l) => (
-                    <Skeleton key={`genre-skeleton-${l}`} className="h-[100px] md:h-[120px] rounded-lg bg-muted/50" />
+                    <AnimeCardSkeleton key={`genre-skeleton-${l}`} className="h-[100px] md:h-[120px] rounded-lg bg-muted/50" />
                 ))}
             </div>
           </div>
@@ -299,7 +303,7 @@ export default function HomeClient({
         </section>
       )}
 
-      <Container className="overflow-x-clip py-8"> {/* Added overflow-x-clip here */}
+      <Container className="py-8"> {/* Removed overflow-x-clip */}
         {noContentAvailable && (
            <div className="my-8 p-6 bg-card border border-border rounded-lg text-center">
             <h3 className="font-semibold text-xl font-orbitron">No Anime Found</h3>
