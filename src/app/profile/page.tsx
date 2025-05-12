@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -100,9 +99,9 @@ export default function ProfilePage() {
     );
   }
   
-  if (!user || !appUser) { // User not logged in, or appUser is null (error state)
-    router.push('/login?redirect=/profile'); // Redirect if not logged in
-    return null; // or a specific message if appUser is null
+  if (!user || !appUser) { 
+    router.push('/login?redirect=/profile'); 
+    return null; 
   }
   
   if (appUser.status === 'banned') {
@@ -149,7 +148,7 @@ export default function ProfilePage() {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-3 gap-y-4 sm:gap-x-4 place-items-center sm:place-items-stretch">
         {list.map(anime => (
-          <AnimeCard key={anime.id} anime={anime} />
+          <AnimeCard key={anime.id} anime={anime} sizeVariant="small"/>
         ))}
       </div>
     );
@@ -160,7 +159,6 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-[calc(100vh-var(--header-height,4rem)-var(--footer-height,0px)-1px)]">
-      {/* Top Profile Banner Section */}
       <section className="relative h-[30vh] md:h-[40vh] w-full bg-card -mt-[calc(var(--header-height,4rem)+1px)]">
         <Image
           src={appUser.bannerImageUrl || defaultBanner}

@@ -11,7 +11,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getAllAnimes } from '@/services/animeService'; 
 import { getUniqueGenres } from '@/services/animeService';
 
-// Placeholder for actual user watch history - will be replaced with real user data.
 let dynamicMockWatchHistoryTitles: string[] = []; 
 
 interface RecommendationsSectionProps {
@@ -141,7 +140,7 @@ export default function RecommendationsSection({ allAnimesCache: initialAllAnime
       )}
 
       {isLoading && recommendations.length === 0 && !error && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 place-items-center sm:place-items-stretch"> {/* Reduced gap */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 place-items-center sm:place-items-stretch">
           {[...Array(5)].map((_, index) => (
             <AnimeCardSkeleton key={index} />
           ))}
@@ -163,9 +162,9 @@ export default function RecommendationsSection({ allAnimesCache: initialAllAnime
 
 
       {recommendations.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 place-items-center sm:place-items-stretch"> {/* Reduced gap */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 place-items-center sm:place-items-stretch">
           {recommendations.map((anime) => (
-            <AnimeCard key={anime.id} anime={anime} />
+            <AnimeCard key={anime.id} anime={anime} sizeVariant="small" />
           ))}
         </div>
       )}

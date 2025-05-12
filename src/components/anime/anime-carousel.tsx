@@ -36,6 +36,8 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
     setIsEnd(swiper.isEnd);
   };
 
+  // Create a unique class suffix for Swiper navigation buttons based on the title
+  // This ensures that navigation buttons for different carousels don't interfere with each other.
   const uniqueSwiperNavClassSuffix = title.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
 
 
@@ -45,7 +47,6 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
         <h2 className="text-xl md:text-2xl font-bold text-foreground section-title-bar">{title}</h2>
       </div>
       
-      {/* Removed 'group' class from this div to avoid hover conflicts with AnimeCard's own 'group' */}
       <div className="relative"> 
         <Swiper
           modules={[Navigation]}
@@ -54,9 +55,9 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
             updateNavState(swiper);
           }}
           onSlideChange={(swiper) => updateNavState(swiper)}
-          spaceBetween={12} 
+          spaceBetween={16} // Increased spacing slightly for a bit more room
           slidesPerView="auto"
-          className="!pb-1" 
+          className="!pb-1 !-mx-2 !px-2" // Add padding to contain cards and prevent edge cutting, negative margin to compensate
           navigation={{
             nextEl: `.swiper-button-next-${uniqueSwiperNavClassSuffix}`,
             prevEl: `.swiper-button-prev-${uniqueSwiperNavClassSuffix}`,
@@ -65,7 +66,7 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
         >
           {displayedAnime.map((anime) => (
             <SwiperSlide key={anime.id} className="!w-auto"> 
-              <AnimeCard anime={anime} />
+              <AnimeCard anime={anime} sizeVariant="carousel" />
             </SwiperSlide>
           ))}
         </Swiper>
@@ -77,8 +78,8 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
             className={cn(
               "absolute left-0 top-1/2 -translate-y-1/2 z-20",
               "text-white w-10 h-16 md:w-12 md:h-20 p-0 rounded-none", 
-              "bg-transparent",
-              "opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-300",
+              "bg-transparent", // No background on button itself
+              "opacity-100", // Always visible
               "focus-visible:ring-0 focus-visible:ring-offset-0",
               "flex items-center justify-center",
               isBeginning && "hidden", // Hide if at the beginning
@@ -86,7 +87,6 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
             )}
             onClick={() => swiperRef.current?.slidePrev()}
             aria-label="Scroll left"
-            // No hover effect on button itself
           >
             <ChevronLeft className="h-7 w-7 md:h-8 md:w-8" />
           </Button>
@@ -96,8 +96,8 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
             className={cn(
               "absolute right-0 top-1/2 -translate-y-1/2 z-20",
               "text-white w-10 h-16 md:w-12 md:h-20 p-0 rounded-none",
-              "bg-transparent",
-              "opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-300",
+              "bg-transparent", // No background on button itself
+              "opacity-100", // Always visible
               "focus-visible:ring-0 focus-visible:ring-offset-0",
               "flex items-center justify-center",
               isEnd && "hidden", // Hide if at the end
@@ -105,7 +105,6 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
             )}
             onClick={() => swiperRef.current?.slideNext()}
             aria-label="Scroll right"
-            // No hover effect on button itself
           >
             <ChevronRight className="h-7 w-7 md:h-8 md:w-8" />
           </Button>
@@ -113,3 +112,4 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
     </section>
   );
 }
+

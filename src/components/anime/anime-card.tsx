@@ -5,15 +5,17 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Anime } from '@/types/anime';
 import { Badge } from '@/components/ui/badge';
+import { PlayCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface AnimeCardProps {
   anime: Anime;
   className?: string;
+  sizeVariant?: 'small' | 'carousel'; // New prop: 'small' for vertical lists, 'carousel' for carousels
 }
 
-export default function AnimeCard({ anime, className }: AnimeCardProps) {
-  const placeholderCover = `https://picsum.photos/seed/${anime.id}/200/300`;
+export default function AnimeCard({ anime, className, sizeVariant = 'carousel' }: AnimeCardProps) {
+  const placeholderCover = `https://picsum.photos/seed/${anime.id}/300/450`; // Slightly larger placeholder
 
   const getEpisodeBadgeText = () => {
     if (anime.type === 'Movie') {
@@ -30,27 +32,28 @@ export default function AnimeCard({ anime, className }: AnimeCardProps) {
   };
 
   const episodeBadgeText = getEpisodeBadgeText();
+  const firstEpisodeId = anime.episodes?.[0]?.id || '';
 
   return (
     <Link
       href={`/anime/${anime.id}`}
       className={cn(
         "group block cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg overflow-hidden",
-        "w-[110px] sm:w-[120px] md:w-[130px] lg:w-[140px] xl:w-[150px]", // Adjusted sizes
+        sizeVariant === 'small' ? "w-[120px]" : "w-[140px]", // Apply width based on variant
         className
       )}
       aria-label={`View details for ${anime.title}`}
     >
       <div
         className={cn(
-          "flex flex-col h-full", // Ensure the inner div takes full height for flex alignment
+          "flex flex-col h-full", 
           "bg-card border border-border/20 shadow-md group-hover:shadow-primary/30 transition-all duration-300 ease-in-out rounded-lg overflow-hidden",
-          "group-hover:scale-105 group-hover:border-primary/50 transform" // Added scale and border hover animation
+          "transform group-hover:scale-105" // Modern hover: slight scale up
         )}
       >
         <div
           className={cn(
-            "relative w-full aspect-[2/3]",
+            "relative w-full aspect-[2/3]", // Height determined by width and aspect ratio
             "bg-muted overflow-hidden rounded-t-lg"
           )}
           data-ai-hint={`${anime.genre?.[0] || 'anime'} portrait poster`}
@@ -59,8 +62,8 @@ export default function AnimeCard({ anime, className }: AnimeCardProps) {
             src={anime.coverImage || placeholderCover}
             alt={anime.title}
             fill
-            sizes="(max-width: 640px) 110px, (max-width: 768px) 120px, (max-width: 1024px) 130px, (max-width: 1280px) 140px, 150px"
-            className="object-cover transition-transform duration-300" // Removed group-hover:scale-105 as it's on the parent now
+            sizes={sizeVariant === 'small' ? "120px" : "140px"}
+            className="object-cover" 
             priority={false}
           />
           {episodeBadgeText && (
@@ -73,9 +76,9 @@ export default function AnimeCard({ anime, className }: AnimeCardProps) {
               </Badge>
             </div>
           )}
-          {/* Removed Play Icon Link and its wrapper */}
+          {/* Removed Play icon to make the whole card link to details page */}
         </div>
-        <div className="p-2 text-center mt-auto"> {/* mt-auto pushes title to bottom */}
+        <div className="p-2 text-center mt-auto">
           <p
             className="text-xs sm:text-sm font-medium text-foreground group-hover:text-primary transition-colors duration-200 truncate"
             title={anime.title}

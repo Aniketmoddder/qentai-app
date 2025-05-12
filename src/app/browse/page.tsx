@@ -13,11 +13,11 @@ import { FirestoreError } from 'firebase/firestore';
 interface BrowsePageProps {
   searchParams: {
     genre?: string;
-    type?: Anime['type']; // Keep for potential direct URL access, but UI won't primarily link to this
-    sort?: 'top' | 'title' | 'year' | 'updatedAt' | 'createdAt' | string;
+    type?: Anime['type']; 
+    sort?: 'top' | 'title' | 'year' | 'updatedAt' | 'createdAt' | 'popularity' | string; // Ensure popularity is an option
     sortOrder?: 'asc' | 'desc';
     filter?: 'featured' | string;
-    q?: string; // For search results that might land here
+    q?: string; 
   };
 }
 
@@ -28,16 +28,9 @@ async function BrowseContent({ searchParams }: BrowsePageProps) {
   let fetchError: string | null = null;
 
   try {
-    const filters: Parameters<typeof getAllAnimes>[0]['filters'] = {}; // Ensure filters is correctly typed
+    const filters: Parameters<typeof getAllAnimes>[0]['filters'] = {}; 
      if (searchQuery) {
-      // If there's a search query, prioritize that for title and fetch logic
       pageTitle = `Search Results for "${searchQuery}"`;
-      // The search logic is now primarily in /search/page.tsx
-      // If this page is still hit with a `q` param, it might show "Browse All" with an attempt to filter
-      // For simplicity, let's assume `searchAnimes` is the primary search mechanism.
-      // If direct `q` param usage here is needed, it would require `searchAnimes` or similar logic.
-      // For now, we'll let `getAllAnimes` try its best if `q` is present, but it's not optimized for text search.
-      // A more robust solution would involve a dedicated search service or Algolia/Elasticsearch.
     } else if (type) {
       filters.type = type;
       pageTitle = type === 'Movie' ? 'Movies' : type === 'TV' ? 'TV Series' : `Browse ${type}`;
@@ -46,26 +39,39 @@ async function BrowseContent({ searchParams }: BrowsePageProps) {
     if (genre) {
       filters.genre = genre;
       pageTitle = `${genre} Anime`;
+       if (!filters.sortBy && !sort) { // Default sort for genre if not otherwise specified
+        filters.sortBy = 'popularity'; 
+        filters.sortOrder = 'desc';
+      }
     }
     
     if (sort) {
-      filters.sortBy = sort as 'averageRating' | 'year' | 'title' | 'createdAt' | 'updatedAt';
+      filters.sortBy = sort as 'averageRating' | 'year' | 'title' | 'createdAt' | 'updatedAt' | 'popularity';
       if (sort === 'top') { 
           filters.sortBy = 'averageRating';
-          filters.sortOrder = 'desc'; // Default to desc for top rated
+          filters.sortOrder = 'desc'; 
           pageTitle = 'Top Rated Anime';
       } else {
           pageTitle = `Sorted by ${sort.charAt(0).toUpperCase() + sort.slice(1)}`;
       }
     }
 
-    if (sortOrder) { // Allow explicit sortOrder to override 'top' default
+    if (sortOrder) { 
         filters.sortOrder = sortOrder;
     }
 
     if (queryFilter === 'featured') {
       filters.featured = true;
       pageTitle = 'Featured Anime';
+      if (!filters.sortBy && !sort) { // Default sort for featured if not otherwise specified
+        filters.sortBy = 'popularity';
+        filters.sortOrder = 'desc';
+      }
+    }
+    
+    if (!filters.sortBy && !sort && !genre && !type && !queryFilter) { // Default for "Browse All"
+        filters.sortBy = 'updatedAt';
+        filters.sortOrder = 'desc';
     }
     
     animeList = await getAllAnimes({ count: 50, filters });
@@ -87,11 +93,6 @@ async function BrowseContent({ searchParams }: BrowsePageProps) {
     <Container className="py-8 min-h-[calc(100vh-var(--header-height,4rem)-var(--footer-height,0px)-1px)]">
       <div className="mb-6 md:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h1 className="text-3xl md:text-4xl font-bold text-foreground section-title-bar">{pageTitle}</h1>
-        {/* 
-        <Button variant="outline">
-          <ListFilter className="mr-2 h-4 w-4" /> Filters
-        </Button>
-        */}
       </div>
 
       {fetchError && (
@@ -123,7 +124,7 @@ async function BrowseContent({ searchParams }: BrowsePageProps) {
       {!fetchError && animeList.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-3 gap-y-4 sm:gap-x-4 place-items-center sm:place-items-stretch">
           {animeList.map((anime) => (
-            <AnimeCard key={anime.id} anime={anime} />
+            <AnimeCard key={anime.id} anime={anime} sizeVariant="small" />
           ))}
         </div>
       )}
