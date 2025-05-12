@@ -3,33 +3,34 @@ import type { Config } from "tailwindcss";
 import plugin from 'tailwindcss/plugin';
 
 export default {
-    darkMode: ["class"], // or 'media' if you prefer OS-level dark mode
+    darkMode: ["class"], 
     content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./node_modules/keen-slider/keen-slider.min.css", // Ensure keen-slider CSS is not purged
   ],
   theme: {
     container: {
       center: true,
       padding: {
-        DEFAULT: '1rem',      // Default padding for mobile
-        sm: '1.5rem',           // Padding for sm screens and up
-        lg: '2rem',           // Padding for lg screens and up
+        DEFAULT: '1rem',      
+        sm: '1.5rem',           
+        lg: '2rem',           
       },
       screens: {
         sm: "640px",
         md: "768px",
         lg: "1024px",
         xl: "1280px",
-        "2xl": "1440px", // Slightly wider max container
+        "2xl": "1440px", 
       },
     },
   	extend: {
       fontFamily: {
         sans: ["Poppins", 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', '"Noto Sans"', 'sans-serif', '"Apple Color Emoji"', '"Segoe UI Emoji"', '"Segoe UI Symbol"', '"Noto Color Emoji"'],
         mono: ["var(--font-roboto-mono)", "monospace"],
-        'zen-dots': ["'Zen Dots'", 'sans-serif'], 
+        'zen-dots': ['"Zen Dots"', 'sans-serif'], 
         orbitron: ["Orbitron", 'sans-serif'], 
       },
   		colors: {
@@ -63,6 +64,8 @@ export default {
   				DEFAULT: 'hsl(var(--destructive))',
   				foreground: 'hsl(var(--destructive-foreground))'
   			},
+        highlight: 'hsl(var(--highlight))', // Added highlight
+        surface: 'hsl(var(--surface))', // Added surface
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',
@@ -76,8 +79,8 @@ export default {
   			sidebar: {
   				DEFAULT: 'hsl(var(--sidebar-background))',
   				foreground: 'hsl(var(--sidebar-foreground))',
-  				primary: 'hsl(var(--sidebar-primary))',
-  				'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
+  				// primary: 'hsl(var(--sidebar-primary))', // These were likely theme-specific, removed
+  				// 'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
   				accent: 'hsl(var(--sidebar-accent))',
   				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
   				border: 'hsl(var(--sidebar-border))',
@@ -127,6 +130,24 @@ export default {
           /* Safari and Chrome */
           '&::-webkit-scrollbar': {
             display: 'none'
+          }
+        },
+        '.scrollbar-thin': {
+          'scrollbar-width': 'thin',
+          'scrollbar-color': 'hsl(var(--muted)) transparent', 
+          '&::-webkit-scrollbar': {
+            width: '5px',
+            height: '5px'
+          },
+          '&::-webkit-scrollbar-track': {
+            background: 'transparent',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            'background': 'hsl(var(--muted))',
+            'border-radius': '3px',
+          },
+          '&::-webkit-scrollbar-thumb:hover': {
+            'background': 'hsl(var(--primary))'
           }
         }
       })

@@ -5,7 +5,7 @@ import type { Anime } from '@/types/anime';
 import AnimeCard from './anime-card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useState } from 'react'; // Removed useEffect as keen-slider handles loaded state
 import { useKeenSlider } from 'keen-slider/react';
 import 'keen-slider/keen-slider.min.css';
 import { cn } from '@/lib/utils';
@@ -20,6 +20,7 @@ const MAX_CARDS_TO_SHOW = 15;
 export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loaded, setLoaded] = useState(false);
+
   const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>({
     initial: 0,
     slideChanged(slider) {
@@ -30,7 +31,7 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
     },
     slides: {
       perView: 'auto',
-      spacing: 12, 
+      spacing: 12, // Corresponds to gap-3 (0.75rem = 12px) or md:gap-4 (1rem = 16px)
     },
     drag: true,
     rubberband: true,
@@ -41,10 +42,11 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
   if (!displayedAnime || displayedAnime.length === 0) {
     return null;
   }
-
-  const isAtStart = loaded && instanceRef.current ? currentSlide === 0 : true;
-  const isAtEnd = loaded && instanceRef.current ? currentSlide === instanceRef.current.track.details.slides.length - instanceRef.current.track.details.slidesPerView : false;
-  const canScroll = loaded && instanceRef.current ? instanceRef.current.track.details.slides.length > (instanceRef.current.options.slides?.perView || 1) : false;
+  
+  // Determine if arrows should be shown based on keen-slider's state
+  const showLeftArrow = loaded && instanceRef.current && currentSlide !== 0;
+  const showRightArrow = loaded && instanceRef.current && instanceRef.current.track.details && currentSlide < instanceRef.current.track.details.slides.length - (Math.floor(instanceRef.current.options.slides?.perView || 1) > 0 ? Math.floor(instanceRef.current.options.slides?.perView || 1) : 1) ;
+  const canScroll = loaded && instanceRef.current && instanceRef.current.track.details && instanceRef.current.track.details.slides.length > (instanceRef.current.options.slides?.perView || 1);
 
 
   return (
@@ -53,18 +55,18 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
         <h2 className="text-xl md:text-2xl font-bold text-foreground section-title-bar">{title}</h2>
       </div>
       
-      <div className="navigation-wrapper relative px-8 sm:px-10 md:px-12 group"> {/* Added padding for arrows */}
+      <div className="navigation-wrapper relative group">
+        {/* Keen Slider Container */}
         <div 
             ref={sliderRef} 
-            className="keen-slider scrollbar-hide" // Removed px from here
+            className="keen-slider scrollbar-hide px-1" // Added some padding for cards not to touch edges
         >
             {displayedAnime.map((anime, index) => (
             <div 
                 key={anime.id + '-' + index} 
-                className="keen-slider__slide"
+                className="keen-slider__slide flex justify-center" // Added flex justify-center
                  style={{ 
-                    // Let the AnimeCard's own max-width control the size.
-                    // perView: 'auto' will adjust.
+                    // Width is controlled by AnimeCard, keen-slider's 'auto' perView handles it
                  }}
             >
                 <AnimeCard anime={anime} />
@@ -72,46 +74,48 @@ export default function AnimeCarousel({ title, animeList }: AnimeCarouselProps) 
             ))}
         </div>
         
-        {loaded && instanceRef.current && canScroll && (
+        {/* Navigation Arrows - Always visible but conditionally rendered based on scroll position */}
+        {canScroll && (
             <>
-            <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e: any) => { e.stopPropagation(); instanceRef.current?.prev()}}
-                className={cn(
-                    "absolute left-0 top-1/2 -translate-y-1/2 z-20", // Sits within navigation-wrapper padding
-                    "text-white", // Icon color
-                    "opacity-100 disabled:opacity-0 disabled:cursor-not-allowed",
-                    "focus-visible:ring-0 focus-visible:ring-offset-0",
-                    "border-none shadow-none bg-transparent hover:bg-transparent", // No background, border, shadow or hover bg
-                    "p-1 w-auto h-auto" // Adjust padding/size to fit icon snugly
-                )}
-                aria-label="Scroll left"
-                disabled={isAtStart}
-            >
-                <ChevronLeft className="h-7 w-7 md:h-8 md:w-8" />
-            </Button>
-            <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e: any) => { e.stopPropagation(); instanceRef.current?.next()}}
-                className={cn(
-                    "absolute right-0 top-1/2 -translate-y-1/2 z-20", // Sits within navigation-wrapper padding
-                    "text-white", // Icon color
-                    "opacity-100 disabled:opacity-0 disabled:cursor-not-allowed",
-                    "focus-visible:ring-0 focus-visible:ring-offset-0",
-                    "border-none shadow-none bg-transparent hover:bg-transparent",
-                    "p-1 w-auto h-auto"
-                )}
-                aria-label="Scroll right"
-                disabled={isAtEnd}
-            >
-                <ChevronRight className="h-7 w-7 md:h-8 md:w-8" />
-            </Button>
+            {showLeftArrow && (
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e: any) => { e.stopPropagation(); instanceRef.current?.prev()}}
+                    className={cn(
+                        "absolute left-0 top-1/2 -translate-y-1/2 z-20", 
+                        "text-white w-10 h-16 md:w-12 md:h-20 p-0",
+                        "bg-gradient-to-r from-black/50 to-transparent", // Gradient background for visibility
+                        "opacity-100 hover:opacity-100 focus:opacity-100", // No hover animation on arrow itself
+                        "focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none", // Sharp edges
+                        "flex items-center justify-center"
+                    )}
+                    aria-label="Scroll left"
+                >
+                    <ChevronLeft className="h-7 w-7 md:h-8 md:w-8" />
+                </Button>
+            )}
+            {showRightArrow && (
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e: any) => { e.stopPropagation(); instanceRef.current?.next()}}
+                    className={cn(
+                        "absolute right-0 top-1/2 -translate-y-1/2 z-20",
+                        "text-white w-10 h-16 md:w-12 md:h-20 p-0",
+                        "bg-gradient-to-l from-black/50 to-transparent", // Gradient background for visibility
+                        "opacity-100 hover:opacity-100 focus:opacity-100",
+                        "focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none",
+                        "flex items-center justify-center"
+                    )}
+                    aria-label="Scroll right"
+                >
+                    <ChevronRight className="h-7 w-7 md:h-8 md:w-8" />
+                </Button>
+            )}
             </>
         )}
       </div>
     </section>
   );
 }
-

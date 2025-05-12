@@ -29,7 +29,7 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
     },
     slides: {
       perView: 'auto',
-      spacing: 12, 
+      spacing: 10, // Slightly less spacing for character cards
     },
      drag: true,
      rubberband: true,
@@ -60,23 +60,23 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
     );
   }
   
-  const isAtStart = loaded && instanceRef.current ? currentSlide === 0 : true;
-  const isAtEnd = loaded && instanceRef.current ? currentSlide === instanceRef.current.track.details.slides.length - instanceRef.current.track.details.slidesPerView : false;
-  const canScroll = loaded && instanceRef.current ? instanceRef.current.track.details.slides.length > (instanceRef.current.options.slides?.perView || 1) : false;
+  const showLeftArrow = loaded && instanceRef.current && currentSlide !== 0;
+  const showRightArrow = loaded && instanceRef.current && instanceRef.current.track.details && currentSlide < instanceRef.current.track.details.slides.length - (Math.floor(instanceRef.current.options.slides?.perView || 1) > 0 ? Math.floor(instanceRef.current.options.slides?.perView || 1) : 1) ;
+  const canScroll = loaded && instanceRef.current && instanceRef.current.track.details && instanceRef.current.track.details.slides.length > (instanceRef.current.options.slides?.perView || 1);
 
 
   return (
-    <div className="relative py-4 mt-1 sm:mt-2 navigation-wrapper group px-8 sm:px-10 md:px-12"> {/* Added padding for arrows */}
+    <div className="relative py-4 mt-1 sm:mt-2 navigation-wrapper group">
       <div
         ref={sliderRef}
-        className="keen-slider scrollbar-hide" // Removed px from here
+        className="keen-slider scrollbar-hide px-1" 
       >
         {displayedCharacters.map((character) => (
           <div
             key={character.id}
-            className="keen-slider__slide"
+            className="keen-slider__slide flex justify-center" // Added flex justify-center
             style={{
-                // Let CharacterCard's own width/max-width control the size
+                // Width is controlled by CharacterCard
             }}
           >
             <CharacterCard character={character} />
@@ -84,46 +84,46 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
         ))}
       </div>
 
-      {loaded && instanceRef.current && canScroll && (
+      {canScroll && (
           <>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e: any) => { e.stopPropagation(); instanceRef.current?.prev()}}
-            className={cn(
-              "absolute left-0 top-1/2 -translate-y-1/2 z-20",
-              "text-white",
-              "opacity-100 disabled:opacity-0 disabled:cursor-not-allowed",
-              "focus-visible:ring-0 focus-visible:ring-offset-0",
-              "border-none shadow-none bg-transparent hover:bg-transparent",
-              "p-1 w-auto h-auto"
-            )}
-            aria-label="Scroll left"
-            disabled={isAtStart}
-          >
-            <ChevronLeft className="h-6 w-6 sm:h-7 sm:h-7" />
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e: any) => { e.stopPropagation(); instanceRef.current?.next()}}
-            className={cn(
-              "absolute right-0 top-1/2 -translate-y-1/2 z-20",
-              "text-white",
-              "opacity-100 disabled:opacity-0 disabled:cursor-not-allowed",
-              "focus-visible:ring-0 focus-visible:ring-offset-0",
-              "border-none shadow-none bg-transparent hover:bg-transparent",
-              "p-1 w-auto h-auto"
-            )}
-            aria-label="Scroll right"
-            disabled={isAtEnd}
-          >
-            <ChevronRight className="h-6 w-6 sm:h-7 sm:h-7" />
-          </Button>
+          {showLeftArrow && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e: any) => { e.stopPropagation(); instanceRef.current?.prev()}}
+                className={cn(
+                  "absolute left-0 top-1/2 -translate-y-1/2 z-20",
+                  "text-white w-8 h-12 md:w-10 md:h-16 p-0", // Slightly smaller arrows for char carousel
+                  "bg-gradient-to-r from-black/40 to-transparent",
+                  "opacity-100 hover:opacity-100 focus:opacity-100",
+                  "focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none",
+                  "flex items-center justify-center"
+                )}
+                aria-label="Scroll left"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </Button>
+          )}
+          {showRightArrow && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e: any) => { e.stopPropagation(); instanceRef.current?.next()}}
+                className={cn(
+                  "absolute right-0 top-1/2 -translate-y-1/2 z-20",
+                  "text-white w-8 h-12 md:w-10 md:h-16 p-0",
+                  "bg-gradient-to-l from-black/40 to-transparent",
+                  "opacity-100 hover:opacity-100 focus:opacity-100",
+                  "focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none",
+                  "flex items-center justify-center"
+                )}
+                aria-label="Scroll right"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </Button>
+          )}
           </>
       )}
     </div>
   );
 }
-
