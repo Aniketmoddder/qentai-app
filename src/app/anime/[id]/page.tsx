@@ -138,7 +138,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
           <div className="md:col-span-8 lg:col-span-9 mt-8 md:mt-0">
             {/* Title and Action Buttons Section */}
             <div className="flex flex-col items-center sm:items-start space-y-4 mb-6">
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground font-zen-dots leading-tight text-center sm:text-left">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground font-zen-dots leading-tight text-center sm:text-left max-w-full">
                 {anime.title}
               </h1>
               
@@ -289,3 +289,4 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     </div>
   );
 }
+

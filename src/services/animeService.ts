@@ -79,6 +79,15 @@ export async function getAllAnimes(
     if (filters.genre) {
       queryConstraints.push(where('genre', 'array-contains', filters.genre));
       if (!effectiveSortBy) { 
+        // When filtering by genre, if no explicit sort is given, 
+        // it's common to sort by popularity or updatedAt.
+        // Let's use popularity as the default for genre pages for now, ensure index exists.
+        // Firestore requires the first orderBy field to match the inequality/array-contains field if one exists,
+        // or it requires a dedicated composite index.
+        // If your index is (genre Arrays, popularity Desc), this is fine.
+        // If your index is just on genre, then you cannot add another orderBy without it being the first one, or a composite.
+        // For `array-contains` you can't order by the array field itself.
+        // So we assume an index like (genre Arrays, popularity Desc) or (genre Arrays, updatedAt Desc)
         effectiveSortBy = 'popularity'; 
         effectiveSortOrder = 'desc';
         hasSpecificDefaultSortApplied = true;
@@ -120,9 +129,11 @@ export async function getAllAnimes(
     if (effectiveSortBy) {
       queryConstraints.push(orderBy(effectiveSortBy, effectiveSortOrder));
       // Add secondary sort by title if primary sort is not title, to ensure consistent ordering
-      if (effectiveSortBy !== 'title' && !hasSpecificDefaultSortApplied) {
-         // Only add if not already implicitly handled by a filter's default sort
-        queryConstraints.push(orderBy('title', 'asc')); 
+      // Only add if not already implicitly handled by a filter's default sort
+      if (effectiveSortBy !== 'title' && !hasSpecificDefaultSortApplied && filters.genre) {
+          queryConstraints.push(orderBy('title', 'asc')); 
+      } else if (effectiveSortBy !== 'title' && !hasSpecificDefaultSortApplied) {
+         queryConstraints.push(orderBy('title', 'asc'));
       }
     } else if (!hasSpecificDefaultSortApplied) {
       // Default sort if no filters imply one and no explicit sort is given
@@ -169,11 +180,8 @@ export async function getFeaturedAnimes(
     orderBy(sortBy, sortOrder) 
   ];
    
-  // If sorting by popularity, add a secondary sort for consistency if needed
   if (sortBy === 'popularity') {
-    queryConstraints.push(orderBy('updatedAt', 'desc')); // Example secondary sort
-  } else if (sortBy === 'title') {
-    // No explicit secondary needed if primary is title asc/desc
+    queryConstraints.push(orderBy('updatedAt', 'desc')); 
   } else if (sortBy === 'updatedAt') {
      queryConstraints.push(orderBy('title', 'asc'));
   }
@@ -197,13 +205,12 @@ export async function getFeaturedAnimes(
       const specificIndexMessage = `Firestore query for getFeaturedAnimes requires an index. Details: ${error.message}. Query: isFeatured == true, orderBy ${sortBy} ${sortOrder}. You can create this index in the Firebase console.`;
       console.warn(specificIndexMessage);
       
-      // Fallback logic if a specific sort fails due to missing index
       console.warn(`getFeaturedAnimes: Falling back to sort by updatedAt due to missing index for '${sortBy}' on featured items.`);
       try {
         const fallbackQueryConstraints: QueryConstraint[] = [
           where('isFeatured', '==', true),
           orderBy('updatedAt', 'desc'), 
-          orderBy('title', 'asc') // Secondary sort for consistency
+          orderBy('title', 'asc') 
         ];
         if (effectiveCount > 0) {
           fallbackQueryConstraints.push(limit(effectiveCount));
@@ -242,7 +249,7 @@ export async function getAnimeById(id: string): Promise<Anime | undefined> {
       if (aniListData) {
         animeData = {
           ...animeData, // Firestore data is base
-          title: aniListData.title?.userPreferred || aniListData.title?.english || aniListData.title?.romaji || animeData.title,
+          title: aniListData.title?.english || aniListData.title?.userPreferred || aniListData.title?.romaji || animeData.title,
           bannerImage: aniListData.bannerImage || animeData.bannerImage,
           coverImage: aniListData.coverImage?.extraLarge || aniListData.coverImage?.large || animeData.coverImage,
           synopsis: aniListData.description || animeData.synopsis,
@@ -333,7 +340,13 @@ export async function addAnimeToFirestore(animeData: Omit<Anime, 'id' | 'created
   dataToSave.popularity = animeData.popularity === undefined ? 0 : animeData.popularity; 
   dataToSave.isFeatured = animeData.isFeatured === undefined ? false : animeData.isFeatured; 
   dataToSave.aniListId = animeData.aniListId || null;
-  dataToSave.episodes = animeData.episodes || []; 
+  
+  // Ensure episodes array is initialized properly
+  dataToSave.episodes = (animeData.episodes || []).map(ep => ({
+    ...ep,
+    url: ep.url || null, // ensure url can be null
+    thumbnail: ep.thumbnail || null, // ensure thumbnail can be null
+  }));
 
   dataToSave.season = animeData.season || null;
   dataToSave.seasonYear = animeData.seasonYear || (animeData.year || null); 
@@ -344,7 +357,7 @@ export async function addAnimeToFirestore(animeData: Omit<Anime, 'id' | 'created
   dataToSave.duration = animeData.duration || null;
   dataToSave.airedFrom = animeData.airedFrom || null;
   dataToSave.airedTo = animeData.airedTo || null;
-  dataToSave.episodesCount = animeData.episodesCount || animeData.episodes?.length || 0;
+  dataToSave.episodesCount = animeData.episodesCount || dataToSave.episodes?.length || 0;
   dataToSave.characters = animeData.characters || [];
 
 
@@ -463,6 +476,8 @@ export async function getUniqueGenres(): Promise<string[]> {
   ].sort();
 
   try {
+    // Fetch a larger set of animes to get a more comprehensive genre list from actual data.
+    // Limiting to 1000 to balance comprehensiveness with performance.
     const q = query(animesCollection, orderBy('title'), limit(1000)); 
     const querySnapshot = await getDocs(q);
     const genresSet = new Set<string>();
@@ -476,16 +491,22 @@ export async function getUniqueGenres(): Promise<string[]> {
         });
       }
     });
-    if (genresSet.size === 0) {
-      console.warn("getUniqueGenres: No genres found in the first 1000 animes. Returning a comprehensive default list.");
-      return comprehensiveFallbackGenres;
-    }
-    const fetchedGenres = Array.from(genresSet).sort();
+    
+    const fetchedGenres = Array.from(genresSet);
+    // Combine fetched genres with the fallback list and remove duplicates, then sort.
     const finalGenres = Array.from(new Set([...fetchedGenres, ...comprehensiveFallbackGenres])).sort();
+    
+    if (finalGenres.length === 0) { // Should only happen if even fallback is empty (which it isn't)
+      console.warn("getUniqueGenres: No genres found and fallback list somehow empty. This is unexpected.");
+      return [];
+    }
     return finalGenres;
   } catch (error) {
-    console.error("Error in getUniqueGenres, returning fallback list:", error);
-    throw handleFirestoreError(error, 'getUniqueGenres');
+    console.error("Error in getUniqueGenres, returning comprehensive fallback list:", error);
+    // If an error occurs (e.g., Firestore access issue), return the fallback list.
+    // Do not re-throw if the goal is to always provide some genres for the UI.
+    // If throwing is preferred, use: throw handleFirestoreError(error, 'getUniqueGenres');
+    return comprehensiveFallbackGenres;
   }
 }
 
