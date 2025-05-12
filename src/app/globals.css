@@ -45,6 +45,9 @@
     --ring: 260 100% 75%; /* Lighter primary for focus rings */
     
     --highlight: 243 79% 59%; /* #4F46E5 (New Highlight) */
+    --surface: hsl(var(--card)); /* surface will be same as card by default */
+    --text-heading: hsl(var(--foreground)); /* text-heading will be same as foreground */
+    --text-body: hsl(var(--foreground)); /* text-body will be same as foreground */
 
     --radius: 0.75rem;
 
@@ -96,6 +99,9 @@
     --ring: 250 66% 67%; /* Lighter primary for focus rings */
 
     --highlight: 262 84% 72%; /* #A78BFA (Light Purple) */
+    --surface: hsl(var(--card));
+    --text-heading: hsl(var(--foreground)); 
+    --text-body: hsl(var(--foreground)); 
     
     --radius: 0.75rem;
 
@@ -146,6 +152,9 @@
     --ring: 327 82% 65%; /* Lighter primary */
 
     --highlight: 291 92% 72%; /* #E879F9 (from user prompt) */
+    --surface: hsl(var(--card));
+    --text-heading: hsl(var(--foreground)); 
+    --text-body: hsl(var(--foreground)); 
     
     --radius: 0.75rem;
 
@@ -196,6 +205,9 @@
     --ring: 180 100% 55%;     /* Brighter primary for focus rings */
     
     --highlight: 250 66% 62%; /* #7C3AED (Deep Violet from palette) */
+    --surface: hsl(var(--card));
+    --text-heading: hsl(var(--foreground)); 
+    --text-body: hsl(var(--foreground)); 
 
     --radius: 0.5rem; /* Sharper corners for cyberpunk */
 
@@ -372,7 +384,7 @@
   right: 10px !important;
 }
 
-.swiper-button-disabled {
+.swiper-button-disabled-custom { /* Custom class for disabled state */
   opacity: 0 !important;
   pointer-events: none !important;
 }

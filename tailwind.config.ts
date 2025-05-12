@@ -8,7 +8,7 @@ export default {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./node_modules/keen-slider/keen-slider.min.css", // Ensure keen-slider CSS is not purged
+    // "./node_modules/keen-slider/keen-slider.min.css", // Ensure keen-slider CSS is not purged
   ],
   theme: {
     container: {
@@ -28,10 +28,9 @@ export default {
     },
   	extend: {
       fontFamily: {
-        sans: ["Poppins", 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', '"Noto Sans"', 'sans-serif', '"Apple Color Emoji"', '"Segoe UI Emoji"', '"Segoe UI Symbol"', '"Noto Color Emoji"'],
-        mono: ["var(--font-roboto-mono)", "monospace"],
-        'zen-dots': ['"Zen Dots"', 'sans-serif'], 
-        orbitron: ["Orbitron", 'sans-serif'], 
+        sans: ["var(--font-poppins)", 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', '"Noto Sans"', 'sans-serif', '"Apple Color Emoji"', '"Segoe UI Emoji"', '"Segoe UI Symbol"', '"Noto Color Emoji"'],
+        'zen-dots': ['var(--font-zen-dots)', 'sans-serif'], 
+        orbitron: ["var(--font-orbitron)", 'sans-serif'], 
       },
   		colors: {
   			background: 'hsl(var(--background))',
@@ -64,8 +63,8 @@ export default {
   				DEFAULT: 'hsl(var(--destructive))',
   				foreground: 'hsl(var(--destructive-foreground))'
   			},
-        highlight: 'hsl(var(--highlight))', // Added highlight
-        surface: 'hsl(var(--surface))', // Added surface
+        highlight: 'hsl(var(--highlight))', 
+        surface: 'hsl(var(--surface))', 
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',
@@ -79,8 +78,6 @@ export default {
   			sidebar: {
   				DEFAULT: 'hsl(var(--sidebar-background))',
   				foreground: 'hsl(var(--sidebar-foreground))',
-  				// primary: 'hsl(var(--sidebar-primary))', // These were likely theme-specific, removed
-  				// 'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
   				accent: 'hsl(var(--sidebar-accent))',
   				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
   				border: 'hsl(var(--sidebar-border))',
