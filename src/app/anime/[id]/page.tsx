@@ -195,13 +195,13 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
             </div>
 
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="flex space-x-4 border-b border-border/40 mb-6 bg-transparent p-0">
+              <TabsList className="flex space-x-1 sm:space-x-2 border-b border-border/40 mb-6 bg-transparent p-0">
                 {['Overview', 'Characters', 'Relations', 'Artwork'].map(tabName => (
                   <TabsTrigger
                     key={tabName}
                     value={tabName.toLowerCase()}
                     className={cn(
-                      "relative px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background data-[state=inactive]:text-muted-foreground data-[state=active]:text-foreground data-[state=active]:font-semibold",
+                      "relative px-2 sm:px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background data-[state=inactive]:text-muted-foreground data-[state=active]:text-foreground data-[state=active]:font-semibold",
                       "hover:text-foreground",
                       "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-transparent after:transition-transform after:duration-300 after:ease-in-out",
                       "data-[state=active]:after:bg-foreground data-[state=active]:after:scale-x-100",
@@ -232,9 +232,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                   <ReadMoreSynopsis text={anime.synopsis || "No synopsis available."} />
                 </div>
 
-                <EpisodeListSection anime={anime} />
-
-                <div className="mt-8"> {/* Added margin top to separate from episodes */}
+                <div className="mt-8">
                   <h3 className="text-xl font-semibold text-foreground font-orbitron mb-2">Details</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 border-t border-border/20">
                     <DetailItem label="Type" value={anime.format || anime.type} icon={typeIconMap[anime.format || anime.type || 'Unknown'] ? undefined : Info } >
@@ -262,6 +260,8 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                     <DetailItem label="Popularity" value={anime.popularity?.toLocaleString()} icon={Users} />
                   </div>
                 </div>
+
+                <EpisodeListSection anime={anime} />
               </TabsContent>
 
               <TabsContent value="characters" className="bg-card/50 p-1 sm:p-2 rounded-lg border border-border/20 shadow-inner">
