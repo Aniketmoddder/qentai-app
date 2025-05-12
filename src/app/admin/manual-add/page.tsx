@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -51,7 +52,7 @@ const INITIAL_GENRES = ['Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Sc
 
 
 export default function ManualAddTab() {
-  const { toast } } from useToast();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [availableGenres, setAvailableGenres] = useState<string[]>(INITIAL_GENRES);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
@@ -367,3 +368,4 @@ function FormSelectItem({ name, label, items, form }: FormSelectItemProps) {
     </div>
   );
 }
+
