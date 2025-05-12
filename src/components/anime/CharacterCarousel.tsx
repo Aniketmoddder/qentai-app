@@ -25,8 +25,14 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
   const checkScrollability = useCallback(() => {
     if (scrollContainerRef.current) {
       const { scrollWidth, clientWidth } = scrollContainerRef.current;
-      setCanScroll(scrollWidth > clientWidth);
-      checkScrollPosition();
+      const scrollable = scrollWidth > clientWidth;
+      setCanScroll(scrollable);
+      if (scrollable) {
+        checkScrollPosition();
+      } else {
+        setIsAtStart(true);
+        setIsAtEnd(true);
+      }
     }
   }, []);
 
@@ -67,8 +73,7 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth',
       });
-      // Debounce or use a timer to re-check scroll position after scroll animation
-      setTimeout(checkScrollPosition, 350); // Adjust timeout as needed
+      setTimeout(checkScrollPosition, 350); 
     }
   };
 
@@ -93,51 +98,9 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
 
   return (
     <div className="relative group/carousel py-4">
-      {/* Left Gradient Shadow & Button Area */}
-      {canScroll && !isAtStart && (
-        <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-20 md:w-24 z-10 bg-gradient-to-r from-card/80 via-card/50 to-transparent pointer-events-none flex items-center justify-start opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-300">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => scroll('left')}
-            disabled={isAtStart}
-            className={cn(
-              "rounded-full w-10 h-10 md:w-12 md:h-12 pointer-events-auto",
-              "bg-background/50 hover:bg-primary/70 text-foreground hover:text-primary-foreground shadow-lg",
-              "disabled:opacity-0 disabled:cursor-not-allowed",
-              "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ml-1 sm:ml-2"
-            )}
-            aria-label="Scroll left"
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </Button>
-        </div>
-      )}
-
-      {/* Right Gradient Shadow & Button Area */}
-      {canScroll && !isAtEnd && (
-        <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-20 md:w-24 z-10 bg-gradient-to-l from-card/80 via-card/50 to-transparent pointer-events-none flex items-center justify-end opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-300">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => scroll('right')}
-            disabled={isAtEnd}
-            className={cn(
-              "rounded-full w-10 h-10 md:w-12 md:h-12 pointer-events-auto",
-              "bg-background/50 hover:bg-primary/70 text-foreground hover:text-primary-foreground shadow-lg",
-              "disabled:opacity-0 disabled:cursor-not-allowed",
-              "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background mr-1 sm:mr-2"
-            )}
-            aria-label="Scroll right"
-          >
-            <ChevronRight className="h-6 w-6" />
-          </Button>
-        </div>
-      )}
-
       <div
         ref={scrollContainerRef}
-        className="flex overflow-x-auto pb-4 gap-3 sm:gap-4 scrollbar-hide px-1" // Added small horizontal padding
+        className="flex overflow-x-auto pb-4 gap-3 sm:gap-4 scrollbar-hide px-1" // Added small horizontal padding to prevent clipping with buttons
         style={{ scrollSnapType: 'x mandatory', scrollBehavior: 'smooth' }}
       >
         {characters.map((character) => (
@@ -151,13 +114,52 @@ export default function CharacterCarousel({ characters }: CharacterCarouselProps
         ))}
       </div>
 
-      {/* Mobile scroll buttons (simplified if needed or rely on touch scroll) */}
+      {/* Left Scroll Button */}
       {canScroll && (
-        <div className="md:hidden flex justify-center mt-3 space-x-3">
-          <Button variant="outline" size="icon" onClick={() => scroll('left')} disabled={isAtStart} className="rounded-full w-9 h-9 shadow-md bg-card/80 border-border/50 hover:bg-primary/20 hover:text-primary disabled:opacity-40"><ChevronLeft className="h-5 w-5" /></Button>
-          <Button variant="outline" size="icon" onClick={() => scroll('right')} disabled={isAtEnd} className="rounded-full w-9 h-9 shadow-md bg-card/80 border-border/50 hover:bg-primary/20 hover:text-primary disabled:opacity-40"><ChevronRight className="h-5 w-5" /></Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => scroll('left')}
+          disabled={isAtStart}
+          className={cn(
+            "absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-20",
+            "rounded-full w-9 h-9 sm:w-10 sm:h-10",
+            "bg-black/40 hover:bg-black/60 text-white shadow-md",
+            "opacity-0 group-hover/carousel:opacity-100 transition-all duration-300",
+            isAtStart && "opacity-0 cursor-not-allowed pointer-events-none", // Keep hidden if at start
+            !isAtStart && "group-hover/carousel:opacity-100", // Ensure it shows on hover if not at start
+            "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          )}
+          aria-label="Scroll left"
+        >
+          <ChevronLeft className="h-5 w-5 sm:h-6 sm:h-6" />
+        </Button>
       )}
+
+      {/* Right Scroll Button */}
+      {canScroll && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => scroll('right')}
+          disabled={isAtEnd}
+          className={cn(
+            "absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-20",
+            "rounded-full w-9 h-9 sm:w-10 sm:h-10",
+            "bg-black/40 hover:bg-black/60 text-white shadow-md",
+            "opacity-0 group-hover/carousel:opacity-100 transition-all duration-300",
+            isAtEnd && "opacity-0 cursor-not-allowed pointer-events-none", // Keep hidden if at end
+            !isAtEnd && "group-hover/carousel:opacity-100", // Ensure it shows on hover if not at end
+            "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          )}
+          aria-label="Scroll right"
+        >
+          <ChevronRight className="h-5 w-5 sm:h-6 sm:h-6" />
+        </Button>
+      )}
+      
+      {/* Removed bottom mobile scroll buttons */}
     </div>
   );
 }
+
