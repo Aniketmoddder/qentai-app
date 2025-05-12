@@ -108,7 +108,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
       >
         <Image
           src={primaryImageSrc}
-          alt={`${anime.title} banner`}
+          alt={`${anime.title || 'Anime'} banner`}
           fill
           className="object-cover opacity-40"
           priority
@@ -121,11 +121,11 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
       <Container className="relative z-10 -mt-[20vh] sm:-mt-[180px] md:-mt-[200px] lg:-mt-[220px] pb-16">
         <div className="md:grid md:grid-cols-12 md:gap-6 lg:gap-8">
           <div className="md:col-span-4 lg:col-span-3">
-             <div className="sticky top-[calc(var(--header-height,4rem)+1.5rem)] max-w-[200px] sm:max-w-[220px] mx-auto md:mx-0"> {/* Adjusted max-w */}
+             <div className="sticky top-[calc(var(--header-height,4rem)+1.5rem)] max-w-[200px] sm:max-w-[220px] mx-auto md:mx-0">
               <div className="aspect-[2/3] relative rounded-xl overflow-hidden shadow-2xl border-2 border-border/20 bg-card">
                 <Image
                   src={coverImageSrc}
-                  alt={anime.title}
+                  alt={anime.title || 'Anime cover'}
                   fill
                   sizes="(max-width: 640px) 200px, (max-width: 768px) 220px, (max-width: 1024px) 33vw, 25vw"
                   className="object-cover" 
@@ -136,7 +136,6 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
           </div>
 
           <div className="md:col-span-8 lg:col-span-9 mt-6 md:mt-0">
-            {/* Title and Action Buttons Section */}
             <div className="flex flex-col items-center sm:items-start space-y-3 sm:space-y-4 mb-5 sm:mb-6">
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground font-zen-dots leading-tight text-center sm:text-left line-clamp-2">
                 {anime.title || 'Anime Title Not Available'}
@@ -164,7 +163,6 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
               </div>
             </div>
             
-            {/* Meta Info Section */}
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1.5 text-xs sm:text-sm text-muted-foreground mb-5 sm:mb-6">
               {anime.format && <div className="flex items-center">{typeIconMap[anime.format] || <Info className="w-3.5 h-3.5 mr-1" />} <span className="font-medium">{anime.format}</span></div>}
               {anime.format && <span className="opacity-50 hidden sm:inline">•</span>}
@@ -196,30 +194,30 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
 
             <Tabs defaultValue="overview" className="w-full">
                 <div className="relative border-b border-border/40 mb-5 sm:mb-6">
-                  <TabsList className="flex space-x-0 bg-transparent p-0 overflow-x-auto scrollbar-hide">
+                  <TabsList className="flex space-x-2 sm:space-x-4 bg-transparent p-0 overflow-x-auto scrollbar-hide">
                     {['Overview', 'Characters', 'Relations', 'Artwork'].map(tabName => (
                       <TabsTrigger
                         key={tabName}
                         value={tabName.toLowerCase()}
                         className={cn(
-                          "relative px-3 sm:px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-background data-[state=inactive]:text-muted-foreground data-[state=active]:text-primary data-[state=active]:font-semibold",
+                          "relative px-1 py-2.5 text-sm font-medium whitespace-nowrap transition-colors duration-200",
+                          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-background",
+                          "data-[state=inactive]:text-muted-foreground data-[state=active]:text-primary data-[state=active]:font-semibold",
                           "hover:text-primary",
-                          "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-transparent after:transition-transform after:duration-300 after:ease-in-out",
+                          "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-transparent after:transition-transform after:duration-200 after:ease-in-out",
                           "data-[state=active]:after:bg-primary data-[state=active]:after:scale-x-100",
-                          "data-[state=inactive]:after:scale-x-0 hover:after:scale-x-100 hover:after:bg-primary/30"
+                          "data-[state=inactive]:after:scale-x-0 hover:after:scale-x-50 hover:after:bg-primary/50"
                         )}
                       >
-                        {tabName === 'Characters' && <Users2Icon className="w-4 h-4 mr-1.5 sm:hidden" />}
-                        <span className="hidden sm:inline">{tabName}</span>
-                        <span className="sm:hidden">{tabName.substring(0,3)}</span> 
+                        {tabName}
                       </TabsTrigger>
                     ))}
                   </TabsList>
                 </div>
               
               <TabsContent value="overview" className="bg-transparent p-0">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-x-0 gap-y-8 lg:gap-x-8">
+                    <div className="lg:col-span-8 space-y-6">
                         <div className="flex items-center justify-between">
                             <h3 className="text-lg sm:text-xl font-semibold text-foreground font-orbitron flex items-center">
                                 <div className="w-1.5 h-6 bg-primary rounded-full mr-2.5"></div>
@@ -238,7 +236,7 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
                         </div>
                         <ReadMoreSynopsis text={anime.synopsis || "No synopsis available."} />
                     </div>
-                    <div className="lg:col-span-1">
+                    <div className="lg:col-span-4">
                          <h3 className="text-lg sm:text-xl font-semibold text-foreground font-orbitron mb-2 flex items-center">
                             <div className="w-1.5 h-6 bg-primary rounded-full mr-2.5"></div>
                             Details
@@ -275,9 +273,8 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
               </TabsContent>
 
               <TabsContent value="characters" className="p-0 sm:p-0 rounded-lg relative overflow-hidden">
-                <h3 className="text-lg sm:text-xl font-semibold mb-1 mt-2 ml-0 md:ml-1 text-foreground flex items-center font-orbitron">
-                     <Users2Icon className="w-5 h-5 mr-2.5 text-primary"/> {/* Replaced div with icon */}
-                    Characters & Voice Actors
+                <h3 className="text-2xl md:text-3xl font-bold text-foreground mt-4 mb-5 font-orbitron">
+                     Anime Characters
                 </h3>
                 <Suspense fallback={<div className="h-48 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
                   <CharacterCarousel characters={anime.characters} />
@@ -300,4 +297,5 @@ export default async function AnimeDetailsPage({ params }: AnimeDetailsPageProps
     </div>
   );
 }
+
 
