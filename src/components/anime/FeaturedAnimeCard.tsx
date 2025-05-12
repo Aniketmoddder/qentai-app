@@ -14,13 +14,14 @@ interface FeaturedAnimeCardProps {
 
 export default function FeaturedAnimeCard({ anime }: FeaturedAnimeCardProps) {
   const firstEpisodeId = anime.episodes?.[0]?.id || '';
+  const placeholderBanner = `https://picsum.photos/seed/${anime.id}-featured/800/450`;
 
   return (
     <div className="group relative rounded-xl overflow-hidden shadow-xl aspect-[16/10] sm:aspect-[16/9] bg-card hover:shadow-primary/30 transition-all duration-300">
       <Link href={`/anime/${anime.id}`} passHref legacyBehavior>
         <a className="block w-full h-full">
           <Image
-            src={anime.bannerImage || anime.coverImage || `https://picsum.photos/seed/${anime.id}-featured/800/450`}
+            src={anime.bannerImage || anime.coverImage || placeholderBanner}
             alt={anime.title}
             fill
             sizes="(max-width: 768px) 100vw, 50vw"
@@ -44,7 +45,7 @@ export default function FeaturedAnimeCard({ anime }: FeaturedAnimeCardProps) {
         </p>
         <Button asChild size="sm" className="btn-primary-gradient rounded-full px-5 py-2.5 text-xs md:text-sm font-semibold group-hover:scale-105 transform transition-transform duration-200">
           <Link href={`/play/${anime.id}${firstEpisodeId ? `?episode=${firstEpisodeId}` : ''}`} onClick={(e) => e.stopPropagation()}>
-            <Play className="mr-1.5 h-4 w-4 fill-current" /> View More
+            <Play className="mr-1.5 h-4 w-4" /> View More
           </Link>
         </Button>
       </div>

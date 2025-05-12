@@ -6,7 +6,6 @@ import Link from 'next/link';
 import type { Anime } from '@/types/anime';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { PlayCircle } from 'lucide-react';
 
 interface AnimeCardProps {
   anime: Anime;
@@ -18,67 +17,65 @@ export default function AnimeCard({ anime, className }: AnimeCardProps) {
     if (anime.type === 'Movie') {
       return 'Movie';
     }
-    if (anime.episodes && anime.episodes.length > 0) {
-      return `Ep ${anime.episodes.length}`;
+    // Use episodesCount if available and greater than 0, otherwise fallback to episodes array length
+    const count = anime.episodesCount && anime.episodesCount > 0 
+                  ? anime.episodesCount 
+                  : (anime.episodes && anime.episodes.length > 0 ? anime.episodes.length : 0);
+    
+    if (count > 0) {
+      return `Ep ${count}`;
     }
-    return null;
+    return null; // No badge if not a movie and no episode count
   };
 
   const episodeBadgeText = getEpisodeBadgeText();
+  const placeholderCover = `https://picsum.photos/seed/${anime.id}/300/450`;
 
   return (
     <Link
       href={`/anime/${anime.id}`}
       className={cn(
         "group block cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg",
-        "w-[45vw] max-w-[180px] sm:w-auto sm:max-w-[200px] md:max-w-[220px]", // Responsive width
+        "w-[45vw] max-w-[180px] sm:w-auto sm:max-w-[200px] md:max-w-[220px]", 
         className
       )}
       aria-label={`View details for ${anime.title}`}
     >
-      <div
-        className={cn(
-          "bg-card rounded-lg shadow-lg hover:shadow-primary/30 transition-all duration-300 flex flex-col overflow-hidden h-full" 
-        )}
-      >
+      <div className="flex flex-col h-full">
         {/* Image Container */}
-        <div className="relative w-full aspect-[2/3] overflow-hidden">
+        <div className="relative w-full aspect-[2/3] overflow-hidden rounded-md shadow-lg hover:shadow-primary/30 transition-shadow duration-300 bg-card">
           <Image
-            src={anime.coverImage}
+            src={anime.coverImage || placeholderCover}
             alt={anime.title}
             fill
             sizes="(max-width: 640px) 45vw, (max-width: 768px) 200px, 220px"
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            className="object-cover"
             priority={false} 
             data-ai-hint={`${anime.genre?.[0] || 'anime'} portrait poster`}
           />
           {episodeBadgeText && (
             <div className="absolute top-1.5 right-1.5 z-10">
               <Badge
-                variant="secondary" 
-                className="bg-black/70 text-white text-[0.6rem] px-1.5 py-0.5 border-transparent font-semibold"
+                variant="secondary"
+                className="bg-black/60 text-white text-[0.6rem] px-2 py-0.5 border-transparent font-bold backdrop-blur-sm"
               >
                 {episodeBadgeText}
               </Badge>
             </div>
           )}
-          {/* Play Icon - visible on hover/focus, no longer a separate Link */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300 bg-black/40 z-10">
-            <PlayCircle className="w-12 h-12 text-white/90" />
-          </div>
         </div>
 
-        {/* Text Content Area - ensure it's at the bottom */}
-        <div className="p-2.5 mt-auto"> {/* mt-auto pushes this to the bottom */}
-          <h3
-            className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors duration-200 truncate"
+        {/* Text Content Area - Below the image */}
+        <div className="mt-2 flex items-center">
+          <span className="inline-block flex-shrink-0 w-2 h-2 bg-green-500 rounded-full mr-1.5"></span>
+          <p
+            className="text-sm font-medium text-foreground group-hover:text-primary transition-colors duration-200 truncate"
             title={anime.title}
           >
             {anime.title}
-          </h3>
+          </p>
         </div>
       </div>
     </Link>
   );
 }
-
